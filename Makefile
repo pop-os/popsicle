@@ -26,6 +26,7 @@ update:
 
 vendor:
 	cargo vendor
+	touch vendor
 
 target/release/muff: vendor
 	cargo build --frozen --locked --release
