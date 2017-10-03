@@ -2,8 +2,9 @@
 name = "muff"
 description = "Multiple USB File Flasher"
 version = "0.1.0"
-license = "MIT"
 authors = ["Jeremy Soller <jeremy@system76.com>"]
+license = "MIT"
+readme = "README.md"
 
 [dependencies]
 "clap" = "2.26"
