@@ -1,0 +1,10 @@
+[package]
+name = "muff"
+description = "Multiple USB File Flasher"
+version = "0.1.0"
+authors = ["Jeremy Soller <jeremy@system76.com>"]
+
+[dependencies]
+"clap" = "2.26"
+"libc" = "0.2"
+"pbr" = { "git" = "https://github.com/a8m/pb.git" }
