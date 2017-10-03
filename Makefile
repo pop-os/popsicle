@@ -28,4 +28,4 @@ vendor:
 	cargo vendor
 
 target/release/muff: vendor
-	cargo build --frozen --release
+	cargo build --frozen --locked --release
