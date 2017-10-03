@@ -1,3 +1,4 @@
+/.cargo/
+/debian/files
 /target/
 /vendor/
-**/*.rs.bk
