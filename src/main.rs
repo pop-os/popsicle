@@ -7,10 +7,12 @@ extern crate pbr;
 use clap::{App, Arg};
 use pbr::{ProgressBar, MultiBar, Units};
 use std::{cmp, process, thread};
-use std::fs::{File, OpenOptions};
+use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Write};
 use std::os::unix::fs::OpenOptionsExt;
 use std::sync::Arc;
+
+mod mounts;
 
 fn main() {
     let matches = App::new("Multiple USB File Flasher")
@@ -44,8 +46,21 @@ fn main() {
         }
     };
 
+    let mut disk_paths = Vec::new();
+    for disk_arg in matches.values_of("DISKS").expect("DISKS not set") {
+        let canonical_path = match fs::canonicalize(disk_arg) {
+            Ok(p) => p,
+            Err(err) => {
+                eprintln!("muff: error finding disk '{}': {}", disk_arg, err);
+                process::exit(1);
+            }
+        };
+
+        disk_paths.push(canonical_path);
+    }
+
     let mut disks = Vec::new();
-    for disk_path in matches.values_of("DISKS").expect("DISKS not set") {
+    for disk_path in disk_paths {
         let file_res = OpenOptions::new()
             .read(true)
             .write(true)
@@ -55,12 +70,12 @@ fn main() {
         let disk = match file_res {
             Ok(file) => file,
             Err(err) => {
-                eprintln!("muff: error opening disk '{}': {}", disk_path, err);
+                eprintln!("muff: error opening disk '{}': {}", disk_path.display(), err);
                 process::exit(1);
             }
         };
 
-        disks.push((disk_path.to_string(), disk));
+        disks.push((format!("{}", disk_path.display()), disk));
     }
 
     let image_data = {
