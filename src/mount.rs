@@ -1,44 +1,46 @@
 use std::char;
+use std::ffi::OsString;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Error, ErrorKind, Result};
+use std::os::unix::ffi::OsStringExt;
 
 pub struct Mount {
-    source: String,
-    dest: String,
-    fs: String,
-    options: String,
-    dump: String,
-    pass: String,
+    pub source: OsString,
+    pub dest: OsString,
+    pub fs: OsString,
+    pub options: OsString,
+    pub dump: OsString,
+    pub pass: OsString,
 }
 
 impl Mount {
-    fn parse_value(value: &str) -> Result<String> {
-        let mut ret = String::new();
+    fn parse_value(value: &str) -> Result<OsString> {
+        let mut ret = Vec::new();
 
-        let mut chars = value.chars();
-        while let Some(c) = chars.next() {
-            match c {
-                '\\' => {
+        let mut bytes = value.bytes();
+        while let Some(b) = bytes.next() {
+            match b {
+                b'\\' => {
                     let mut code = 0;
                     for _i in 0..3 {
-                        if let Some(num) = chars.next() {
+                        if let Some(b) = bytes.next() {
                             code *= 8;
-                            code += u32::from_str_radix(&num.to_string(), 8).map_err(|err| {
+                            code += u32::from_str_radix(&(b as char).to_string(), 8).map_err(|err| {
                                 Error::new(ErrorKind::Other, err)
                             })?;
                         } else {
                             return Err(Error::new(ErrorKind::Other, "truncated octal code"));
                         }
                     }
-                    ret.push(char::from_u32(code).ok_or(Error::new(ErrorKind::Other, "invalid octal code"))?);
+                    ret.push(code as u8);
                 },
                 _ => {
-                    ret.push(c);
+                    ret.push(b);
                 }
             }
         }
 
-        Ok(ret)
+        Ok(OsString::from_vec(ret))
     }
 
     fn parse_line(line: &str) -> Result<Mount> {
