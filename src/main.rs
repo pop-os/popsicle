@@ -18,7 +18,7 @@ use mount::Mount;
 
 mod mount;
 
-fn main() {
+fn muff() -> Result<(), String> {
     let matches = App::new("Multiple USB File Flasher")
         .arg(
             Arg::with_name("IMAGE")
@@ -60,22 +60,25 @@ fn main() {
     let mut image = match File::open(&image_path) {
         Ok(file) => file,
         Err(err) => {
-            eprintln!("muff: error opening image '{}': {}", image_path, err);
-            process::exit(1);
+            return Err(format!(
+                "error opening image '{}': {}", image_path, err
+            ));
         }
     };
 
     let image_size = match image.metadata() {
         Ok(metadata) => {
             if ! metadata.file_type().is_file() {
-                eprintln!("muff: error using image '{}': not a file", image_path);
-                process::exit(1);
+                return Err(format!(
+                    "error using image '{}': not a file", image_path
+                ));
             }
             metadata.len()
         }
         Err(err) => {
-            eprintln!("muff: error getting metadata of image '{}': {}", image_path, err);
-            process::exit(1);
+            return Err(format!(
+                "error getting metadata of image '{}': {}", image_path, err
+            ));
         }
     };
 
@@ -85,8 +88,9 @@ fn main() {
         let readdir = match fs::read_dir(disk_dir) {
             Ok(readdir) => readdir,
             Err(err) => {
-                eprintln!("muff: error opening directory '{}': {}", disk_dir, err);
-                process::exit(1);
+                return Err(format!(
+                    "error opening directory '{}': {}", disk_dir, err
+                ));
             }
         };
         for entry_res in readdir {
@@ -100,16 +104,18 @@ fn main() {
                                     disk_args.push(arg.to_string());
                                 },
                                 None => {
-                                    eprintln!("muff: error reading directory entry '{}': invalid UTF-8", path.display());
-                                    process::exit(1);
+                                    return Err(format!(
+                                        "error reading directory entry '{}': invalid UTF-8", path.display()
+                                    ));
                                 }
                             }
                         }
                     }
                 },
                 Err(err) => {
-                    eprintln!("muff: error reading directory '{}': {}", disk_dir, err);
-                    process::exit(1);
+                    return Err(format!(
+                        "error reading directory '{}': {}", disk_dir, err
+                    ));
                 }
             }
         }
@@ -122,15 +128,17 @@ fn main() {
     }
 
     if disk_args.is_empty() {
-        eprintln!("muff: no disks specified");
-        process::exit(1);
+        return Err(format!(
+            "no disks specified"
+        ));
     }
 
     let mounts = match Mount::all() {
         Ok(mounts) => mounts,
         Err(err) => {
-            eprintln!("muff: error reading mounts: {}", err);
-            process::exit(1);
+            return Err(format!(
+                "error reading mounts: {}", err
+            ));
         }
     };
 
@@ -139,8 +147,9 @@ fn main() {
         let canonical_path = match fs::canonicalize(&disk_arg) {
             Ok(p) => p,
             Err(err) => {
-                eprintln!("muff: error finding disk '{}': {}", disk_arg, err);
-                process::exit(1);
+                return Err(format!(
+                    "error finding disk '{}': {}", disk_arg, err
+                ));
             }
         };
 
@@ -148,28 +157,29 @@ fn main() {
             if mount.source.as_bytes().starts_with(canonical_path.as_os_str().as_bytes()) {
                 if matches.is_present("unmount") {
                     println!(
-                        "muff: unmounting '{}': {:?} is mounted at {:?}",
+                        "unmounting '{}': {:?} is mounted at {:?}",
                         disk_arg, mount.source, mount.dest
                     );
 
                     match Command::new("umount").arg(&mount.source).status() {
                         Ok(status) => {
                             if ! status.success() {
-                                eprintln!("muff: failed to unmount {:?}: exit status {}", mount.source, status);
-                                process::exit(1);
+                                return Err(format!(
+                                    "failed to unmount {:?}: exit status {}", mount.source, status
+                                ));
                             }
                         },
                         Err(err) => {
-                            eprintln!("muff: failed to unmount {:?}: {}", mount.source, err);
-                            process::exit(1);
+                            return Err(format!(
+                                "failed to unmount {:?}: {}", mount.source, err
+                            ));
                         }
                     }
                 } else {
-                    eprintln!(
-                        "muff: error using disk '{}': {:?} already mounted at {:?}",
+                    return Err(format!(
+                        "error using disk '{}': {:?} already mounted at {:?}",
                         disk_arg, mount.source, mount.dest
-                    );
-                    process::exit(1);
+                    ));
                 }
             }
         }
@@ -177,13 +187,15 @@ fn main() {
         match canonical_path.metadata() {
             Ok(metadata) => {
                 if ! metadata.file_type().is_block_device() {
-                    eprintln!("muff: error using disk '{}': not a block device", disk_arg);
-                    process::exit(1);
+                    return Err(format!(
+                        "error using disk '{}': not a block device", disk_arg
+                    ));
                 }
             }
             Err(err) => {
-                eprintln!("muff: error getting metadata of disk '{}': {}", disk_arg, err);
-                process::exit(1);
+                return Err(format!(
+                    "error getting metadata of disk '{}': {}", disk_arg, err
+                ));
             }
         }
 
@@ -196,8 +208,9 @@ fn main() {
         let disk = match disk_res {
             Ok(disk) => disk,
             Err(err) => {
-                eprintln!("muff: error opening disk '{}': {}", disk_arg, err);
-                process::exit(1);
+                return Err(format!(
+                    "error opening disk '{}': {}", disk_arg, err
+                ));
             }
         };
 
@@ -217,13 +230,15 @@ fn main() {
             let count = match image.read(&mut data[total..end]) {
                 Ok(count) => count,
                 Err(err) => {
-                    eprintln!("muff: error reading image '{}': {}", image_path, err);
-                    process::exit(1);
+                    return Err(format!(
+                        "error reading image '{}': {}", image_path, err
+                    ));
                 }
             };
             if count == 0 {
-                eprintln!("muff: error reading image '{}': reached EOF", image_path);
-                process::exit(1);
+                return Err(format!(
+                    "error reading image '{}': reached EOF", image_path
+                ));
             }
             total += count;
             pb.set(total as u64);
@@ -247,8 +262,9 @@ fn main() {
         io::stdin().read_line(&mut confirm).unwrap();
 
         if confirm.trim() != "y" && confirm.trim() != "yes" {
-            println!("Exiting without flashing");
-            process::exit(1);
+            return Err(format!(
+                "exiting without flashing"
+            ));
         }
     }
 
@@ -258,6 +274,7 @@ fn main() {
 
     let mut mb = MultiBar::new();
 
+    let mut threads = Vec::new();
     for (disk_path, mut disk) in disks {
         let mut pb = mb.create_bar(image_size);
         pb.message(&format!("W {}: ", disk_path));
@@ -265,40 +282,60 @@ fn main() {
         pb.set(0);
 
         let image_data = image_data.clone();
-        let _ = thread::spawn(move || {
+        threads.push(thread::spawn(move || -> Result<(), String> {
             let mut total = 0;
             while total < image_data.len() {
                 let end = cmp::min(image_size as usize, total + 4 * 1024 * 1024);
                 let count = match disk.write(&image_data[total..end]) {
                     Ok(count) => count,
                     Err(err) => {
-                        eprintln!("muff: error writing disk '{}': {}", disk_path, err);
-                        process::exit(1);
+                        pb.message(&format!("! {}: ", disk_path));
+                        pb.finish();
+
+                        return Err(format!(
+                            "error writing disk '{}': {}", disk_path, err
+                        ));
                     }
                 };
                 if count == 0 {
-                    eprintln!("muff: error writing disk '{}': reached EOF", disk_path);
-                    process::exit(1);
+                    pb.message(&format!("! {}: ", disk_path));
+                    pb.finish();
+
+                    return Err(format!(
+                        "error writing disk '{}': reached EOF", disk_path
+                    ));
                 }
                 total += count;
                 pb.set(total as u64);
             }
 
             if let Err(err) = disk.flush() {
-                eprintln!("muff: error flushing disk '{}': {}", disk_path, err);
-                process::exit(1);
+                pb.message(&format!("! {}: ", disk_path));
+                pb.finish();
+
+                return Err(format!(
+                    "error flushing disk '{}': {}", disk_path, err
+                ));
             }
 
             if check {
                 match disk.seek(SeekFrom::Start(0)) {
                     Ok(0) => (),
                     Ok(invalid) => {
-                        eprintln!("muff: error seeking disk '{}': seeked to {} instead of 0", disk_path, invalid);
-                        process::exit(1);
+                        pb.message(&format!("! {}: ", disk_path));
+                        pb.finish();
+
+                        return Err(format!(
+                            "error seeking disk '{}': seeked to {} instead of 0", disk_path, invalid
+                        ));
                     },
                     Err(err) => {
-                        eprintln!("muff: error seeking disk '{}': {}", disk_path, err);
-                        process::exit(1);
+                        pb.message(&format!("! {}: ", disk_path));
+                        pb.finish();
+
+                        return Err(format!(
+                            "error seeking disk '{}': {}", disk_path, err
+                        ));
                     }
                 }
 
@@ -312,18 +349,30 @@ fn main() {
                     let count = match disk.read(&mut buf[..end - total]) {
                         Ok(count) => count,
                         Err(err) => {
-                            eprintln!("muff: error verifying disk '{}': {}", disk_path, err);
-                            process::exit(1);
+                            pb.message(&format!("! {}: ", disk_path));
+                            pb.finish();
+
+                            return Err(format!(
+                                "error verifying disk '{}': {}", disk_path, err
+                            ));
                         }
                     };
                     if count == 0 {
-                        eprintln!("muff: error verifying disk '{}': reached EOF", disk_path);
-                        process::exit(1);
+                        pb.message(&format!("! {}: ", disk_path));
+                        pb.finish();
+
+                        return Err(format!(
+                            "error verifying disk '{}': reached EOF", disk_path
+                        ));
                     }
 
                     if buf[.. count] != image_data[total..total + count] {
-                        eprintln!("muff: error verifying disk '{}': mismatch at {}:{}", disk_path, total, total + count);
-                        process::exit(1);
+                        pb.message(&format!("! {}: ", disk_path));
+                        pb.finish();
+
+                        return Err(format!(
+                            "error verifying disk '{}': mismatch at {}:{}", disk_path, total, total + count
+                        ));
                     }
 
                     total += count;
@@ -332,8 +381,26 @@ fn main() {
             }
 
             pb.finish();
-        });
+
+            Ok(())
+        }));
     }
 
     mb.listen();
+
+    for thread in threads {
+        thread.join().unwrap()?;
+    }
+
+    Ok(())
+}
+
+fn main() {
+    match muff() {
+        Ok(()) => (),
+        Err(err) => {
+            writeln!(io::stderr(), "muff: {}", err).unwrap();
+            process::exit(1);
+        }
+    }
 }
