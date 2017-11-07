@@ -19,7 +19,9 @@ use mount::Mount;
 mod mount;
 
 fn muff() -> Result<(), String> {
-    let matches = App::new("Multiple USB File Flasher")
+    let matches = App::new(env!("CARGO_PKG_NAME"))
+        .about(env!("CARGO_PKG_DESCRIPTION"))
+        .version(env!("CARGO_PKG_VERSION"))
         .arg(
             Arg::with_name("IMAGE")
                 .help("Input image file")
