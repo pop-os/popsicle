@@ -18,6 +18,8 @@ use mount::Mount;
 
 mod mount;
 
+const BUFFER_SIZE: usize = 4 * 1024 * 1024;
+
 fn muff() -> Result<(), String> {
     let matches = App::new(env!("CARGO_PKG_NAME"))
         .about(env!("CARGO_PKG_DESCRIPTION"))
@@ -204,7 +206,7 @@ fn muff() -> Result<(), String> {
         let disk_res = OpenOptions::new()
             .read(true)
             .write(true)
-            .custom_flags(libc::O_DIRECT | libc::O_SYNC)
+            .custom_flags(libc::O_SYNC)
             .open(&canonical_path);
 
         let disk = match disk_res {
@@ -228,7 +230,7 @@ fn muff() -> Result<(), String> {
 
         let mut total = 0;
         while total < data.len() {
-            let end = cmp::min(data.len(), total + 4 * 1024 * 1024);
+            let end = cmp::min(data.len(), total + BUFFER_SIZE);
             let count = match image.read(&mut data[total..end]) {
                 Ok(count) => count,
                 Err(err) => {
@@ -287,7 +289,7 @@ fn muff() -> Result<(), String> {
         threads.push(thread::spawn(move || -> Result<(), String> {
             let mut total = 0;
             while total < image_data.len() {
-                let end = cmp::min(image_size as usize, total + 4 * 1024 * 1024);
+                let end = cmp::min(image_size as usize, total + BUFFER_SIZE);
                 let count = match disk.write(&image_data[total..end]) {
                     Ok(count) => count,
                     Err(err) => {
@@ -345,9 +347,9 @@ fn muff() -> Result<(), String> {
                 pb.set(0);
                 total = 0;
 
-                let mut buf = vec![0; 4 * 1024 * 1024];
+                let mut buf = vec![0; BUFFER_SIZE];
                 while total < image_data.len() {
-                    let end = cmp::min(image_size as usize, total + 4 * 1024 * 1024);
+                    let end = cmp::min(image_size as usize, total + BUFFER_SIZE);
                     let count = match disk.read(&mut buf[..end - total]) {
                         Ok(count) => count,
                         Err(err) => {
