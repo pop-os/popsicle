@@ -88,7 +88,7 @@ fn muff() -> Result<(), String> {
 
     let mut disk_args = vec![];
     if matches.is_present("all") {
-        let disk_dir = "/dev/disk/by-id/";
+        let disk_dir = "/dev/disk/by-path/";
         let readdir = match fs::read_dir(disk_dir) {
             Ok(readdir) => readdir,
             Err(err) => {
@@ -101,8 +101,9 @@ fn muff() -> Result<(), String> {
             match entry_res {
                 Ok(entry) => {
                     let path = entry.path();
-                    if let Some(filename) = path.file_name() {
-                        if filename.as_bytes().starts_with(b"usb-") && filename.as_bytes().ends_with(b"-0:0") {
+                    if let Some(filename_os) = path.file_name() {
+                        let filename = filename_os.to_str().unwrap();
+                        if filename.starts_with("pci-") && filename.contains("-usb-") && filename.ends_with("-0:0:0:0") {
                             match path.to_str() {
                                 Some(arg) => {
                                     disk_args.push(arg.to_string());
