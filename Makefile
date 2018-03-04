@@ -55,6 +55,7 @@ vendor: .cargo/config
 target/release/$(BIN):
 	if [ -d vendor ]; \
 	then \
+		echo building CLI with vendored dependencies; \
 		cargo build --manifest-path cli/Cargo.toml --release --frozen; \
 	else \
 		cargo build --manifest-path cli/Cargo.toml --release; \
