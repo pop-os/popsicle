@@ -1,18 +1,18 @@
 [package]
-name = "muff"
+name = "muff_gtk"
 description = "Multiple USB File Flasher"
 version = "0.1.5"
 authors = ["Jeremy Soller <jeremy@system76.com>"]
 license = "MIT"
 readme = "README.md"
 
-[lib]
-path = "src/lib.rs"
-
-[workspace]
-members = ["cli", "gtk"]
+[[bin]]
+name = "muff-gtk"
+path = "src/main.rs"
 
 [dependencies]
-"libc" = "0.2"
 failure = "0.1.1"
 failure_derive = "0.1.1"
+gtk = "0.3.0"
+libc = "0.2"
+muff = { path = ".." }
