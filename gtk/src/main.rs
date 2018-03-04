@@ -1,5 +1,3 @@
 extern crate gtk;
 
-fn main() {
-    
-}
+fn main() {}

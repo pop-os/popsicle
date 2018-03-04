@@ -12,7 +12,7 @@ use std::cell::RefCell;
 use std::io::{self, Write};
 use std::sync::Arc;
 
-use muff::{Image, Mount};
+use muff::{DiskError, Image, Mount};
 
 fn muff() -> Result<(), String> {
     let matches = App::new(env!("CARGO_PKG_NAME"))
@@ -88,7 +88,8 @@ fn muff() -> Result<(), String> {
         }
     };
 
-    let disks = muff::disks_from_args(disk_args, &mounts, matches.is_present("unmount"))?;
+    let disks = muff::disks_from_args(disk_args, &mounts, matches.is_present("unmount"))
+        .map_err(|why| format!("disk error: {}", why))?;
 
     let image_data = {
         let mut pb = ProgressBar::new(image_size);
@@ -96,7 +97,7 @@ fn muff() -> Result<(), String> {
         pb.set_units(Units::Bytes);
 
         let data = image
-            .read_image(|total| {
+            .read(|total| {
                 pb.set(total);
             })
             .map_err(|err| format!("image error with image at '{}': {}", image_path, err))?;
@@ -140,7 +141,7 @@ fn muff() -> Result<(), String> {
 
         let image_data = image_data.clone();
         let pb = RefCell::new(pb);
-        threads.push(thread::spawn(move || -> Result<(), String> {
+        threads.push(thread::spawn(move || -> Result<(), DiskError> {
             muff::write_to_disk(
                 |msg| pb.borrow_mut().message(msg),
                 || pb.borrow_mut().finish(),
@@ -159,7 +160,10 @@ fn muff() -> Result<(), String> {
     mb.listen();
 
     for thread in threads {
-        thread.join().unwrap()?;
+        thread
+            .join()
+            .unwrap()
+            .map_err(|why| format!("disk error: {}", why))?;
     }
 
     Ok(())
