@@ -47,12 +47,12 @@ impl Image {
                     .map_err(|why| ImageError::Metadata { why })
                     .and_then(|metadata| {
                         if metadata.file_type().is_file() {
-                            Err(ImageError::NotAFile)
-                        } else {
                             Ok(Image {
                                 file,
                                 size: metadata.len(),
                             })
+                        } else {
+                            Err(ImageError::NotAFile)
                         }
                     })
             })
