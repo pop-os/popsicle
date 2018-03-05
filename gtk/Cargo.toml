@@ -13,6 +13,8 @@ path = "src/main.rs"
 [dependencies]
 failure = "0.1.1"
 failure_derive = "0.1.1"
-gtk = "0.3.0"
+gdk = "0.7.0"
+gtk = { version = "0.3.0", features = ["v3_22"] }
 libc = "0.2"
 muff = { path = ".." }
+pango = "0.3.0"
