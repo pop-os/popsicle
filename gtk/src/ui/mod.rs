@@ -8,6 +8,24 @@ mod header;
 use self::content::Content;
 use self::header::Header;
 
+const CSS: &str = r#"window > box {
+	background: #333;
+	color: #999;
+	font-size: 1.5em;
+	font-weight: bold;
+}
+
+window > box > box {
+	padding: 0.5em;
+	border-right-style: dashed;
+	border-right-width: 0.2em;
+	border-color: #222;
+}
+
+window > box > box > label {
+	padding-bottom: 0.5em;
+}"#;
+
 pub struct App {
     pub window:  Window,
     pub header:  Header,
@@ -28,6 +46,12 @@ impl App {
         let header = Header::new();
         // Create the content container and all of it's widgets.
         let content = Content::new();
+
+        // Add a custom CSS style
+        let screen = window.get_screen().unwrap();
+        let style = CssProvider::new();
+        let _ = CssProviderExt::load_from_data(&style, CSS.as_bytes());
+        StyleContext::add_provider_for_screen(&screen, &style, STYLE_PROVIDER_PRIORITY_USER);
 
         // Set the headerbar as the title bar widget.
         window.set_titlebar(&header.container);

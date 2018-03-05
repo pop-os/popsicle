@@ -29,6 +29,9 @@ install-cli: cli
 
 install-gtk: gtk
 	install -D -m 0755 "target/release/$(GTK_BIN)" "$(DESTDIR)$(bindir)/$(GTK_BIN)"
+	install -D -m 0644 "gtk/assets/flash.png" "$(DESTDIR)$(datadir)/muff/flash.png"
+	install -D -m 0644 "gtk/assets/image.png" "$(DESTDIR)$(datadir)/muff/image.png"
+	install -D -m 0644 "gtk/assets/usb.png" "$(DESTDIR)$(datadir)/muff/usb.png"
 
 install: all install-cli install-gtk
 
@@ -55,7 +58,6 @@ vendor: .cargo/config
 target/release/$(BIN):
 	if [ -d vendor ]; \
 	then \
-		echo building CLI with vendored dependencies; \
 		cargo build --manifest-path cli/Cargo.toml --release --frozen; \
 	else \
 		cargo build --manifest-path cli/Cargo.toml --release; \

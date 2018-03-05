@@ -1,1 +1,4 @@
 usr/bin/muff-gtk /usr/bin
+usr/share/muff/flash.png /usr/share/muff/
+usr/share/muff/image.png /usr/share/muff/
+usr/share/muff/usb.png /usr/share/muff/
