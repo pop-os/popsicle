@@ -3,27 +3,25 @@ use gtk::*;
 use std::process;
 
 mod content;
+mod dialogs;
 mod header;
 
 use self::content::Content;
+use self::dialogs::OpenDialog;
 use self::header::Header;
 
-const CSS: &str = r#"window > box {
-	background: #333;
-	color: #999;
-	font-size: 1.5em;
-	font-weight: bold;
-}
+use std::cell::RefCell;
+use std::path::PathBuf;
+use std::rc::Rc;
 
-window > box > box {
+const CSS: &str = r#"stack > box > box {
 	padding: 0.5em;
-	border-right-style: dashed;
-	border-right-width: 0.2em;
-	border-color: #222;
 }
 
-window > box > box > label {
-	padding-bottom: 0.5em;
+.h2 {
+	font-size: 1.25em;
+	font-weight: bold;
+	padding-bottom: 1em;
 }"#;
 
 pub struct App {
@@ -60,7 +58,7 @@ impl App {
         // Set the window manager class.
         window.set_wmclass("muff", "Multiple USB File Flasher");
         // The icon the app will display.
-        window.set_default_size(800, 400);
+        window.set_default_size(-1, -1);
         Window::set_default_icon_name("iconname");
         // Add the content to the window.
         window.add(&content.container);
@@ -80,7 +78,60 @@ impl App {
     }
 
     /// Creates external state, and maps all of the UI functionality to the UI.
-    pub fn connect_events(self) -> Connected { Connected(self) }
+    pub fn connect_events(self) -> Connected {
+        let image = Rc::new(RefCell::new(PathBuf::new()));
+        let view = Rc::new(RefCell::new(0));
+
+        {
+            let image = image.clone();
+            let back = self.header.back.clone();
+            let next = self.header.next.clone();
+            self.content.image_view.chooser.connect_clicked(move |_| {
+                if let Some(path) = OpenDialog::new(None).run() {
+                    *image.borrow_mut() = path;
+                    next.set_sensitive(true);
+                }
+            });
+        }
+
+        {
+            let stack = self.content.container.clone();
+            let back = self.header.back.clone();
+            let next = self.header.next.clone();
+            let view = view.clone();
+            back.connect_clicked(move |back| {
+                match *view.borrow() {
+                    0 => gtk::main_quit(),
+                    1 => {
+                        stack.set_transition_type(StackTransitionType::SlideRight);
+                        stack.set_visible_child_name("image");
+                        back.set_label("Cancel");
+                        next.set_label("Next");
+                        next.set_sensitive(true);
+                    }
+                    _ => unreachable!(),
+                }
+                *view.borrow_mut() -= 1;
+            });
+        }
+
+        {
+            let stack = self.content.container.clone();
+            let back = self.header.back.clone();
+            let next = self.header.next.clone();
+            let view = view.clone();
+            next.connect_clicked(move |next| {
+                next.set_sensitive(false);
+                stack.set_transition_type(StackTransitionType::SlideLeft);
+                stack.set_visible_child_name("devices");
+                back.set_label("Back");
+                next.set_label("Flash");
+                *view.borrow_mut() += 1;
+            });
+        }
+
+        Connected(self)
+    }
 }
 
 pub struct Connected(App);
