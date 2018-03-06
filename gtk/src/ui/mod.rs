@@ -11,10 +11,16 @@ use self::dialogs::OpenDialog;
 use self::header::Header;
 
 use std::cell::RefCell;
-use std::path::PathBuf;
+use std::fs::File;
+use std::io::{self, Read};
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
-const CSS: &str = r#"stack > box > box {
+use digest::{Digest, Input};
+use md5::Md5;
+use sha3::Sha3_256;
+
+const CSS: &str = r#"stack {
 	padding: 0.5em;
 }
 
@@ -22,6 +28,10 @@ const CSS: &str = r#"stack > box > box {
 	font-size: 1.25em;
 	font-weight: bold;
 	padding-bottom: 1em;
+}
+
+.bold {
+    font-weight: bold;    
 }"#;
 
 pub struct App {
@@ -58,7 +68,7 @@ impl App {
         // Set the window manager class.
         window.set_wmclass("muff", "Multiple USB File Flasher");
         // The icon the app will display.
-        window.set_default_size(-1, -1);
+        window.set_default_size(400, -1);
         Window::set_default_icon_name("iconname");
         // Add the content to the window.
         window.add(&content.container);
@@ -83,18 +93,76 @@ impl App {
         let view = Rc::new(RefCell::new(0));
 
         {
+            // Programs the image chooser button.
             let image = image.clone();
-            let back = self.header.back.clone();
+            let path_label = self.content.image_view.image_path.clone();
+            let hash_button = self.content.image_view.hash_button.clone();
             let next = self.header.next.clone();
             self.content.image_view.chooser.connect_clicked(move |_| {
                 if let Some(path) = OpenDialog::new(None).run() {
-                    *image.borrow_mut() = path;
+                    *image.borrow_mut() = path.clone();
+                    path_label.set_label(&path.file_name().unwrap().to_string_lossy());
                     next.set_sensitive(true);
+                    hash_button.set_sensitive(true);
                 }
             });
         }
 
         {
+            fn md5_hasher(path: &Path) -> io::Result<String> {
+                let mut hasher = Md5::default();
+                let mut buffer = [0; 16 * 1024];
+                File::open(path).and_then(|mut file| {
+                    let mut read = file.read(&mut buffer)?;
+                    while read != 0 {
+                        hasher.process(&buffer[..read]);
+                        read = file.read(&mut buffer)?;
+                    }
+                    Ok(format!("{:x}", hasher.result()))
+                })
+            }
+
+            fn sha256_hasher(path: &Path) -> io::Result<String> {
+                let mut hasher = Sha3_256::default();
+                let mut buffer = [0; 16 * 1024];
+                File::open(path).and_then(|mut file| {
+                    let mut read = file.read(&mut buffer)?;
+                    while read != 0 {
+                        hasher.process(&buffer[..read]);
+                        read = file.read(&mut buffer)?;
+                    }
+                    Ok(format!("{:x}", hasher.result()))
+                })
+            }
+
+            // Programs the hash generator button.
+            let hash = self.content.image_view.hash.clone();
+            let hash_label = self.content.image_view.hash_label.clone();
+            self.content
+                .image_view
+                .hash_button
+                .connect_clicked(move |_| {
+                    let file = image.borrow();
+                    if file.is_file() {
+                        let result = match hash.get_active_text().unwrap().as_str() {
+                            "SHA256" => sha256_hasher(&file),
+                            "MD5" => md5_hasher(&file),
+                            _ => unimplemented!(),
+                        };
+
+                        match result {
+                            Ok(hash) => hash_label.set_label(&hash),
+                            Err(why) => {
+                                eprintln!("muff: hash error: {}", why);
+                                hash_label.set_label("error occurred");
+                            }
+                        }
+                    }
+                });
+        }
+
+        {
+            // Programs the back button.
             let stack = self.content.container.clone();
             let back = self.header.back.clone();
             let next = self.header.next.clone();
@@ -116,6 +184,7 @@ impl App {
         }
 
         {
+            // Programs the next button.
             let stack = self.content.container.clone();
             let back = self.header.back.clone();
             let next = self.header.next.clone();
@@ -126,6 +195,10 @@ impl App {
                 stack.set_visible_child_name("devices");
                 back.set_label("Back");
                 next.set_label("Flash");
+                next.get_style_context().map(|c| {
+                    c.remove_class("suggested-action");
+                    c.add_class("destructive-action");
+                });
                 *view.borrow_mut() += 1;
             });
         }

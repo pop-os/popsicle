@@ -18,3 +18,6 @@ gtk = { version = "0.3.0", features = ["v3_22"] }
 libc = "0.2"
 muff = { path = ".." }
 pango = "0.3.0"
+sha3 = "0.7.2"
+digest = "0.7.2"
+md-5 = "0.7.0"

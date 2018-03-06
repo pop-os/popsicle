@@ -1,4 +1,5 @@
 use gtk::*;
+use pango::EllipsizeMode;
 
 pub struct Content {
     pub container:  Stack,
@@ -53,10 +54,12 @@ impl DevicesView {
 }
 
 pub struct ImageView {
-    pub container:  Box,
-    pub chooser:    Button,
-    pub hash:       ComboBoxText,
-    pub hash_label: Label,
+    pub container:   Box,
+    pub chooser:     Button,
+    pub image_path:  Label,
+    pub hash:        ComboBoxText,
+    pub hash_button: Button,
+    pub hash_label:  Label,
 }
 
 impl ImageView {
@@ -79,32 +82,45 @@ impl ImageView {
         chooser.set_halign(Align::Center);
         chooser.set_halign(Align::Center);
 
+        let image_path = Label::new("No image selected");
+        image_path.set_ellipsize(EllipsizeMode::End);
+        image_path.get_style_context().map(|c| c.add_class("bold"));
+
         let hash = ComboBoxText::new();
         hash.append_text("SHA256");
-        hash.append_text("SHA1");
         hash.append_text("MD5");
         hash.set_active(0);
 
+        let hash_button = Button::new_with_label("Generate");
+        hash_button.set_sensitive(false);
         let hash_label = Label::new("");
+        hash_label.set_selectable(true);
 
         let hash_container = Box::new(Orientation::Horizontal, 0);
         hash_container.pack_start(&hash, false, false, 0);
+        hash_container.pack_start(&hash_button, false, false, 0);
         hash_container.pack_start(&hash_label, true, true, 0);
+
+        let chooser_container = Box::new(Orientation::Vertical, 5);
+        chooser_container.pack_start(&chooser, false, false, 0);
+        chooser_container.pack_start(&image_path, false, false, 0);
 
         let inner_container = Box::new(Orientation::Vertical, 0);
         inner_container.pack_start(&topic, false, false, 0);
         inner_container.pack_start(&description, false, false, 0);
-        inner_container.pack_start(&chooser, true, false, 0);
+        inner_container.pack_start(&chooser_container, true, false, 0);
         inner_container.pack_start(&hash_container, false, false, 0);
 
-        let container = Box::new(Orientation::Horizontal, 0);
+        let container = Box::new(Orientation::Horizontal, 5);
         container.pack_start(&image, false, false, 0);
         container.pack_start(&inner_container, true, true, 0);
 
         ImageView {
             container,
             chooser,
+            image_path,
             hash,
+            hash_button,
             hash_label,
         }
     }
