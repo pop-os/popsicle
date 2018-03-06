@@ -4,6 +4,7 @@ use pango::EllipsizeMode;
 pub struct Content {
     pub container:  Stack,
     pub image_view: ImageView,
+    pub devices_view: DevicesView,
 }
 
 impl Content {
@@ -20,12 +21,15 @@ impl Content {
         Content {
             container,
             image_view,
+            devices_view,
         }
     }
 }
 
 pub struct DevicesView {
     pub container: Box,
+    pub list: ListBox,
+    pub select_all: CheckButton,
 }
 
 impl DevicesView {
@@ -41,15 +45,23 @@ impl DevicesView {
         description.set_line_wrap(true);
         description.set_halign(Align::Start);
 
-        let inner_container = Box::new(Orientation::Vertical, 0);
-        inner_container.pack_start(&topic, false, false, 0);
-        inner_container.pack_start(&description, false, false, 0);
+        let select_all = CheckButton::new_with_label("Select All");
+        let list = ListBox::new();
+        list.insert(&select_all, -1);
+
+        let select_scroller = ScrolledWindow::new(None, None);
+        select_scroller.add(&list);
+
+        let desc_container = Box::new(Orientation::Vertical, 0);
+        desc_container.pack_start(&topic, false, false, 0);
+        desc_container.pack_start(&description, false, false, 0);
+        desc_container.pack_start(&select_scroller, true, true, 0);
 
         let container = Box::new(Orientation::Horizontal, 0);
         container.pack_start(&image, false, false, 0);
-        container.pack_start(&inner_container, true, true, 0);
+        container.pack_start(&desc_container, true, true, 0);
 
-        DevicesView { container }
+        DevicesView { container, list, select_all }
     }
 }
 

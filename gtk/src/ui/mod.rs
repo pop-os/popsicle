@@ -4,21 +4,21 @@ use std::process;
 
 mod content;
 mod dialogs;
+mod hash;
 mod header;
 
 use self::content::Content;
 use self::dialogs::OpenDialog;
 use self::header::Header;
 
+use self::hash::{md5_hasher, sha256_hasher};
+
 use std::cell::RefCell;
-use std::fs::File;
-use std::io::{self, Read};
+use std::io;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
-use digest::{Digest, Input};
-use md5::Md5;
-use sha3::Sha3_256;
+use muff;
 
 const CSS: &str = r#"stack {
 	padding: 0.5em;
@@ -32,6 +32,15 @@ const CSS: &str = r#"stack {
 
 .bold {
     font-weight: bold;    
+}
+
+row:nth-child(1) {
+    border-bottom-width: 0.1em;
+    border-style: solid;    
+}
+
+list {
+    margin-top: 1em;   
 }"#;
 
 pub struct App {
@@ -91,6 +100,7 @@ impl App {
     pub fn connect_events(self) -> Connected {
         let image = Rc::new(RefCell::new(PathBuf::new()));
         let view = Rc::new(RefCell::new(0));
+        let devices = Rc::new(RefCell::new(Vec::new()));
 
         {
             // Programs the image chooser button.
@@ -109,33 +119,6 @@ impl App {
         }
 
         {
-            fn md5_hasher(path: &Path) -> io::Result<String> {
-                let mut hasher = Md5::default();
-                let mut buffer = [0; 16 * 1024];
-                File::open(path).and_then(|mut file| {
-                    let mut read = file.read(&mut buffer)?;
-                    while read != 0 {
-                        hasher.process(&buffer[..read]);
-                        read = file.read(&mut buffer)?;
-                    }
-                    Ok(format!("{:x}", hasher.result()))
-                })
-            }
-
-            fn sha256_hasher(path: &Path) -> io::Result<String> {
-                let mut hasher = Sha3_256::default();
-                let mut buffer = [0; 16 * 1024];
-                File::open(path).and_then(|mut file| {
-                    let mut read = file.read(&mut buffer)?;
-                    while read != 0 {
-                        hasher.process(&buffer[..read]);
-                        read = file.read(&mut buffer)?;
-                    }
-                    Ok(format!("{:x}", hasher.result()))
-                })
-            }
-
-            // Programs the hash generator button.
             let hash = self.content.image_view.hash.clone();
             let hash_label = self.content.image_view.hash_label.clone();
             self.content
@@ -144,7 +127,7 @@ impl App {
                 .connect_clicked(move |_| {
                     let file = image.borrow();
                     if file.is_file() {
-                        let result = match hash.get_active_text().unwrap().as_str() {
+                        let result: io::Result<String> = match hash.get_active_text().unwrap().as_str() {
                             "SHA256" => sha256_hasher(&file),
                             "MD5" => md5_hasher(&file),
                             _ => unimplemented!(),
@@ -176,6 +159,10 @@ impl App {
                         back.set_label("Cancel");
                         next.set_label("Next");
                         next.set_sensitive(true);
+                        next.get_style_context().map(|c| {
+                            c.remove_class("destructive-action");
+                            c.add_class("suggested-action");
+                        });
                     }
                     _ => unreachable!(),
                 }
@@ -188,18 +175,54 @@ impl App {
             let stack = self.content.container.clone();
             let back = self.header.back.clone();
             let next = self.header.next.clone();
+            let list = self.content.devices_view.list.clone();
             let view = view.clone();
+            let device_list = devices.clone();
             next.connect_clicked(move |next| {
-                next.set_sensitive(false);
-                stack.set_transition_type(StackTransitionType::SlideLeft);
-                stack.set_visible_child_name("devices");
                 back.set_label("Back");
                 next.set_label("Flash");
                 next.get_style_context().map(|c| {
                     c.remove_class("suggested-action");
                     c.add_class("destructive-action");
                 });
+
+                stack.set_transition_type(StackTransitionType::SlideLeft);
+                stack.set_visible_child_name("devices");
+
+                // Remove all but the first row
+                list.get_children()
+                    .into_iter()
+                    .skip(1)
+                    .for_each(|widget| widget.destroy());
+
+                let mut devices = vec![];
+                if let Err(why) = muff::get_disk_args(&mut devices) {
+                    eprintln!("muff: unable to get devices: {}", why);
+                }
+
+                let mut device_list = device_list.borrow_mut();
+                for device in &devices {
+                    let device = Path::new(&device).canonicalize().unwrap();
+                    let button = CheckButton::new_with_label(&device.to_string_lossy());
+                    list.insert(&button, -1);
+                    device_list.push(button);
+                }
+
+                list.show_all();
+                
                 *view.borrow_mut() += 1;
+            });
+        }
+
+        {
+            let all = self.content.devices_view.select_all.clone();
+            let devices = devices.clone();
+            all.connect_clicked(move |all| {
+                if all.get_active() {
+                    for device in devices.borrow().iter() {
+                        device.set_active(true);
+                    }
+                }
             });
         }
 

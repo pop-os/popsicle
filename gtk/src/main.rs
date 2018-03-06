@@ -2,6 +2,7 @@ extern crate digest;
 extern crate gdk;
 extern crate gtk;
 extern crate md5;
+extern crate muff;
 extern crate pango;
 extern crate sha3;
 
