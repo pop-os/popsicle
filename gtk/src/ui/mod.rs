@@ -106,42 +106,55 @@ impl App {
             // Programs the image chooser button.
             let image = image.clone();
             let path_label = self.content.image_view.image_path.clone();
-            let hash_button = self.content.image_view.hash_button.clone();
+            let hash = self.content.image_view.hash.clone();
+            let hash_label = self.content.image_view.hash_label.clone();
             let next = self.header.next.clone();
             self.content.image_view.chooser.connect_clicked(move |_| {
                 if let Some(path) = OpenDialog::new(None).run() {
                     *image.borrow_mut() = path.clone();
                     path_label.set_label(&path.file_name().unwrap().to_string_lossy());
                     next.set_sensitive(true);
-                    hash_button.set_sensitive(true);
+
+                    let result: io::Result<String> = match hash.get_active_text().unwrap().as_str()
+                    {
+                        "SHA256" => sha256_hasher(&path),
+                        "MD5" => md5_hasher(&path),
+                        _ => unimplemented!(),
+                    };
+
+                    match result {
+                        Ok(hash) => hash_label.set_label(&hash),
+                        Err(why) => {
+                            eprintln!("muff: hash error: {}", why);
+                            hash_label.set_label("error occurred");
+                        }
+                    }
                 }
             });
         }
 
         {
-            let hash = self.content.image_view.hash.clone();
+            let image = image.clone();
             let hash_label = self.content.image_view.hash_label.clone();
-            self.content
-                .image_view
-                .hash_button
-                .connect_clicked(move |_| {
-                    let file = image.borrow();
-                    if file.is_file() {
-                        let result: io::Result<String> = match hash.get_active_text().unwrap().as_str() {
-                            "SHA256" => sha256_hasher(&file),
-                            "MD5" => md5_hasher(&file),
-                            _ => unimplemented!(),
-                        };
+            self.content.image_view.hash.connect_changed(move |hash| {
+                let file = image.borrow();
+                if file.is_file() {
+                    let result: io::Result<String> = match hash.get_active_text().unwrap().as_str()
+                    {
+                        "SHA256" => sha256_hasher(&file),
+                        "MD5" => md5_hasher(&file),
+                        _ => unimplemented!(),
+                    };
 
-                        match result {
-                            Ok(hash) => hash_label.set_label(&hash),
-                            Err(why) => {
-                                eprintln!("muff: hash error: {}", why);
-                                hash_label.set_label("error occurred");
-                            }
+                    match result {
+                        Ok(hash) => hash_label.set_label(&hash),
+                        Err(why) => {
+                            eprintln!("muff: hash error: {}", why);
+                            hash_label.set_label("error occurred");
                         }
                     }
-                });
+                }
+            });
         }
 
         {
@@ -209,7 +222,7 @@ impl App {
                 }
 
                 list.show_all();
-                
+
                 *view.borrow_mut() += 1;
             });
         }

@@ -2,8 +2,8 @@ use gtk::*;
 use pango::EllipsizeMode;
 
 pub struct Content {
-    pub container:  Stack,
-    pub image_view: ImageView,
+    pub container:    Stack,
+    pub image_view:   ImageView,
     pub devices_view: DevicesView,
 }
 
@@ -27,8 +27,8 @@ impl Content {
 }
 
 pub struct DevicesView {
-    pub container: Box,
-    pub list: ListBox,
+    pub container:  Box,
+    pub list:       ListBox,
     pub select_all: CheckButton,
 }
 
@@ -61,17 +61,20 @@ impl DevicesView {
         container.pack_start(&image, false, false, 0);
         container.pack_start(&desc_container, true, true, 0);
 
-        DevicesView { container, list, select_all }
+        DevicesView {
+            container,
+            list,
+            select_all,
+        }
     }
 }
 
 pub struct ImageView {
-    pub container:   Box,
-    pub chooser:     Button,
-    pub image_path:  Label,
-    pub hash:        ComboBoxText,
-    pub hash_button: Button,
-    pub hash_label:  Label,
+    pub container:  Box,
+    pub chooser:    Button,
+    pub image_path: Label,
+    pub hash:       ComboBoxText,
+    pub hash_label: Label,
 }
 
 impl ImageView {
@@ -103,14 +106,11 @@ impl ImageView {
         hash.append_text("MD5");
         hash.set_active(0);
 
-        let hash_button = Button::new_with_label("Generate");
-        hash_button.set_sensitive(false);
         let hash_label = Label::new("");
         hash_label.set_selectable(true);
 
         let hash_container = Box::new(Orientation::Horizontal, 0);
         hash_container.pack_start(&hash, false, false, 0);
-        hash_container.pack_start(&hash_button, false, false, 0);
         hash_container.pack_start(&hash_label, true, true, 0);
 
         let chooser_container = Box::new(Orientation::Vertical, 5);
@@ -132,7 +132,6 @@ impl ImageView {
             chooser,
             image_path,
             hash,
-            hash_button,
             hash_label,
         }
     }
