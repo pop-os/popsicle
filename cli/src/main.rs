@@ -88,8 +88,11 @@ fn muff() -> Result<(), String> {
         }
     };
 
-    let disks = muff::disks_from_args(disk_args, &mounts, matches.is_present("unmount"))
-        .map_err(|why| format!("disk error: {}", why))?;
+    let disks = muff::disks_from_args(
+        disk_args.into_iter(),
+        &mounts,
+        matches.is_present("unmount"),
+    ).map_err(|why| format!("disk error: {}", why))?;
 
     let image_data = {
         let mut pb = ProgressBar::new(image_size);

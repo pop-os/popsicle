@@ -11,14 +11,15 @@ use self::content::Content;
 use self::dialogs::OpenDialog;
 use self::header::Header;
 
-use self::hash::{md5_hasher, sha256_hasher};
-
 use std::cell::RefCell;
 use std::io;
+use std::mem;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use std::sync::{Arc, Mutex};
+use std::thread;
 
-use muff;
+use muff::{self, DiskError, Image, Mount};
 
 const CSS: &str = r#"stack {
 	padding: 0.5em;
@@ -41,6 +42,12 @@ row:nth-child(1) {
 
 list {
     margin-top: 1em;   
+}
+
+.hash-box button {
+    border-radius: 0;
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px;
 }"#;
 
 pub struct App {
@@ -98,61 +105,46 @@ impl App {
 
     /// Creates external state, and maps all of the UI functionality to the UI.
     pub fn connect_events(self) -> Connected {
-        let image = Rc::new(RefCell::new(PathBuf::new()));
         let view = Rc::new(RefCell::new(0));
-        let devices = Rc::new(RefCell::new(Vec::new()));
+        let devices: Arc<Mutex<Vec<(String, CheckButton)>>> = Arc::new(Mutex::new(Vec::new()));
+        let image_data: Rc<RefCell<Option<Arc<Vec<u8>>>>> = Rc::new(RefCell::new(None));
 
         {
             // Programs the image chooser button.
-            let image = image.clone();
+            let image_data = image_data.clone();
             let path_label = self.content.image_view.image_path.clone();
-            let hash = self.content.image_view.hash.clone();
-            let hash_label = self.content.image_view.hash_label.clone();
             let next = self.header.next.clone();
             self.content.image_view.chooser.connect_clicked(move |_| {
                 if let Some(path) = OpenDialog::new(None).run() {
-                    *image.borrow_mut() = path.clone();
-                    path_label.set_label(&path.file_name().unwrap().to_string_lossy());
-                    next.set_sensitive(true);
-
-                    let result: io::Result<String> = match hash.get_active_text().unwrap().as_str()
-                    {
-                        "SHA256" => sha256_hasher(&path),
-                        "MD5" => md5_hasher(&path),
-                        _ => unimplemented!(),
+                    let mut new_image = match Image::new(&path) {
+                        Ok(image) => image,
+                        Err(why) => {
+                            eprintln!("muff: unable to open image: {}", why);
+                            return;
+                        }
                     };
 
-                    match result {
-                        Ok(hash) => hash_label.set_label(&hash),
+                    let new_data = match new_image.read(|_| ()) {
+                        Ok(data) => data,
                         Err(why) => {
-                            eprintln!("muff: hash error: {}", why);
-                            hash_label.set_label("error occurred");
+                            eprintln!("muff: unable to read image: {}", why);
+                            return;
                         }
-                    }
+                    };
+
+                    path_label.set_label(&path.file_name().unwrap().to_string_lossy());
+                    next.set_sensitive(true);
+                    *image_data.borrow_mut() = Some(Arc::new(new_data));
                 }
             });
         }
 
         {
-            let image = image.clone();
+            let image_data = image_data.clone();
             let hash_label = self.content.image_view.hash_label.clone();
             self.content.image_view.hash.connect_changed(move |hash| {
-                let file = image.borrow();
-                if file.is_file() {
-                    let result: io::Result<String> = match hash.get_active_text().unwrap().as_str()
-                    {
-                        "SHA256" => sha256_hasher(&file),
-                        "MD5" => md5_hasher(&file),
-                        _ => unimplemented!(),
-                    };
-
-                    match result {
-                        Ok(hash) => hash_label.set_label(&hash),
-                        Err(why) => {
-                            eprintln!("muff: hash error: {}", why);
-                            hash_label.set_label("error occurred");
-                        }
-                    }
+                if let Some(ref data) = *image_data.borrow() {
+                    hash::set(&hash_label, hash.get_active_text().unwrap().as_str(), data);
                 }
             });
         }
@@ -190,38 +182,81 @@ impl App {
             let next = self.header.next.clone();
             let list = self.content.devices_view.list.clone();
             let view = view.clone();
+            let image_data = image_data.clone();
             let device_list = devices.clone();
             next.connect_clicked(move |next| {
-                back.set_label("Back");
-                next.set_label("Flash");
-                next.get_style_context().map(|c| {
-                    c.remove_class("suggested-action");
-                    c.add_class("destructive-action");
-                });
-
                 stack.set_transition_type(StackTransitionType::SlideLeft);
-                stack.set_visible_child_name("devices");
+                match *view.borrow() {
+                    // Move to device selection screen
+                    0 => {
+                        back.set_label("Back");
+                        next.set_label("Flash");
+                        next.get_style_context().map(|c| {
+                            c.remove_class("suggested-action");
+                            c.add_class("destructive-action");
+                        });
+                        stack.set_visible_child_name("devices");
 
-                // Remove all but the first row
-                list.get_children()
-                    .into_iter()
-                    .skip(1)
-                    .for_each(|widget| widget.destroy());
+                        // Remove all but the first row
+                        list.get_children()
+                            .into_iter()
+                            .skip(1)
+                            .for_each(|widget| widget.destroy());
 
-                let mut devices = vec![];
-                if let Err(why) = muff::get_disk_args(&mut devices) {
-                    eprintln!("muff: unable to get devices: {}", why);
+                        let mut devices = vec![];
+                        if let Err(why) = muff::get_disk_args(&mut devices) {
+                            eprintln!("muff: unable to get devices: {}", why);
+                        }
+
+                        let mut device_list = device_list.lock().unwrap();
+                        for device in &devices {
+                            let name = Path::new(&device).canonicalize().unwrap();
+                            let button = CheckButton::new_with_label(&name.to_string_lossy());
+                            list.insert(&button, -1);
+                            device_list.push((device.clone(), button));
+                        }
+
+                        list.show_all();
+                    }
+                    // Begin the device flashing process
+                    1 => {
+                        let device_list = device_list.lock().unwrap();
+                        let devs = device_list.iter().map(|x| x.0.clone());
+                        // TODO: Handle Error
+                        let mounts = muff::Mount::all().unwrap();
+                        // TODO: Handle Error
+                        let disks = muff::disks_from_args(devs, &mounts, true).unwrap();
+
+                        back.set_visible(false);
+                        next.set_visible(false);
+                        stack.set_visible_child_name("flash");
+
+                        let mut threads = Vec::new();
+                        for (disk_path, mut disk) in disks {
+                            let image_data = image_data.borrow();
+                            let image_data = image_data.as_ref().unwrap().clone();
+                            threads.push(thread::spawn(move || -> Result<(), DiskError> {
+                                muff::write_to_disk(
+                                    |_msg| (),
+                                    || (),
+                                    |_progress| (),
+                                    disk,
+                                    disk_path,
+                                    image_data.len() as u64,
+                                    &image_data,
+                                    false,
+                                )
+                            }));
+                        }
+
+                        for thread in threads {
+                            // TODO: Handle errors
+                            let _ = thread.join();
+                        }
+                        stack.set_visible_child_name("summary");
+                    }
+                    _ => unreachable!(),
                 }
-
-                let mut device_list = device_list.borrow_mut();
-                for device in &devices {
-                    let device = Path::new(&device).canonicalize().unwrap();
-                    let button = CheckButton::new_with_label(&device.to_string_lossy());
-                    list.insert(&button, -1);
-                    device_list.push(button);
-                }
-
-                list.show_all();
 
                 *view.borrow_mut() += 1;
             });
@@ -232,7 +267,7 @@ impl App {
             let devices = devices.clone();
             all.connect_clicked(move |all| {
                 if all.get_active() {
-                    for device in devices.borrow().iter() {
+                    for &(_, ref device) in devices.lock().unwrap().iter() {
                         device.set_active(true);
                     }
                 }

@@ -36,6 +36,7 @@ pub enum ImageError {
 /// A simple wrapper around a `File` that ensures that the file is a file, and
 /// obtains the file's size ahead of time.
 pub struct Image {
+    path: PathBuf,
     file: File,
     size: u64,
 }
@@ -44,7 +45,8 @@ impl Image {
     /// Opens the file and obtains the size from the metadata, then returns an
     /// `Image` structure that contains the opened file and its file size.
     pub fn new<P: AsRef<Path>>(path: P) -> Result<Image, ImageError> {
-        File::open(path.as_ref())
+        let path = path.as_ref();
+        File::open(path)
             .map_err(|why| ImageError::Open { why })
             .and_then(|file| {
                 file.metadata()
@@ -52,6 +54,7 @@ impl Image {
                     .and_then(|metadata| {
                         if metadata.file_type().is_file() {
                             Ok(Image {
+                                path: path.to_path_buf(),
                                 file,
                                 size: metadata.len(),
                             })
@@ -61,6 +64,8 @@ impl Image {
                     })
             })
     }
+
+    pub fn get_path(&self) -> &Path { &self.path }
 
     /// Returns the size of the file, in bytes.
     pub fn get_size(&self) -> u64 { self.size }
@@ -153,8 +158,8 @@ pub fn get_disk_args(disks: &mut Vec<String>) -> Result<(), DiskError> {
     Ok(())
 }
 
-pub fn disks_from_args(
-    disk_args: Vec<String>,
+pub fn disks_from_args<D: Iterator<Item = String>>(
+    disk_args: D,
     mounts: &[Mount],
     unmount: bool,
 ) -> Result<Vec<(String, File)>, DiskError> {
