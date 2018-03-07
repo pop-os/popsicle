@@ -35,19 +35,27 @@ const CSS: &str = r#"stack {
     font-weight: bold;    
 }
 
-row:nth-child(1) {
-    border-bottom-width: 0.1em;
-    border-style: solid;    
-}
-
-list {
-    margin-top: 1em;   
+.desc {
+    padding-bottom: 1em;
 }
 
 .hash-box button {
     border-radius: 0;
     border-top-left-radius: 10px;
     border-bottom-left-radius: 10px;
+}
+
+.devices {
+    border-width:0.2em;
+    border-style: solid;
+    border-color: rgba(0,0,0,0.2);
+}
+
+.devices > row:nth-child(1) {
+    border-bottom-width:0.2em;
+    border-style: solid;
+    border-color: rgba(0,0,0,0.2);
+    font-weight: bold;
 }"#;
 
 pub struct App {

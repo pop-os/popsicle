@@ -45,6 +45,7 @@ impl SummaryView {
         topic.get_style_context().map(|c| c.add_class("h2"));
 
         let description = Label::new("");
+        description.get_style_context().map(|c| c.add_class("desc"));
 
         let inner = Box::new(Orientation::Vertical, 0);
         inner.pack_start(&topic, false, false, 0);
@@ -84,6 +85,7 @@ impl ImageView {
         );
         description.set_line_wrap(true);
         description.set_halign(Align::Start);
+        description.get_style_context().map(|c| c.add_class("desc"));
 
         let chooser = Button::new_with_label("Choose Image");
         chooser.set_halign(Align::Center);
@@ -151,10 +153,12 @@ impl DevicesView {
         let description = Label::new("Flashing will erase all data on the selected drives.");
         description.set_line_wrap(true);
         description.set_halign(Align::Start);
+        description.get_style_context().map(|c| c.add_class("desc"));
 
         let select_all = CheckButton::new_with_label("Select All");
         let list = ListBox::new();
         list.insert(&select_all, -1);
+        list.get_style_context().map(|c| c.add_class("devices"));
 
         let select_scroller = ScrolledWindow::new(None, None);
         select_scroller.add(&list);
