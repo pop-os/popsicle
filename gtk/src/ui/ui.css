@@ -1,0 +1,41 @@
+stack {
+	padding: 0.5em;
+}
+
+.h2 {
+	font-size: 1.25em;
+	font-weight: bold;
+	padding-bottom: 1em;
+}
+
+.bold {
+    font-weight: bold;    
+}
+
+.desc {
+    padding-bottom: 1em;
+}
+
+.hash-box button {
+    border-radius: 0;
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px;
+}
+
+.devices {
+    border-width:0.2em;
+    border-style: solid;
+    border-color: rgba(0,0,0,0.2);
+}
+
+.devices > row:nth-child(1) {
+    border-bottom-width:0.2em;
+    border-style: solid;
+    border-color: rgba(0,0,0,0.2);
+    font-weight: bold;
+}
+
+.progress-label {
+    font-weight: bold;
+    padding-right: 1em;
+}

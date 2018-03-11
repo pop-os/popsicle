@@ -8,6 +8,6 @@ extern crate sha3;
 
 mod ui;
 
-use ui::App;
+use ui::{App, Connect};
 
 fn main() { App::new().connect_events().then_execute() }
