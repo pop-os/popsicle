@@ -5,6 +5,7 @@ use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
+use std::time::Instant;
 
 use gtk;
 use gtk::*;
@@ -125,17 +126,18 @@ impl Connect for App {
     }
 
     fn connect_next_button(&self) {
-        let stack = self.content.container.clone();
         let back = self.header.back.clone();
-        let next = self.header.next.clone();
-        let list = self.content.devices_view.list.clone();
-        let tasks = self.state.tasks.clone();
-        let task_handles = self.state.task_handles.clone();
-        let summary_grid = self.content.flash_view.progress_list.clone();
         let bars = self.state.bars.clone();
-        let view = self.state.view.clone();
         let device_list = self.state.devices.clone();
         let image_data = self.state.image_data.clone();
+        let list = self.content.devices_view.list.clone();
+        let next = self.header.next.clone();
+        let stack = self.content.container.clone();
+        let start = self.state.start.clone();
+        let summary_grid = self.content.flash_view.progress_list.clone();
+        let task_handles = self.state.task_handles.clone();
+        let tasks = self.state.tasks.clone();
+        let view = self.state.view.clone();
         next.connect_clicked(move |next| {
             stack.set_transition_type(StackTransitionType::SlideLeft);
             match *view.borrow() {
@@ -188,6 +190,7 @@ impl Connect for App {
                     bars.clear();
                     summary_grid.get_children().iter().for_each(|c| c.destroy());
 
+                    *start.borrow_mut() = Instant::now();
                     let mut tasks = tasks.lock().unwrap();
                     let mut task_handles = task_handles.lock().unwrap();
                     for (id, (disk_path, mut disk)) in disks.into_iter().enumerate() {
@@ -209,9 +212,14 @@ impl Connect for App {
                         label
                             .get_style_context()
                             .map(|c| c.add_class("progress-label"));
+                        let bar_label = Label::new("");
+                        bar_label.set_halign(Align::Center);
+                        let bar_container = Box::new(Orientation::Vertical, 0);
+                        bar_container.pack_start(&bar, false, false, 0);
+                        bar_container.pack_start(&bar_label, false, false, 0);
                         summary_grid.attach(&label, 0, id, 1, 1);
-                        summary_grid.attach(&bar, 1, id, 1, 1);
-                        bars.push(bar);
+                        summary_grid.attach(&bar_container, 1, id, 1, 1);
+                        bars.push((bar, bar_label));
 
                         // Spawn a thread that will update the progress value over time.
                         //
@@ -237,7 +245,11 @@ impl Connect for App {
                             })
                         });
 
-                        tasks.push(FlashTask { progress, finished });
+                        tasks.push(FlashTask {
+                            previous: Arc::new(AtomicUsize::new(0)),
+                            progress,
+                            finished,
+                        });
                     }
 
                     summary_grid.show_all();
@@ -270,6 +282,7 @@ impl Connect for App {
         let image_data = self.state.image_data.clone();
         let stack = self.content.container.clone();
         let next = self.header.next.clone();
+        let description = self.content.summary_view.description.clone();
 
         gtk::timeout_add(1000, move || {
             let image_length = match *image_data.borrow() {
@@ -285,19 +298,25 @@ impl Connect for App {
             }
 
             let mut finished = true;
-            for (task, bar) in tasks.deref().iter().zip(bars.borrow().iter()) {
+            for (task, &(ref bar, ref label)) in tasks.deref().iter().zip(bars.borrow().iter()) {
+                let raw_value = task.progress.load(Ordering::SeqCst);
+                let prev_value = task.previous.load(Ordering::SeqCst);
                 let value = if task.finished.load(Ordering::SeqCst) == 1 {
                     1.0f64
                 } else {
                     finished = false;
-                    task.progress.load(Ordering::SeqCst) as f64 / image_length
+                    raw_value as f64 / image_length
                 };
 
                 bar.set_fraction(value);
+
+                let per_second = raw_value - prev_value;
+                label.set_label(&format!("{} KiB/s", per_second / 1024));
+                task.previous.store(raw_value, Ordering::SeqCst);
             }
 
             if finished {
-                stack.set_visible_child_name("summary");
+                // stack.set_visible_child_name("summary");
                 next.set_label("Finished");
                 next.get_style_context()
                     .map(|c| c.remove_class("destructive-action"));

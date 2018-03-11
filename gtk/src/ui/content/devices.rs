@@ -11,7 +11,7 @@ impl DevicesView {
         let image = Image::new_from_icon_name("drive-removable-media-usb", 6);
         image.set_valign(Align::Start);
 
-        let topic = Label::new("Select drives");
+        let topic = Label::new("Select Drives");
         topic.set_halign(Align::Start);
         topic.get_style_context().map(|c| c.add_class("h2"));
 

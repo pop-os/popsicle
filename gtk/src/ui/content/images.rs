@@ -14,7 +14,7 @@ impl ImageView {
         let image = Image::new_from_icon_name("application-x-cd-image", 6);
         image.set_valign(Align::Start);
 
-        let topic = Label::new("Choose an image");
+        let topic = Label::new("Choose an Image");
         topic.set_halign(Align::Start);
         topic.get_style_context().map(|c| c.add_class("h2"));
 

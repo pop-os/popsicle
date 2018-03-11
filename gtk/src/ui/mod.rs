@@ -12,11 +12,13 @@ pub use self::state::Connect;
 // TODO: Use AtomicU64 / Bool when https://github.com/rust-lang/rust/issues/32976 is stable.
 
 use std::cell::RefCell;
+use std::mem;
 use std::process;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::AtomicUsize;
 use std::thread::JoinHandle;
+use std::time::Instant;
 
 use gtk;
 use gtk::*;
@@ -34,7 +36,7 @@ pub struct App {
 /// Contains all of the state that needs to be shared across the program's lifetime.
 struct State {
     /// Contains all of the progress bars in the flash view.
-    bars: Rc<RefCell<Vec<ProgressBar>>>,
+    bars: Rc<RefCell<Vec<(ProgressBar, Label)>>>,
     /// Contains a list of devices detected, and their check buttons.
     devices: Arc<Mutex<Vec<(String, CheckButton)>>>,
     /// Contains a buffered vector of the ISO data, to be shared across threads.
@@ -46,6 +48,8 @@ struct State {
     tasks: Arc<Mutex<Vec<FlashTask>>>,
     /// Stores an integer which defines the currently-active view.
     view: Rc<RefCell<u8>>,
+    /// Stores the time when the flashing process began.
+    start: Rc<RefCell<Instant>>,
 }
 
 impl State {
@@ -57,12 +61,14 @@ impl State {
             task_handles: Arc::new(Mutex::new(Vec::new())),
             tasks:        Arc::new(Mutex::new(Vec::new())),
             view:         Rc::new(RefCell::new(0)),
+            start:        Rc::new(RefCell::new(unsafe { mem::uninitialized() })),
         }
     }
 }
 
 struct FlashTask {
     progress: Arc<AtomicUsize>,
+    previous: Arc<AtomicUsize>,
     finished: Arc<AtomicUsize>,
 }
 

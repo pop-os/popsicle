@@ -39,3 +39,20 @@ stack {
     font-weight: bold;
     padding-right: 1em;
 }
+
+grid {
+    margin-top: 1em;
+    padding-top: .5em;
+    border-top-width: .2em;
+    border-top-style: solid;
+}
+
+box > spinner {
+    padding-top: .25em;
+    padding-right: .5em;
+}
+
+grid box, grid > label {
+    padding-top: .5em;
+    padding-bottom: .5em;
+}
