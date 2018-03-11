@@ -58,6 +58,11 @@ const CSS: &str = r#"stack {
     border-style: solid;
     border-color: rgba(0,0,0,0.2);
     font-weight: bold;
+}
+
+.progress-label {
+    font-weight: bold;
+    padding-right: 1em;
 }"#;
 
 struct FlashTask {
@@ -270,6 +275,7 @@ impl App {
                             let progress = Arc::new(AtomicUsize::new(0));
                             let finished = Arc::new(AtomicUsize::new(0));
                             let bar = ProgressBar::new();
+                            bar.set_hexpand(true);
                             let label = Label::new(
                                 Path::new(&disk_path)
                                     .canonicalize()
@@ -277,6 +283,10 @@ impl App {
                                     .to_str()
                                     .unwrap(),
                             );
+                            label.set_justify(Justification::Right);
+                            label
+                                .get_style_context()
+                                .map(|c| c.add_class("progress-label"));
                             summary_grid.attach(&label, 0, id, 1, 1);
                             summary_grid.attach(&bar, 1, id, 1, 1);
                             bars.push(bar);
@@ -358,7 +368,6 @@ impl App {
                         task.progress.load(Ordering::SeqCst) as f64 / image_length
                     };
 
-                    eprintln!("setting pulse to {}", value);
                     bar.set_fraction(value);
                 }
 
