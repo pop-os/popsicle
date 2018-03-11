@@ -5,6 +5,8 @@ pub struct Content {
     pub container:    Stack,
     pub image_view:   ImageView,
     pub devices_view: DevicesView,
+    pub flash_view:   FlashView,
+    pub summary_view: SummaryView,
 }
 
 impl Content {
@@ -26,6 +28,8 @@ impl Content {
             container,
             image_view,
             devices_view,
+            flash_view,
+            summary_view,
         }
     }
 }
@@ -182,7 +186,7 @@ impl DevicesView {
 
 pub struct FlashView {
     pub container:     Box,
-    pub progress_list: ListBox,
+    pub progress_list: Grid,
 }
 
 impl FlashView {
@@ -195,7 +199,7 @@ impl FlashView {
         topic.set_halign(Align::Start);
         topic.get_style_context().map(|c| c.add_class("h2"));
 
-        let progress_list = ListBox::new();
+        let progress_list = Grid::new();
         let progress_scroller = ScrolledWindow::new(None, None);
         progress_scroller.add(&progress_list);
 

@@ -11,15 +11,17 @@ use self::content::Content;
 use self::dialogs::OpenDialog;
 use self::header::Header;
 
+// TODO: Use AtomicU64 / Bool when https://github.com/rust-lang/rust/issues/32976 is stable.
+
 use std::cell::RefCell;
-use std::io;
-use std::mem;
-use std::path::{Path, PathBuf};
+use std::ops::Deref;
+use std::path::Path;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
 
-use muff::{self, DiskError, Image, Mount};
+use muff::{self, DiskError, Image};
 
 const CSS: &str = r#"stack {
 	padding: 0.5em;
@@ -57,6 +59,11 @@ const CSS: &str = r#"stack {
     border-color: rgba(0,0,0,0.2);
     font-weight: bold;
 }"#;
+
+struct FlashTask {
+    progress: Arc<AtomicUsize>,
+    finished: Arc<AtomicUsize>,
+}
 
 pub struct App {
     pub window:  Window,
@@ -115,7 +122,10 @@ impl App {
     pub fn connect_events(self) -> Connected {
         let view = Rc::new(RefCell::new(0));
         let devices: Arc<Mutex<Vec<(String, CheckButton)>>> = Arc::new(Mutex::new(Vec::new()));
-        let image_data: Rc<RefCell<Option<Arc<Vec<u8>>>>> = Rc::new(RefCell::new(None));
+        let image_data = Rc::new(RefCell::new(None));
+        let tasks = Arc::new(Mutex::new(Vec::new()));
+        let task_handles = Arc::new(Mutex::new(Vec::new()));
+        let bars = Rc::new(RefCell::new(Vec::new()));
 
         {
             // Programs the image chooser button.
@@ -152,7 +162,10 @@ impl App {
             let hash_label = self.content.image_view.hash_label.clone();
             self.content.image_view.hash.connect_changed(move |hash| {
                 if let Some(ref data) = *image_data.borrow() {
+                    hash_label.set_icon_from_icon_name(EntryIconPosition::Primary, "gnome-spinner");
+                    hash_label.set_icon_sensitive(EntryIconPosition::Primary, true);
                     hash::set(&hash_label, hash.get_active_text().unwrap().as_str(), data);
+                    hash_label.set_icon_sensitive(EntryIconPosition::Primary, false);
                 }
             });
         }
@@ -192,6 +205,10 @@ impl App {
             let view = view.clone();
             let image_data = image_data.clone();
             let device_list = devices.clone();
+            let tasks = tasks.clone();
+            let task_handles = task_handles.clone();
+            let summary_grid = self.content.flash_view.progress_list.clone();
+            let bars = bars.clone();
             next.connect_clicked(move |next| {
                 stack.set_transition_type(StackTransitionType::SlideLeft);
                 match *view.borrow() {
@@ -239,30 +256,61 @@ impl App {
                         next.set_visible(false);
                         stack.set_visible_child_name("flash");
 
-                        let mut threads = Vec::new();
-                        for (disk_path, mut disk) in disks {
+                        // Clear the progress bar summaries.
+                        let mut bars = bars.borrow_mut();
+                        bars.clear();
+                        summary_grid.get_children().iter().for_each(|c| c.destroy());
+
+                        let mut tasks = tasks.lock().unwrap();
+                        let mut task_handles = task_handles.lock().unwrap();
+                        for (id, (disk_path, mut disk)) in disks.into_iter().enumerate() {
+                            let id = id as i32;
                             let image_data = image_data.borrow();
                             let image_data = image_data.as_ref().unwrap().clone();
-                            threads.push(thread::spawn(move || -> Result<(), DiskError> {
-                                muff::write_to_disk(
-                                    |_msg| (),
-                                    || (),
-                                    |_progress| (),
-                                    disk,
-                                    disk_path,
-                                    image_data.len() as u64,
-                                    &image_data,
-                                    false,
-                                )
-                            }));
+                            let progress = Arc::new(AtomicUsize::new(0));
+                            let finished = Arc::new(AtomicUsize::new(0));
+                            let bar = ProgressBar::new();
+                            let label = Label::new(
+                                Path::new(&disk_path)
+                                    .canonicalize()
+                                    .unwrap()
+                                    .to_str()
+                                    .unwrap(),
+                            );
+                            summary_grid.attach(&label, 0, id, 1, 1);
+                            summary_grid.attach(&bar, 1, id, 1, 1);
+                            bars.push(bar);
+
+                            // Spawn a thread that will update the progress value over time.
+                            //
+                            // The value will be stored within an intermediary atomic integer,
+                            // because it is unsafe to send GTK widgets across threads.
+                            task_handles.push({
+                                let progress = progress.clone();
+                                let finished = finished.clone();
+                                thread::spawn(move || -> Result<(), DiskError> {
+                                    let result = muff::write_to_disk(
+                                        |_msg| (),
+                                        || (),
+                                        |value| progress.store(value as usize, Ordering::SeqCst),
+                                        disk,
+                                        disk_path,
+                                        image_data.len() as u64,
+                                        &image_data,
+                                        false,
+                                    );
+
+                                    finished.store(1, Ordering::SeqCst);
+                                    result
+                                })
+                            });
+
+                            tasks.push(FlashTask { progress, finished });
                         }
 
-                        for thread in threads {
-                            // TODO: Handle errors
-                            let _ = thread.join();
-                        }
-                        stack.set_visible_child_name("summary");
+                        summary_grid.show_all();
                     }
+                    2 => gtk::main_quit(),
                     _ => unreachable!(),
                 }
 
@@ -278,6 +326,51 @@ impl App {
                     for &(_, ref device) in devices.lock().unwrap().iter() {
                         device.set_active(true);
                     }
+                }
+            });
+        }
+
+        {
+            let tasks = tasks.clone();
+            let bars = bars.clone();
+            let stack = self.content.container.clone();
+            let next = self.header.next.clone();
+            let image_data = image_data.clone();
+            gtk::timeout_add(1000, move || {
+                let image_length = match *image_data.borrow() {
+                    Some(ref data) => data.len() as f64,
+                    None => {
+                        return Continue(true);
+                    }
+                };
+
+                let tasks = tasks.lock().unwrap();
+                if tasks.is_empty() {
+                    return Continue(true);
+                }
+
+                let mut finished = true;
+                for (task, bar) in tasks.deref().iter().zip(bars.borrow().iter()) {
+                    let value = if task.finished.load(Ordering::SeqCst) == 1 {
+                        1.0f64
+                    } else {
+                        finished = false;
+                        task.progress.load(Ordering::SeqCst) as f64 / image_length
+                    };
+
+                    eprintln!("setting pulse to {}", value);
+                    bar.set_fraction(value);
+                }
+
+                if finished {
+                    stack.set_visible_child_name("summary");
+                    next.set_label("Finished");
+                    next.get_style_context()
+                        .map(|c| c.remove_class("destructive-action"));
+                    next.set_visible(true);
+                    Continue(false)
+                } else {
+                    Continue(true)
                 }
             });
         }
