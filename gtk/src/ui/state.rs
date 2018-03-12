@@ -283,6 +283,10 @@ impl Connect for App {
         let stack = self.content.container.clone();
         let next = self.header.next.clone();
         let description = self.content.summary_view.description.clone();
+        let devices = self.state.devices.clone();
+        let task_handles = self.state.task_handles.clone();
+        let list = self.content.summary_view.list.clone();
+        use std::ops::DerefMut;
 
         gtk::timeout_add(1000, move || {
             let image_length = match *image_data.borrow() {
@@ -293,7 +297,8 @@ impl Connect for App {
             };
 
             let tasks = tasks.lock().unwrap();
-            if tasks.is_empty() {
+            let ntasks = tasks.len();
+            if ntasks == 0 {
                 return Continue(true);
             }
 
@@ -316,13 +321,43 @@ impl Connect for App {
             }
 
             if finished {
-                // stack.set_visible_child_name("summary");
+                stack.set_visible_child_name("summary");
                 next.set_label("Finished");
                 next.get_style_context()
                     .map(|c| c.remove_class("destructive-action"));
                 next.set_visible(true);
 
-                // TODO: Generate summary here
+                let mut errored: Vec<(String, DiskError)> = Vec::new();
+                let mut task_handles = task_handles.lock().unwrap();
+                let devices = devices.lock().unwrap();
+                let handle_iter = task_handles.deref_mut().drain(..);
+                let mut device_iter = devices.deref().iter();
+                for handle in handle_iter {
+                    if let Some(&(ref device, _)) = device_iter.next() {
+                        if let Err(why) = handle.join().unwrap() {
+                            errored.push((device.clone(), why));
+                        }
+                    }
+                }
+
+                if errored.is_empty() {
+                    description.set_text(&format!("{} devices successfully flashed", ntasks));
+                } else {
+                    description.set_text(&format!(
+                        "{} of {} devices successfully flashed",
+                        ntasks - errored.len(),
+                        ntasks
+                    ));
+                    list.set_visible(true);
+                    for (device, why) in errored {
+                        let container = Box::new(Orientation::Horizontal, 0);
+                        let device = Label::new(device.as_str());
+                        let why = Label::new(format!("{}", why).as_str());
+                        container.pack_start(&device, false, false, 0);
+                        container.pack_start(&why, true, true, 0);
+                        list.insert(&container, -1);
+                    }
+                }
 
                 Continue(false)
             } else {

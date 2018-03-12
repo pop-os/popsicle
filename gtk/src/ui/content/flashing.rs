@@ -16,6 +16,7 @@ impl FlashView {
         topic.get_style_context().map(|c| c.add_class("h2"));
 
         let description = Label::new("Do not unplug devices while they are being flashed.");
+        description.set_halign(Align::Start);
 
         let progress_list = Grid::new();
         let progress_scroller = ScrolledWindow::new(None, None);
