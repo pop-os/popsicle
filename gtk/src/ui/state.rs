@@ -288,7 +288,7 @@ impl Connect for App {
         let list = self.content.summary_view.list.clone();
         use std::ops::DerefMut;
 
-        gtk::timeout_add(1000, move || {
+        gtk::timeout_add(500, move || {
             let image_length = match *image_data.borrow() {
                 Some(ref data) => data.len() as f64,
                 None => {
@@ -324,7 +324,7 @@ impl Connect for App {
                 prev_values[0] = raw_value;
 
                 let sum: usize = prev_values.iter().skip(1).sum();
-                let per_second = sum / 6;
+                let per_second = sum / 3;
                 label.set_label(&if per_second > (1024 * 1024) {
                     format!("{} MiB/s", per_second / (1024 * 1024))
                 } else {
