@@ -68,7 +68,7 @@ impl State {
 
 struct FlashTask {
     progress: Arc<AtomicUsize>,
-    previous: Arc<AtomicUsize>,
+    previous: Arc<Mutex<[usize; 7]>>,
     finished: Arc<AtomicUsize>,
 }
 

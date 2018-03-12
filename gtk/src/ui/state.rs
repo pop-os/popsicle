@@ -2,7 +2,7 @@ use super::{hash, App, FlashTask, OpenDialog};
 
 use std::ops::Deref;
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
 use std::time::Instant;
@@ -246,7 +246,7 @@ impl Connect for App {
                         });
 
                         tasks.push(FlashTask {
-                            previous: Arc::new(AtomicUsize::new(0)),
+                            previous: Arc::new(Mutex::new([0; 7])),
                             progress,
                             finished,
                         });
@@ -305,7 +305,6 @@ impl Connect for App {
             let mut finished = true;
             for (task, &(ref bar, ref label)) in tasks.deref().iter().zip(bars.borrow().iter()) {
                 let raw_value = task.progress.load(Ordering::SeqCst);
-                let prev_value = task.previous.load(Ordering::SeqCst);
                 let value = if task.finished.load(Ordering::SeqCst) == 1 {
                     1.0f64
                 } else {
@@ -315,9 +314,22 @@ impl Connect for App {
 
                 bar.set_fraction(value);
 
-                let per_second = raw_value - prev_value;
-                label.set_label(&format!("{} KiB/s", per_second / 1024));
-                task.previous.store(raw_value, Ordering::SeqCst);
+                let mut prev_values = task.previous.lock().unwrap();
+                prev_values[1] = prev_values[2];
+                prev_values[2] = prev_values[3];
+                prev_values[3] = prev_values[4];
+                prev_values[4] = prev_values[5];
+                prev_values[5] = prev_values[6];
+                prev_values[6] = raw_value - prev_values[0];
+                prev_values[0] = raw_value;
+
+                let sum: usize = prev_values.iter().skip(1).sum();
+                let per_second = sum / 6;
+                label.set_label(&if per_second > (1024 * 1024) {
+                    format!("{} MiB/s", per_second / (1024 * 1024))
+                } else {
+                    format!("{} KiB/s", per_second / 1024)
+                });
             }
 
             if finished {
