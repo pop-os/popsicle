@@ -1,2 +1,2 @@
 #!/bin/sh
-pkexec /usr/bin/muff-gtk
+pkexec /usr/bin/muff-gtk $@
