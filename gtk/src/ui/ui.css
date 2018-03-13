@@ -1,5 +1,10 @@
-stack {
-	padding: 0.5em;
+.left-panel {
+    background-color: @theme_fg_color;
+    box-shadow: 0 0 .3em;
+}
+
+.right-panel {
+    padding: .5em;
 }
 
 .h2 {

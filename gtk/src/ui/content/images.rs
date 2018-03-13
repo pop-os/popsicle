@@ -54,15 +54,24 @@ impl ImageView {
         chooser_container.pack_start(&chooser, false, false, 0);
         chooser_container.pack_start(&image_path, false, false, 0);
 
-        let inner_container = Box::new(Orientation::Vertical, 0);
-        inner_container.pack_start(&topic, false, false, 0);
-        inner_container.pack_start(&description, false, false, 0);
-        inner_container.pack_start(&chooser_container, true, false, 0);
-        inner_container.pack_start(&hash_container, false, false, 0);
+        let left_panel = Box::new(Orientation::Vertical, 0);
+        left_panel
+            .get_style_context()
+            .map(|c| c.add_class("left-panel"));
+        left_panel.pack_start(&image, false, false, 0);
+
+        let right_panel = Box::new(Orientation::Vertical, 0);
+        right_panel
+            .get_style_context()
+            .map(|c| c.add_class("right-panel"));
+        right_panel.pack_start(&topic, false, false, 0);
+        right_panel.pack_start(&description, false, false, 0);
+        right_panel.pack_start(&chooser_container, true, false, 0);
+        right_panel.pack_start(&hash_container, false, false, 0);
 
         let container = Box::new(Orientation::Horizontal, 5);
-        container.pack_start(&image, false, false, 0);
-        container.pack_start(&inner_container, true, true, 0);
+        container.pack_start(&left_panel, false, false, 0);
+        container.pack_start(&right_panel, true, true, 0);
 
         ImageView {
             container,
