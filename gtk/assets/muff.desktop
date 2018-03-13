@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Multiple USB File Flasher
+GenericName=Multiple USB File Flasher
+X-GNOME-FullName=Multiple USB File Flasher
+Icon=drive-removable-media
+Categories=System
+Keywords=USB;Flash;Drive;MUFF;
+Terminal=false
+StartupNotify=true
+Exec=/usr/bin/muff-pkexec
