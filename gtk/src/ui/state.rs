@@ -1,4 +1,5 @@
 use super::{hash, App, FlashTask, OpenDialog};
+use super::super::image::load_image;
 
 use std::ops::Deref;
 use std::path::Path;
@@ -9,7 +10,7 @@ use std::time::Instant;
 
 use gtk;
 use gtk::*;
-use muff::{self, DiskError, Image};
+use muff::{self, DiskError};
 
 pub struct Connected(App);
 
@@ -64,25 +65,7 @@ impl Connect for App {
         let state = self.state.clone();
         self.content.image_view.chooser.connect_clicked(move |_| {
             if let Some(path) = OpenDialog::new(None).run() {
-                let mut new_image = match Image::new(&path) {
-                    Ok(image) => image,
-                    Err(why) => {
-                        eprintln!("muff: unable to open image: {}", why);
-                        return;
-                    }
-                };
-
-                let new_data = match new_image.read(|_| ()) {
-                    Ok(data) => data,
-                    Err(why) => {
-                        eprintln!("muff: unable to read image: {}", why);
-                        return;
-                    }
-                };
-
-                path_label.set_label(&path.file_name().unwrap().to_string_lossy());
-                next.set_sensitive(true);
-                *state.image_data.borrow_mut() = Some(Arc::new(new_data));
+                load_image(&path, &state, &path_label, &next);
             }
         });
     }

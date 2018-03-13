@@ -5,7 +5,7 @@ mod hash;
 mod header;
 
 use self::content::Content;
-use self::dialogs::OpenDialog;
+pub use self::dialogs::OpenDialog;
 use self::header::Header;
 pub use self::state::Connect;
 
@@ -29,7 +29,7 @@ pub struct App {
     pub window:  Window,
     pub header:  Header,
     pub content: Content,
-    state:       Arc<State>,
+    pub state:   Arc<State>,
 }
 
 // TODO:
@@ -45,22 +45,22 @@ pub struct App {
 // }
 
 /// Contains all of the state that needs to be shared across the program's lifetime.
-struct State {
+pub struct State {
     /// Contains all of the progress bars in the flash view.
-    bars: RefCell<Vec<(ProgressBar, Label)>>,
+    pub bars: RefCell<Vec<(ProgressBar, Label)>>,
     /// Contains a list of devices detected, and their check buttons.
-    devices: Mutex<Vec<(String, CheckButton)>>,
+    pub devices: Mutex<Vec<(String, CheckButton)>>,
     /// Contains a buffered vector of the ISO data, to be shared across threads.
-    image_data: RefCell<Option<Arc<Vec<u8>>>>,
+    pub image_data: RefCell<Option<Arc<Vec<u8>>>>,
     /// Holds the task threads that write the image to each device.
     /// The handles may contain errors when joined, for printing on the summary page.
-    task_handles: Mutex<Vec<JoinHandle<Result<(), DiskError>>>>,
+    pub task_handles: Mutex<Vec<JoinHandle<Result<(), DiskError>>>>,
     /// Contains progress data regarding each active flash task -- namely the progress.
-    tasks: Mutex<Vec<FlashTask>>,
+    pub tasks: Mutex<Vec<FlashTask>>,
     /// Stores an integer which defines the currently-active view.
-    view: RefCell<u8>,
+    pub view: RefCell<u8>,
     /// Stores the time when the flashing process began.
-    start: RefCell<Instant>,
+    pub start: RefCell<Instant>,
     /* TODO:
      * buffer: BufferingData */
 }
@@ -80,7 +80,7 @@ impl State {
     }
 }
 
-struct FlashTask {
+pub struct FlashTask {
     progress: Arc<AtomicUsize>,
     previous: Arc<Mutex<[usize; 7]>>,
     finished: Arc<AtomicUsize>,
