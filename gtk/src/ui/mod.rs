@@ -14,7 +14,6 @@ pub use self::state::Connect;
 use std::cell::RefCell;
 use std::mem;
 use std::process;
-use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::AtomicUsize;
 use std::thread::JoinHandle;
@@ -30,38 +29,53 @@ pub struct App {
     pub window:  Window,
     pub header:  Header,
     pub content: Content,
-    state:       State,
+    state:       Arc<State>,
 }
+
+// TODO:
+// pub struct BufferingData {
+//     data: Mutex<Vec<u8>>,
+//     state: AtomicUsize,
+// }
+
+// impl BufferingData {
+//     fn new() -> BufferingData {
+//         BufferingData { data: Vec::new().into(), state: 0.into() }
+//     }
+// }
 
 /// Contains all of the state that needs to be shared across the program's lifetime.
 struct State {
     /// Contains all of the progress bars in the flash view.
-    bars: Rc<RefCell<Vec<(ProgressBar, Label)>>>,
+    bars: RefCell<Vec<(ProgressBar, Label)>>,
     /// Contains a list of devices detected, and their check buttons.
-    devices: Arc<Mutex<Vec<(String, CheckButton)>>>,
+    devices: Mutex<Vec<(String, CheckButton)>>,
     /// Contains a buffered vector of the ISO data, to be shared across threads.
-    image_data: Rc<RefCell<Option<Arc<Vec<u8>>>>>,
+    image_data: RefCell<Option<Arc<Vec<u8>>>>,
     /// Holds the task threads that write the image to each device.
     /// The handles may contain errors when joined, for printing on the summary page.
-    task_handles: Arc<Mutex<Vec<JoinHandle<Result<(), DiskError>>>>>,
+    task_handles: Mutex<Vec<JoinHandle<Result<(), DiskError>>>>,
     /// Contains progress data regarding each active flash task -- namely the progress.
-    tasks: Arc<Mutex<Vec<FlashTask>>>,
+    tasks: Mutex<Vec<FlashTask>>,
     /// Stores an integer which defines the currently-active view.
-    view: Rc<RefCell<u8>>,
+    view: RefCell<u8>,
     /// Stores the time when the flashing process began.
-    start: Rc<RefCell<Instant>>,
+    start: RefCell<Instant>,
+    /* TODO:
+     * buffer: BufferingData */
 }
 
 impl State {
     fn new() -> State {
         State {
-            bars:         Rc::new(RefCell::new(Vec::new())),
-            devices:      Arc::new(Mutex::new(Vec::new())),
-            image_data:   Rc::new(RefCell::new(None)),
-            task_handles: Arc::new(Mutex::new(Vec::new())),
-            tasks:        Arc::new(Mutex::new(Vec::new())),
-            view:         Rc::new(RefCell::new(0)),
-            start:        Rc::new(RefCell::new(unsafe { mem::uninitialized() })),
+            bars:         RefCell::new(Vec::new()),
+            devices:      Mutex::new(Vec::new()),
+            image_data:   RefCell::new(None),
+            task_handles: Mutex::new(Vec::new()),
+            tasks:        Mutex::new(Vec::new()),
+            view:         RefCell::new(0),
+            start:        RefCell::new(unsafe { mem::uninitialized() }),
+            // buffer:       BufferingData::new(),
         }
     }
 }
@@ -116,7 +130,7 @@ impl App {
             window,
             header,
             content,
-            state: State::new(),
+            state: Arc::new(State::new()),
         }
     }
 }

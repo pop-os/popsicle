@@ -61,7 +61,7 @@ impl Connect for App {
     fn connect_image_chooser(&self) {
         let path_label = self.content.image_view.image_path.clone();
         let next = self.header.next.clone();
-        let image_data = self.state.image_data.clone();
+        let state = self.state.clone();
         self.content.image_view.chooser.connect_clicked(move |_| {
             if let Some(path) = OpenDialog::new(None).run() {
                 let mut new_image = match Image::new(&path) {
@@ -82,16 +82,16 @@ impl Connect for App {
 
                 path_label.set_label(&path.file_name().unwrap().to_string_lossy());
                 next.set_sensitive(true);
-                *image_data.borrow_mut() = Some(Arc::new(new_data));
+                *state.image_data.borrow_mut() = Some(Arc::new(new_data));
             }
         });
     }
 
     fn connect_hash_generator(&self) {
-        let image_data = self.state.image_data.clone();
+        let state = self.state.clone();
         let hash_label = self.content.image_view.hash_label.clone();
         self.content.image_view.hash.connect_changed(move |hash| {
-            if let Some(ref data) = *image_data.borrow() {
+            if let Some(ref data) = *state.image_data.borrow() {
                 hash_label.set_icon_from_icon_name(EntryIconPosition::Primary, "gnome-spinner");
                 hash_label.set_icon_sensitive(EntryIconPosition::Primary, true);
                 hash::set(&hash_label, hash.get_active_text().unwrap().as_str(), data);
@@ -104,9 +104,9 @@ impl Connect for App {
         let stack = self.content.container.clone();
         let back = self.header.back.clone();
         let next = self.header.next.clone();
-        let view = self.state.view.clone();
+        let state = self.state.clone();
         back.connect_clicked(move |back| {
-            match *view.borrow() {
+            match *state.view.borrow() {
                 0 => gtk::main_quit(),
                 1 => {
                     stack.set_transition_type(StackTransitionType::SlideRight);
@@ -121,24 +121,26 @@ impl Connect for App {
                 }
                 _ => unreachable!(),
             }
-            *view.borrow_mut() -= 1;
+            *state.view.borrow_mut() -= 1;
         });
     }
 
     fn connect_next_button(&self) {
         let back = self.header.back.clone();
-        let bars = self.state.bars.clone();
-        let device_list = self.state.devices.clone();
-        let image_data = self.state.image_data.clone();
         let list = self.content.devices_view.list.clone();
         let next = self.header.next.clone();
         let stack = self.content.container.clone();
-        let start = self.state.start.clone();
         let summary_grid = self.content.flash_view.progress_list.clone();
-        let task_handles = self.state.task_handles.clone();
-        let tasks = self.state.tasks.clone();
-        let view = self.state.view.clone();
+        let state = self.state.clone();
+
         next.connect_clicked(move |next| {
+            let device_list = &state.devices;
+            let image_data = &state.image_data;
+            let start = &state.start;
+            let task_handles = &state.task_handles;
+            let bars = &state.bars;
+            let tasks = &state.tasks;
+            let view = &state.view;
             stack.set_transition_type(StackTransitionType::SlideLeft);
             match *view.borrow() {
                 // Move to device selection screen
@@ -264,10 +266,11 @@ impl Connect for App {
 
     fn connect_check_all(&self) {
         let all = self.content.devices_view.select_all.clone();
-        let devices = self.state.devices.clone();
+        let state = self.state.clone();
         all.connect_clicked(move |all| {
             if all.get_active() {
-                devices
+                state
+                    .devices
                     .lock()
                     .unwrap()
                     .iter()
@@ -277,18 +280,20 @@ impl Connect for App {
     }
 
     fn watch_flashing_devices(&self) {
-        let tasks = self.state.tasks.clone();
-        let bars = self.state.bars.clone();
-        let image_data = self.state.image_data.clone();
         let stack = self.content.container.clone();
         let next = self.header.next.clone();
         let description = self.content.summary_view.description.clone();
-        let devices = self.state.devices.clone();
-        let task_handles = self.state.task_handles.clone();
         let list = self.content.summary_view.list.clone();
-        use std::ops::DerefMut;
+        let state = self.state.clone();
 
+        use std::ops::DerefMut;
         gtk::timeout_add(500, move || {
+            let tasks = &state.tasks;
+            let bars = &state.bars;
+            let image_data = &state.image_data;
+            let devices = &state.devices;
+            let task_handles = &state.task_handles;
+
             let image_length = match *image_data.borrow() {
                 Some(ref data) => data.len() as f64,
                 None => {
