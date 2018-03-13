@@ -4,8 +4,16 @@
     margin-right: .5em;
 }
 
+.left-panel image {
+    padding: .25em;
+}
+
 .right-panel {
     padding: .5em;
+}
+
+spinner {
+    padding-left: .5em;
 }
 
 .h2 {
