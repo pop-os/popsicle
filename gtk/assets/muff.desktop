@@ -6,6 +6,7 @@ X-GNOME-FullName=Multiple USB File Flasher
 Icon=drive-removable-media
 Categories=System
 Keywords=USB;Flash;Drive;MUFF;
+MimeType=application/x-cd-image;application/x-raw-disk-image;application/x-raw-disk-image-xz-compressed;
 Terminal=false
 StartupNotify=true
 Exec=/usr/bin/muff-pkexec

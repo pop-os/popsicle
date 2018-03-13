@@ -29,13 +29,13 @@
 .devices {
     border-width:0.2em;
     border-style: solid;
-    border-color: rgba(0,0,0,0.2);
+    border-color: @theme_fg_color;
 }
 
 .devices > row:nth-child(1) {
     border-bottom-width:0.2em;
     border-style: solid;
-    border-color: rgba(0,0,0,0.2);
+    border-color: @theme_fg_color;
     font-weight: bold;
 }
 
