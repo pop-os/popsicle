@@ -148,6 +148,7 @@ impl Connect for App {
                     }
 
                     let mut device_list = device_list.lock().unwrap();
+                    device_list.clear();
                     for device in &devices {
                         let name = Path::new(&device).canonicalize().unwrap();
                         let button = CheckButton::new_with_label(&name.to_string_lossy());
