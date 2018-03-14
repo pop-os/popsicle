@@ -1,0 +1,3 @@
+usr/bin/muff-gtk /usr/bin
+usr/share/applications/muff.desktop /usr/share/applications
+usr/share/polkit-1/actions/com.system76.pkexec.muff.policy /usr/share/polkit-1/actions

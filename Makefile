@@ -9,8 +9,15 @@ datadir = $(datarootdir)
 .PHONY: all clean distclean install uninstall update
 
 BIN=muff
+GTK_BIN=muff-gtk
+PKEXEC_BIN=muff-pkexec
+POLICY=com.system76.pkexec.muff.policy
 
-all: target/release/$(BIN) target/release/$(BIN).1.gz
+all: cli gtk
+
+cli: target/release/$(BIN) target/release/$(BIN).1.gz
+
+gtk: target/release/$(GTK_BIN)
 
 clean:
 	cargo clean
@@ -18,13 +25,29 @@ clean:
 distclean: clean
 	rm -rf .cargo vendor
 
-install: all
+install-cli: cli
 	install -D -m 0755 "target/release/$(BIN)" "$(DESTDIR)$(bindir)/$(BIN)"
 	install -D -m 0755 "target/release/$(BIN).1.gz" "$(DESTDIR)$(datadir)/man/man1/$(BIN).1.gz"
 
-uninstall:
+install-gtk: gtk
+	install -D -m 0755 "target/release/$(GTK_BIN)" "$(DESTDIR)$(bindir)/$(GTK_BIN)"
+	install -D -m 0755 "gtk/assets/muff-pkexec" "$(DESTDIR)$(bindir)/$(PKEXEC_BIN)"
+	install -D -m 0644 "gtk/assets/muff.desktop" "$(DESTDIR)$(datadir)/applications/muff.desktop"
+	install -D -m 0644 "gtk/assets/$(POLICY)" "$(DESTDIR)$(datadir)/polkit-1/actions/$(POLICY)"
+
+install: all install-cli install-gtk
+
+uninstall-cli:
 	rm -f "$(DESTDIR)$(bindir)/$(BIN)"
 	rm -f "$(DESTDIR)$(datadir)/man/man1/$(BIN).1.gz"
+
+uninstall-gtk:
+	rm -f "$(DESTDIR)$(bindir)/$(GTK_BIN)"
+	rm -f "$(DESTDIR)$(bindir)/$(PKEXEC_BIN)"
+	rm -f "$(DESTDIR)$(datadir)/applications/muff.desktop"
+	rm -f "$(DESTDIR)$(datadir)/polkit-1/actions/$(POLICY)"
+
+uninstall: uninstall-cli uninstall-gtk
 
 update:
 	cargo update
@@ -40,9 +63,17 @@ vendor: .cargo/config
 target/release/$(BIN):
 	if [ -d vendor ]; \
 	then \
-		cargo build --release --frozen; \
+		cargo build --manifest-path cli/Cargo.toml --release --frozen; \
 	else \
-		cargo build --release; \
+		cargo build --manifest-path cli/Cargo.toml --release; \
+	fi
+
+target/release/$(GTK_BIN):
+	if [ -d vendor ]; \
+	then \
+		cargo build --manifest-path gtk/Cargo.toml --release --frozen; \
+	else \
+		cargo build --manifest-path gtk/Cargo.toml --release; \
 	fi
 
 target/release/$(BIN).1.gz: target/release/$(BIN)
