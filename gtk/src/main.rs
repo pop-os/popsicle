@@ -10,15 +10,22 @@ mod image;
 mod ui;
 
 use std::env;
+use std::path::PathBuf;
+use std::sync::mpsc::channel;
+use std::thread;
 use ui::{App, Connect};
 
 fn main() {
-    let app = App::new();
+    let (sender, receiver) = channel::<PathBuf>();
+    let app = App::new(sender);
+
+    {
+        let buffer = app.state.buffer.clone();
+        thread::spawn(move || image::image_load_event_loop(receiver, &buffer));
+    }
 
     if let Some(iso_argument) = env::args().skip(1).next() {
-        let label = &app.content.image_view.image_path;
-        let next = &app.header.next;
-        image::load_image(&iso_argument, &app.state, label, next);
+        let _ = app.state.image_sender.send(PathBuf::from(iso_argument));
     }
 
     app.connect_events().then_execute()

@@ -7,15 +7,17 @@ mod header;
 use self::content::Content;
 pub use self::dialogs::OpenDialog;
 use self::header::Header;
-pub use self::state::Connect;
+pub use self::state::{BufferingData, Connect};
 
 // TODO: Use AtomicU64 / Bool when https://github.com/rust-lang/rust/issues/32976 is stable.
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::mem;
+use std::path::PathBuf;
 use std::process;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::AtomicUsize;
+use std::sync::mpsc::Sender;
 use std::thread::JoinHandle;
 use std::time::Instant;
 
@@ -32,50 +34,38 @@ pub struct App {
     pub state:   Arc<State>,
 }
 
-// TODO:
-// pub struct BufferingData {
-//     data: Mutex<Vec<u8>>,
-//     state: AtomicUsize,
-// }
-
-// impl BufferingData {
-//     fn new() -> BufferingData {
-//         BufferingData { data: Vec::new().into(), state: 0.into() }
-//     }
-// }
-
 /// Contains all of the state that needs to be shared across the program's lifetime.
 pub struct State {
     /// Contains all of the progress bars in the flash view.
     pub bars: RefCell<Vec<(ProgressBar, Label)>>,
     /// Contains a list of devices detected, and their check buttons.
     pub devices: Mutex<Vec<(String, CheckButton)>>,
-    /// Contains a buffered vector of the ISO data, to be shared across threads.
-    pub image_data: RefCell<Option<Arc<Vec<u8>>>>,
     /// Holds the task threads that write the image to each device.
     /// The handles may contain errors when joined, for printing on the summary page.
     pub task_handles: Mutex<Vec<JoinHandle<Result<(), DiskError>>>>,
     /// Contains progress data regarding each active flash task -- namely the progress.
     pub tasks: Mutex<Vec<FlashTask>>,
     /// Stores an integer which defines the currently-active view.
-    pub view: RefCell<u8>,
+    pub view: Cell<u8>,
     /// Stores the time when the flashing process began.
     pub start: RefCell<Instant>,
-    /* TODO:
-     * buffer: BufferingData */
+    pub buffer: Arc<BufferingData>,
+    pub image_sender: Sender<PathBuf>,
+    pub image_length: Cell<usize>,
 }
 
 impl State {
-    fn new() -> State {
+    fn new(image_sender: Sender<PathBuf>) -> State {
         State {
-            bars:         RefCell::new(Vec::new()),
-            devices:      Mutex::new(Vec::new()),
-            image_data:   RefCell::new(None),
+            bars: RefCell::new(Vec::new()),
+            devices: Mutex::new(Vec::new()),
             task_handles: Mutex::new(Vec::new()),
-            tasks:        Mutex::new(Vec::new()),
-            view:         RefCell::new(0),
-            start:        RefCell::new(unsafe { mem::uninitialized() }),
-            // buffer:       BufferingData::new(),
+            tasks: Mutex::new(Vec::new()),
+            view: Cell::new(0),
+            start: RefCell::new(unsafe { mem::uninitialized() }),
+            buffer: Arc::new(BufferingData::new()),
+            image_sender,
+            image_length: Cell::new(0),
         }
     }
 }
@@ -87,7 +77,7 @@ pub struct FlashTask {
 }
 
 impl App {
-    pub fn new() -> App {
+    pub fn new(sender: Sender<PathBuf>) -> App {
         // Initialize GTK before proceeding.
         if gtk::init().is_err() {
             eprintln!("failed to initialize GTK Application");
@@ -130,7 +120,7 @@ impl App {
             window,
             header,
             content,
-            state: Arc::new(State::new()),
+            state: Arc::new(State::new(sender)),
         }
     }
 }

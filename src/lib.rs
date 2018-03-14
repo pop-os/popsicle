@@ -71,8 +71,19 @@ impl Image {
     pub fn get_size(&self) -> u64 { self.size }
 
     /// Reads the image into a vector, and reports progress to a callback.
-    pub fn read<P: FnMut(u64)>(&mut self, mut progress_callback: P) -> Result<Vec<u8>, ImageError> {
-        let mut data = vec![0; self.size as usize];
+    pub fn read<P: FnMut(u64)>(
+        &mut self,
+        data: &mut Vec<u8>,
+        mut progress_callback: P,
+    ) -> Result<(), ImageError> {
+        if data.capacity() < self.size as usize {
+            let capacity = self.size as usize - data.capacity();
+            data.reserve_exact(capacity);
+            data.append(&mut vec![0; capacity])
+        } else if data.capacity() > self.size as usize {
+            data.truncate(self.size as usize);
+            data.shrink_to_fit();
+        }
 
         let mut total = 0;
         while total < data.len() {
@@ -88,7 +99,7 @@ impl Image {
             progress_callback(total as u64);
         }
 
-        Ok(data)
+        Ok(())
     }
 }
 
