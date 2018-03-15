@@ -2,11 +2,12 @@ use gtk::*;
 use pango::EllipsizeMode;
 
 pub struct ImageView {
-    pub container:  Box,
-    pub chooser:    Button,
-    pub image_path: Label,
-    pub hash:       ComboBoxText,
-    pub hash_label: Entry,
+    pub container:         Box,
+    pub chooser_container: Stack,
+    pub chooser:           Button,
+    pub image_path:        Label,
+    pub hash:              ComboBoxText,
+    pub hash_label:        Entry,
 }
 
 impl ImageView {
@@ -34,6 +35,21 @@ impl ImageView {
         image_path.set_ellipsize(EllipsizeMode::End);
         image_path.get_style_context().map(|c| c.add_class("bold"));
 
+        let button_box = Box::new(Orientation::Vertical, 0);
+        button_box.pack_start(&chooser, false, false, 0);
+        button_box.pack_start(&image_path, false, false, 0);
+
+        let spinner = Spinner::new();
+        spinner.start();
+        let spinner_label = Label::new("Loading Image");
+        spinner_label
+            .get_style_context()
+            .map(|c| c.add_class("bold"));
+
+        let spinner_box = Box::new(Orientation::Vertical, 0);
+        spinner_box.pack_start(&spinner, false, false, 0);
+        spinner_box.pack_start(&spinner_label, false, false, 0);
+
         let hash = ComboBoxText::new();
         hash.append_text("Type");
         hash.append_text("SHA256");
@@ -50,9 +66,10 @@ impl ImageView {
         hash_container.pack_start(&hash, false, false, 0);
         hash_container.pack_start(&hash_label, true, true, 0);
 
-        let chooser_container = Box::new(Orientation::Vertical, 5);
-        chooser_container.pack_start(&chooser, false, false, 0);
-        chooser_container.pack_start(&image_path, false, false, 0);
+        let chooser_container = Stack::new();
+        chooser_container.add_named(&button_box, "chooser");
+        chooser_container.add_named(&spinner_box, "loader");
+        chooser_container.set_visible_child_name("chooser");
 
         let left_panel = Box::new(Orientation::Vertical, 0);
         left_panel
@@ -75,6 +92,7 @@ impl ImageView {
 
         ImageView {
             container,
+            chooser_container,
             chooser,
             image_path,
             hash,

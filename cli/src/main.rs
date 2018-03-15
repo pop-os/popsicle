@@ -98,9 +98,9 @@ fn muff() -> Result<(), String> {
         let mut pb = ProgressBar::new(image_size);
         pb.message("Reading image: ");
         pb.set_units(Units::Bytes);
-
-        let data = image
-            .read(|total| {
+        let mut data = Vec::new();
+        image
+            .read(&mut data, |total| {
                 pb.set(total);
             })
             .map_err(|err| format!("image error with image at '{}': {}", image_path, err))?;

@@ -1,29 +1,45 @@
-use super::ui::State;
-use gtk;
-use gtk::prelude::*;
+use super::ui::BufferingData;
 use muff::Image;
-use std::path::Path;
-use std::sync::Arc;
+use std::io;
+use std::path::{Path, PathBuf};
+use std::sync::atomic::Ordering;
+use std::sync::mpsc::Receiver;
 
-pub fn load_image<P: AsRef<Path>>(path: P, state: &State, label: &gtk::Label, next: &gtk::Button) {
+pub fn image_load_event_loop(path_receiver: Receiver<PathBuf>, buffer: &BufferingData) {
+    while let Ok(path) = path_receiver.recv() {
+        buffer.state.store(0b1, Ordering::SeqCst);
+        let (ref mut name, ref mut data) = *buffer.data.lock().unwrap();
+        match load_image(&path, data) {
+            Ok(_) => {
+                *name = path;
+                buffer.state.store(0b10, Ordering::SeqCst);
+            }
+            Err(why) => {
+                eprintln!("muff-gtk: image loading error: {}", why);
+                buffer.state.store(0b100, Ordering::SeqCst);
+            }
+        }
+    }
+}
+
+pub fn load_image<P: AsRef<Path>>(path: P, data: &mut Vec<u8>) -> io::Result<()> {
     let path = path.as_ref();
     let mut new_image = match Image::new(path) {
         Ok(image) => image,
         Err(why) => {
-            eprintln!("muff: unable to open image: {}", why);
-            return;
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                format!("unable to open image: {}", why),
+            ));
         }
     };
 
-    let new_data = match new_image.read(|_| ()) {
-        Ok(data) => data,
-        Err(why) => {
-            eprintln!("muff: unable to read image: {}", why);
-            return;
-        }
-    };
+    if let Err(why) = new_image.read(data, |_| ()) {
+        return Err(io::Error::new(
+            io::ErrorKind::Other,
+            format!("unable to open image: {}", why),
+        ));
+    }
 
-    *state.image_data.borrow_mut() = Some(Arc::new(new_data));
-    label.set_label(&path.file_name().unwrap().to_string_lossy());
-    next.set_sensitive(true);
+    Ok(())
 }

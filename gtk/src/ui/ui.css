@@ -1,6 +1,4 @@
 .left-panel {
-    background-color: @theme_fg_color;
-    box-shadow: 0 0 .3em;
     margin-right: .5em;
 }
 

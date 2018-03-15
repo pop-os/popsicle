@@ -1,8 +1,8 @@
 use super::{hash, App, FlashTask, OpenDialog};
-use super::super::image::load_image;
 
-use std::ops::Deref;
-use std::path::Path;
+use std::mem;
+use std::ops::{Deref, DerefMut};
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
@@ -11,6 +11,20 @@ use std::time::Instant;
 use gtk;
 use gtk::*;
 use muff::{self, DiskError};
+
+pub struct BufferingData {
+    pub data:  Mutex<(PathBuf, Vec<u8>)>,
+    pub state: AtomicUsize,
+}
+
+impl BufferingData {
+    pub fn new() -> BufferingData {
+        BufferingData {
+            data:  Mutex::new((PathBuf::new(), Vec::new())),
+            state: 0.into(),
+        }
+    }
+}
 
 pub struct Connected(App);
 
@@ -60,12 +74,10 @@ impl Connect for App {
     }
 
     fn connect_image_chooser(&self) {
-        let path_label = self.content.image_view.image_path.clone();
-        let next = self.header.next.clone();
         let state = self.state.clone();
         self.content.image_view.chooser.connect_clicked(move |_| {
             if let Some(path) = OpenDialog::new(None).run() {
-                load_image(&path, &state, &path_label, &next);
+                let _ = state.image_sender.send(path);
             }
         });
     }
@@ -74,7 +86,8 @@ impl Connect for App {
         let state = self.state.clone();
         let hash_label = self.content.image_view.hash_label.clone();
         self.content.image_view.hash.connect_changed(move |hash| {
-            if let Some(ref data) = *state.image_data.borrow() {
+            if state.buffer.state.load(Ordering::SeqCst) == 0b010 {
+                let (_, ref data) = *state.buffer.data.lock().unwrap();
                 hash_label.set_icon_from_icon_name(EntryIconPosition::Primary, "gnome-spinner");
                 hash_label.set_icon_sensitive(EntryIconPosition::Primary, true);
                 hash::set(&hash_label, hash.get_active_text().unwrap().as_str(), data);
@@ -89,7 +102,8 @@ impl Connect for App {
         let next = self.header.next.clone();
         let state = self.state.clone();
         back.connect_clicked(move |back| {
-            match *state.view.borrow() {
+            let view = state.view.get();
+            match view {
                 0 => gtk::main_quit(),
                 1 => {
                     stack.set_transition_type(StackTransitionType::SlideRight);
@@ -104,7 +118,8 @@ impl Connect for App {
                 }
                 _ => unreachable!(),
             }
-            *state.view.borrow_mut() -= 1;
+
+            state.view.set(view - 1);
         });
     }
 
@@ -118,14 +133,17 @@ impl Connect for App {
 
         next.connect_clicked(move |next| {
             let device_list = &state.devices;
-            let image_data = &state.image_data;
+            state.buffer.state.store(0b1000, Ordering::SeqCst);
+            let (_, ref mut image_data) = *state.buffer.data.lock().unwrap();
             let start = &state.start;
             let task_handles = &state.task_handles;
             let bars = &state.bars;
             let tasks = &state.tasks;
             let view = &state.view;
+            let view_value = view.get();
             stack.set_transition_type(StackTransitionType::SlideLeft);
-            match *view.borrow() {
+
+            match view_value {
                 // Move to device selection screen
                 0 => {
                     back.set_label("Back");
@@ -179,10 +197,19 @@ impl Connect for App {
                     *start.borrow_mut() = Instant::now();
                     let mut tasks = tasks.lock().unwrap();
                     let mut task_handles = task_handles.lock().unwrap();
+
+                    // Take ownership of the data, so that we may wrap it within an `Arc`
+                    // and redistribute it across threads.
+                    //
+                    // Note: Possible optimization could be done to avoid the wrap.
+                    //       Avoiding the wrap could eliminate two allocations.
+                    let mut data = Vec::new();
+                    mem::swap(&mut data, image_data);
+                    let image_data = Arc::new(data);
+
                     for (id, (disk_path, mut disk)) in disks.into_iter().enumerate() {
                         let id = id as i32;
-                        let image_data = image_data.borrow();
-                        let image_data = image_data.as_ref().unwrap().clone();
+                        let image_data = image_data.clone();
                         let progress = Arc::new(AtomicUsize::new(0));
                         let finished = Arc::new(AtomicUsize::new(0));
                         let bar = ProgressBar::new();
@@ -244,7 +271,7 @@ impl Connect for App {
                 _ => unreachable!(),
             }
 
-            *view.borrow_mut() += 1;
+            view.set(view_value + 1);
         });
     }
 
@@ -269,21 +296,43 @@ impl Connect for App {
         let description = self.content.summary_view.description.clone();
         let list = self.content.summary_view.list.clone();
         let state = self.state.clone();
+        let image_label = self.content.image_view.image_path.clone();
+        let chooser_container = self.content.image_view.chooser_container.clone();
 
-        use std::ops::DerefMut;
         gtk::timeout_add(500, move || {
             let tasks = &state.tasks;
             let bars = &state.bars;
-            let image_data = &state.image_data;
             let devices = &state.devices;
             let task_handles = &state.task_handles;
+            let image_length = &state.image_length;
 
-            let image_length = match *image_data.borrow() {
-                Some(ref data) => data.len() as f64,
-                None => {
+            // Ensure that the image has been loaded before continuing.
+            match state.buffer.state.load(Ordering::SeqCst) {
+                0b0000 => {
                     return Continue(true);
                 }
-            };
+                0b0001 => {
+                    chooser_container.set_visible_child_name("loader");
+                    next.set_sensitive(false);
+                    return Continue(true);
+                }
+                0b0010 => {
+                    chooser_container.set_visible_child_name("chooser");
+                    let (ref path, ref data) = *state.buffer.data.lock().unwrap();
+                    next.set_sensitive(true);
+                    image_label.set_text(&path.file_name().unwrap().to_string_lossy());
+                    image_length.set(data.len());
+                }
+                0b0100 => {
+                    chooser_container.set_visible_child_name("chooser");
+                    next.set_sensitive(false);
+                    return Continue(true);
+                }
+                0b1000 => (),
+                _ => unreachable!(),
+            }
+
+            let image_length = image_length.get();
 
             let tasks = tasks.lock().unwrap();
             let ntasks = tasks.len();
@@ -298,7 +347,7 @@ impl Connect for App {
                     1.0f64
                 } else {
                     finished = false;
-                    raw_value as f64 / image_length
+                    raw_value as f64 / image_length as f64
                 };
 
                 bar.set_fraction(value);
