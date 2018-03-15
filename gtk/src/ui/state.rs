@@ -1,4 +1,5 @@
 use super::{hash, App, FlashTask, OpenDialog};
+use super::super::BlockDevice;
 
 use std::mem;
 use std::ops::{Deref, DerefMut};
@@ -169,7 +170,17 @@ impl Connect for App {
                     device_list.clear();
                     for device in &devices {
                         let name = Path::new(&device).canonicalize().unwrap();
-                        let button = CheckButton::new_with_label(&name.to_string_lossy());
+                        let button = if let Some(block) = BlockDevice::new(&name) {
+                            CheckButton::new_with_label(&[
+                                &block.label(),
+                                " (",
+                                &name.to_string_lossy(),
+                                ")",
+                            ].concat())
+                        } else {
+                            CheckButton::new_with_label(&name.to_string_lossy())
+                        };
+
                         list.insert(&button, -1);
                         device_list.push((device.clone(), button));
                     }
@@ -214,13 +225,20 @@ impl Connect for App {
                         let finished = Arc::new(AtomicUsize::new(0));
                         let bar = ProgressBar::new();
                         bar.set_hexpand(true);
-                        let label = Label::new(
-                            Path::new(&disk_path)
-                                .canonicalize()
-                                .unwrap()
-                                .to_str()
-                                .unwrap(),
-                        );
+
+                        let label = {
+                            let disk_path = Path::new(&disk_path).canonicalize().unwrap();
+                            if let Some(block) = BlockDevice::new(&disk_path) {
+                                Label::new(
+                                    [&block.label(), " (", &disk_path.to_string_lossy(), ")"]
+                                        .concat()
+                                        .as_str(),
+                                )
+                            } else {
+                                Label::new(disk_path.to_string_lossy().as_ref())
+                            }
+                        };
+
                         label.set_justify(Justification::Right);
                         label
                             .get_style_context()

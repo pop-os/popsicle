@@ -6,6 +6,7 @@ extern crate muff;
 extern crate pango;
 extern crate sha3;
 
+mod block;
 mod image;
 mod ui;
 
@@ -14,6 +15,8 @@ use std::path::PathBuf;
 use std::sync::mpsc::channel;
 use std::thread;
 use ui::{App, Connect};
+
+pub use block::BlockDevice;
 
 fn main() {
     let (sender, receiver) = channel::<PathBuf>();
