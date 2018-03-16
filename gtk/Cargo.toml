@@ -1,13 +1,13 @@
 [package]
-name = "muff_gtk"
-description = "Multiple USB File Flasher"
+name = "popsicle_gtk"
+description = "USB Flasher"
 version = "0.1.5"
 authors = ["Jeremy Soller <jeremy@system76.com>"]
 license = "MIT"
 readme = "README.md"
 
 [[bin]]
-name = "muff-gtk"
+name = "popsicle-gtk"
 path = "src/main.rs"
 
 [dependencies]
@@ -16,7 +16,7 @@ failure_derive = "0.1.1"
 gdk = "0.7.0"
 gtk = { version = "0.3.0", features = ["v3_22"] }
 libc = "0.2"
-muff = { path = ".." }
+popsicle = { path = ".." }
 pango = "0.3.0"
 sha3 = "0.7.2"
 digest = "0.7.2"

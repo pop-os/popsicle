@@ -1,5 +1,5 @@
 use super::ui::BufferingData;
-use muff::Image;
+use popsicle::Image;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
@@ -15,7 +15,7 @@ pub fn image_load_event_loop(path_receiver: Receiver<PathBuf>, buffer: &Bufferin
                 buffer.state.store(0b10, Ordering::SeqCst);
             }
             Err(why) => {
-                eprintln!("muff-gtk: image loading error: {}", why);
+                eprintln!("popsicle-gtk: image loading error: {}", why);
                 buffer.state.store(0b100, Ordering::SeqCst);
             }
         }

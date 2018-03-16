@@ -4,15 +4,15 @@
  "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
 <policyconfig>
 
-  <action id="com.system76.pkexec.muff">
-    <message gettext-domain="muff">Authentication is required to run the Multiple USB File Flasher</message>
+  <action id="com.system76.pkexec.popsicle">
+    <message gettext-domain="popsicle">Authentication is required to run the USB Flasher</message>
     <icon_name>drive-removable-media</icon_name>
     <defaults>
       <allow_any>auth_admin</allow_any>
       <allow_inactive>auth_admin</allow_inactive>
       <allow_active>auth_admin</allow_active>
     </defaults>
-    <annotate key="org.freedesktop.policykit.exec.path">/usr/bin/muff-gtk</annotate>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/bin/popsicle-gtk</annotate>
     <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
   </action>
 

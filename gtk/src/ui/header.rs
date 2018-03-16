@@ -12,7 +12,7 @@ impl Header {
         let container = HeaderBar::new();
 
         // Sets the text to display in the title section of the header bar.
-        container.set_title("Multiple USB File Flasher");
+        container.set_title("USB Flasher");
 
         let back = Button::new_with_label("Cancel");
         back.get_style_context().map(|c| c.add_class("back"));
