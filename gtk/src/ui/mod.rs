@@ -23,7 +23,7 @@ use std::time::Instant;
 
 use gtk;
 use gtk::*;
-use muff::DiskError;
+use popsicle::DiskError;
 
 const CSS: &str = include_str!("ui.css");
 
@@ -100,9 +100,9 @@ impl App {
         // Set the headerbar as the title bar widget.
         window.set_titlebar(&header.container);
         // Set the title of the window.
-        window.set_title("Multiple USB File Flasher");
+        window.set_title("Popsicle");
         // Set the window manager class.
-        window.set_wmclass("muff", "Multiple USB File Flasher");
+        window.set_wmclass("popsicle", "Popsicle");
         // The icon the app will display.
         window.set_default_size(400, -1);
         Window::set_default_icon_name("iconname");

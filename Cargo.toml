@@ -1,12 +1,13 @@
 [package]
-name = "muff"
-description = "Multiple USB File Flasher"
+name = "popsicle"
+description = "USB Flasher"
 version = "0.1.5"
 authors = ["Jeremy Soller <jeremy@system76.com>"]
 license = "MIT"
 readme = "README.md"
 
 [lib]
+name = "popsicle"
 path = "src/lib.rs"
 
 [workspace]

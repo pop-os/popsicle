@@ -347,43 +347,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "muff"
-version = "0.1.5"
-dependencies = [
- "failure 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure_derive 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.2.39 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "muff_cli"
-version = "0.1.5"
-dependencies = [
- "clap 2.31.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure_derive 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.2.39 (registry+https://github.com/rust-lang/crates.io-index)",
- "muff 0.1.5",
- "pbr 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "muff_gtk"
-version = "0.1.5"
-dependencies = [
- "digest 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure_derive 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "gdk 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "gtk 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.2.39 (registry+https://github.com/rust-lang/crates.io-index)",
- "md-5 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "muff 0.1.5",
- "pango 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "sha3 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "pango"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -423,6 +386,43 @@ dependencies = [
 name = "pkg-config"
 version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "popsicle"
+version = "0.1.5"
+dependencies = [
+ "failure 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure_derive 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.2.39 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "popsicle_cli"
+version = "0.1.5"
+dependencies = [
+ "clap 2.31.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure_derive 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.2.39 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pbr 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "popsicle 0.1.5",
+]
+
+[[package]]
+name = "popsicle_gtk"
+version = "0.1.5"
+dependencies = [
+ "digest 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure_derive 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gdk 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gtk 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.2.39 (registry+https://github.com/rust-lang/crates.io-index)",
+ "md-5 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pango 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "popsicle 0.1.5",
+ "sha3 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "quote"

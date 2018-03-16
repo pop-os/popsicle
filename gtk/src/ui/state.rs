@@ -11,7 +11,7 @@ use std::time::Instant;
 
 use gtk;
 use gtk::*;
-use muff::{self, DiskError};
+use popsicle::{self, DiskError};
 
 pub struct BufferingData {
     pub data:  Mutex<(PathBuf, Vec<u8>)>,
@@ -162,8 +162,8 @@ impl Connect for App {
                         .for_each(|widget| widget.destroy());
 
                     let mut devices = vec![];
-                    if let Err(why) = muff::get_disk_args(&mut devices) {
-                        eprintln!("muff: unable to get devices: {}", why);
+                    if let Err(why) = popsicle::get_disk_args(&mut devices) {
+                        eprintln!("popsicle: unable to get devices: {}", why);
                     }
 
                     let mut device_list = device_list.lock().unwrap();
@@ -192,9 +192,9 @@ impl Connect for App {
                     let device_list = device_list.lock().unwrap();
                     let devs = device_list.iter().map(|x| x.0.clone());
                     // TODO: Handle Error
-                    let mounts = muff::Mount::all().unwrap();
+                    let mounts = popsicle::Mount::all().unwrap();
                     // TODO: Handle Error
-                    let disks = muff::disks_from_args(devs, &mounts, true).unwrap();
+                    let disks = popsicle::disks_from_args(devs, &mounts, true).unwrap();
 
                     back.set_visible(false);
                     next.set_visible(false);
@@ -260,7 +260,7 @@ impl Connect for App {
                             let progress = progress.clone();
                             let finished = finished.clone();
                             thread::spawn(move || -> Result<(), DiskError> {
-                                let result = muff::write_to_disk(
+                                let result = popsicle::write_to_disk(
                                     |_msg| (),
                                     || (),
                                     |value| progress.store(value as usize, Ordering::SeqCst),

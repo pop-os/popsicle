@@ -1,8 +1,8 @@
-//! MUFF - Multiple USB File Flasher
+//! CLI application for flashing multiple drives in parallel.
 
 extern crate clap;
 extern crate libc;
-extern crate muff;
+extern crate popsicle;
 extern crate pbr;
 
 use clap::{App, Arg};
@@ -12,9 +12,9 @@ use std::cell::RefCell;
 use std::io::{self, Write};
 use std::sync::Arc;
 
-use muff::{DiskError, Image, Mount};
+use popsicle::{DiskError, Image, Mount};
 
-fn muff() -> Result<(), String> {
+fn popsicle() -> Result<(), String> {
     let matches = App::new(env!("CARGO_PKG_NAME"))
         .about(env!("CARGO_PKG_DESCRIPTION"))
         .version(env!("CARGO_PKG_VERSION"))
@@ -66,7 +66,7 @@ fn muff() -> Result<(), String> {
 
     let mut disk_args = vec![];
     if matches.is_present("all") {
-        if let Err(err) = muff::get_disk_args(&mut disk_args) {
+        if let Err(err) = popsicle::get_disk_args(&mut disk_args) {
             return Err(format!("error getting USB disks: {}", err));
         }
     } else {
@@ -88,7 +88,7 @@ fn muff() -> Result<(), String> {
         }
     };
 
-    let disks = muff::disks_from_args(
+    let disks = popsicle::disks_from_args(
         disk_args.into_iter(),
         &mounts,
         matches.is_present("unmount"),
@@ -145,7 +145,7 @@ fn muff() -> Result<(), String> {
         let image_data = image_data.clone();
         let pb = RefCell::new(pb);
         threads.push(thread::spawn(move || -> Result<(), DiskError> {
-            muff::write_to_disk(
+            popsicle::write_to_disk(
                 |msg| pb.borrow_mut().message(msg),
                 || pb.borrow_mut().finish(),
                 |progress| {
@@ -173,10 +173,10 @@ fn muff() -> Result<(), String> {
 }
 
 fn main() {
-    match muff() {
+    match popsicle() {
         Ok(()) => (),
         Err(err) => {
-            writeln!(io::stderr(), "muff: {}", err).unwrap();
+            writeln!(io::stderr(), "popsicle: {}", err).unwrap();
             process::exit(1);
         }
     }

@@ -1,12 +1,12 @@
 [Desktop Entry]
 Type=Application
-Name=Multiple USB File Flasher
-GenericName=Multiple USB File Flasher
-X-GNOME-FullName=Multiple USB File Flasher
+Name=USB Flasher
+GenericName=USB Flasher
+X-GNOME-FullName=USB Flasher
 Icon=drive-removable-media
 Categories=System
-Keywords=USB;Flash;Drive;MUFF;
+Keywords=USB;Flash;Drive;Popsicle;
 MimeType=application/x-cd-image;application/x-raw-disk-image;application/x-raw-disk-image-xz-compressed;
 Terminal=false
 StartupNotify=true
-Exec=/usr/bin/muff-pkexec %U
+Exec=/usr/bin/popsicle-pkexec %U

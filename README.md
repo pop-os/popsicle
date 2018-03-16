@@ -1,2 +1,3 @@
-# muff
-Multiple USB File Flasher
+# Popsicle
+
+USB Flasher

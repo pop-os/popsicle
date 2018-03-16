@@ -8,10 +8,10 @@ datadir = $(datarootdir)
 
 .PHONY: all clean distclean install uninstall update
 
-BIN=muff
-GTK_BIN=muff-gtk
-PKEXEC_BIN=muff-pkexec
-POLICY=com.system76.pkexec.muff.policy
+BIN=popsicle
+GTK_BIN=popsicle-gtk
+PKEXEC_BIN=popsicle-pkexec
+POLICY=com.system76.pkexec.popsicle.policy
 
 all: cli gtk
 
@@ -31,8 +31,8 @@ install-cli: cli
 
 install-gtk: gtk
 	install -D -m 0755 "target/release/$(GTK_BIN)" "$(DESTDIR)$(bindir)/$(GTK_BIN)"
-	install -D -m 0755 "gtk/assets/muff-pkexec" "$(DESTDIR)$(bindir)/$(PKEXEC_BIN)"
-	install -D -m 0644 "gtk/assets/muff.desktop" "$(DESTDIR)$(datadir)/applications/muff.desktop"
+	install -D -m 0755 "gtk/assets/popsicle-pkexec" "$(DESTDIR)$(bindir)/$(PKEXEC_BIN)"
+	install -D -m 0644 "gtk/assets/popsicle.desktop" "$(DESTDIR)$(datadir)/applications/popsicle.desktop"
 	install -D -m 0644 "gtk/assets/$(POLICY)" "$(DESTDIR)$(datadir)/polkit-1/actions/$(POLICY)"
 
 install: all install-cli install-gtk
@@ -44,7 +44,7 @@ uninstall-cli:
 uninstall-gtk:
 	rm -f "$(DESTDIR)$(bindir)/$(GTK_BIN)"
 	rm -f "$(DESTDIR)$(bindir)/$(PKEXEC_BIN)"
-	rm -f "$(DESTDIR)$(datadir)/applications/muff.desktop"
+	rm -f "$(DESTDIR)$(datadir)/applications/popsicle.desktop"
 	rm -f "$(DESTDIR)$(datadir)/polkit-1/actions/$(POLICY)"
 
 uninstall: uninstall-cli uninstall-gtk

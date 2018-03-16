@@ -1,13 +1,13 @@
 [package]
-name = "muff_cli"
-description = "Multiple USB File Flasher"
+name = "popsicle_cli"
+description = "USB Flasher"
 version = "0.1.5"
 authors = ["Jeremy Soller <jeremy@system76.com>"]
 license = "MIT"
 readme = "README.md"
 
 [[bin]]
-name = "muff"
+name = "popsicle"
 path = "src/main.rs"
 
 [dependencies]
@@ -15,5 +15,5 @@ clap = "2.27.0"
 failure = "0.1.1"
 failure_derive = "0.1.1"
 libc = "0.2"
-muff = { path = ".." }
+popsicle = { path = ".." }
 pbr = "1.0.0"
