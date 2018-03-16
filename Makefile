@@ -57,7 +57,7 @@ update:
 	cp $< $@
 
 vendor: .cargo/config
-	cargo vendor
+	cargo vendor --explicit-version --frozen
 	touch vendor
 
 target/release/$(BIN):
