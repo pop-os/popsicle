@@ -1,3 +1,4 @@
 usr/bin/popsicle-gtk /usr/bin
+usr/bin/popsicle-pkexec /usr/bin
 usr/share/applications/popsicle.desktop /usr/share/applications
 usr/share/polkit-1/actions/com.system76.pkexec.popsicle.policy /usr/share/polkit-1/actions
