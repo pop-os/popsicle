@@ -390,7 +390,7 @@ impl Connect for App {
 
             if finished {
                 stack.set_visible_child_name("summary");
-                next.set_label("Finished");
+                next.set_label("Close");
                 next.get_style_context()
                     .map(|c| c.remove_class("destructive-action"));
                 next.set_visible(true);
