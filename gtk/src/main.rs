@@ -4,6 +4,7 @@ extern crate gtk;
 extern crate md5;
 extern crate popsicle;
 extern crate pango;
+extern crate pwd;
 extern crate sha3;
 
 mod block;
@@ -19,6 +20,15 @@ use ui::{App, Connect};
 pub use block::BlockDevice;
 
 fn main() {
+    // If running in pkexec, restore home directory for open dialog
+    if let Ok(pkexec_uid) = env::var("PKEXEC_UID") {
+        if let Ok(uid) = pkexec_uid.parse::<u32>() {
+            if let Some(passwd) = pwd::Passwd::from_uid(uid) {
+                env::set_var("HOME", passwd.dir);
+            }
+        }
+    }
+
     let (sender, receiver) = channel::<PathBuf>();
     let app = App::new(sender);
 
