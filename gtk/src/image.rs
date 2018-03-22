@@ -8,7 +8,10 @@ use std::sync::mpsc::Receiver;
 pub fn image_load_event_loop(path_receiver: Receiver<PathBuf>, buffer: &BufferingData) {
     while let Ok(path) = path_receiver.recv() {
         buffer.state.store(0b1, Ordering::SeqCst);
-        let (ref mut name, ref mut data) = *buffer.data.lock().unwrap();
+        let (ref mut name, ref mut data) = *buffer
+            .data
+            .lock()
+            .expect("failed to unlock image buffer mutex");
         match load_image(&path, data) {
             Ok(_) => {
                 *name = path;

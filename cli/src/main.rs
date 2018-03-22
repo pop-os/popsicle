@@ -2,8 +2,8 @@
 
 extern crate clap;
 extern crate libc;
-extern crate popsicle;
 extern crate pbr;
+extern crate popsicle;
 
 use clap::{App, Arg};
 use pbr::{MultiBar, ProgressBar, Units};

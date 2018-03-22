@@ -13,6 +13,28 @@ use gtk;
 use gtk::*;
 use popsicle::{self, DiskError};
 
+macro_rules! try_or_error {
+    ($act: expr, $view: expr, $back: expr, $next: expr,
+     $stack: ident, $error: ident, $msg: expr, $val: expr) => {
+        match $act {
+            Ok(value) => value,
+            Err(why) => {
+                $back.set_visible(false);
+                $next.set_visible(true);
+                $next.set_label("Close");
+                $next.get_style_context().map(|c| {
+                    c.remove_class("destructive-action");
+                    c.remove_class("suggested-action");
+                });
+                $error.set_text(&format!("{}: {:?}", $msg, why));
+                $view.set(2);
+                $stack.set_visible_child_name("error");
+                return $val;
+            }
+        }
+    };
+}
+
 pub struct BufferingData {
     pub data:  Mutex<(PathBuf, Vec<u8>)>,
     pub state: AtomicUsize,
@@ -88,11 +110,15 @@ impl Connect for App {
         let hash_label = self.content.image_view.hash_label.clone();
         self.content.image_view.hash.connect_changed(move |hash| {
             if state.buffer.state.load(Ordering::SeqCst) == 0b010 {
-                let (_, ref data) = *state.buffer.data.lock().unwrap();
-                hash_label.set_icon_from_icon_name(EntryIconPosition::Primary, "gnome-spinner");
-                hash_label.set_icon_sensitive(EntryIconPosition::Primary, true);
-                hash::set(&hash_label, hash.get_active_text().unwrap().as_str(), data);
-                hash_label.set_icon_sensitive(EntryIconPosition::Primary, false);
+                if let Ok(lock) = state.buffer.data.lock() {
+                    let (_, ref data) = *lock;
+                    hash_label.set_icon_from_icon_name(EntryIconPosition::Primary, "gnome-spinner");
+                    hash_label.set_icon_sensitive(EntryIconPosition::Primary, true);
+                    if let Some(text) = hash.get_active_text() {
+                        hash::set(&hash_label, text.as_str(), data);
+                    }
+                    hash_label.set_icon_sensitive(EntryIconPosition::Primary, false);
+                }
             }
         });
     }
@@ -125,17 +151,29 @@ impl Connect for App {
     }
 
     fn connect_next_button(&self) {
+        #[allow(unused_variables)]
         let back = self.header.back.clone();
         let list = self.content.devices_view.list.clone();
+        let back = self.header.back.clone();
         let next = self.header.next.clone();
         let stack = self.content.container.clone();
         let summary_grid = self.content.flash_view.progress_list.clone();
         let state = self.state.clone();
+        let error = self.content.error_view.buffer.clone();
 
         next.connect_clicked(move |next| {
             let device_list = &state.devices;
             state.buffer.state.store(0b1000, Ordering::SeqCst);
-            let (_, ref mut image_data) = *state.buffer.data.lock().unwrap();
+            let (_, ref mut image_data) = *try_or_error!(
+                state.buffer.data.lock(),
+                state.view,
+                back,
+                next,
+                stack,
+                error,
+                "mutex lock failure",
+                ()
+            );
             let start = &state.start;
             let task_handles = &state.task_handles;
             let bars = &state.bars;
@@ -166,10 +204,31 @@ impl Connect for App {
                         eprintln!("popsicle: unable to get devices: {}", why);
                     }
 
-                    let mut device_list = device_list.lock().unwrap();
+                    let mut device_list = try_or_error!(
+                        device_list.lock(),
+                        state.view,
+                        back,
+                        next,
+                        stack,
+                        error,
+                        "device list mutex lock failure",
+                        ()
+                    );
                     device_list.clear();
                     for device in &devices {
-                        let name = Path::new(&device).canonicalize().unwrap();
+                        // Attempt to get the canonical path of the device.
+                        // Display the error view if this fails.
+                        let name = try_or_error!(
+                            Path::new(&device).canonicalize(),
+                            state.view,
+                            back,
+                            next,
+                            stack,
+                            error,
+                            format!("unable to get canonical path of '{}'", device),
+                            ()
+                        );
+
                         let button = if let Some(block) = BlockDevice::new(&name) {
                             CheckButton::new_with_label(&[
                                 &block.label(),
@@ -189,12 +248,39 @@ impl Connect for App {
                 }
                 // Begin the device flashing process
                 1 => {
-                    let device_list = device_list.lock().unwrap();
+                    let device_list = try_or_error!(
+                        device_list.lock(),
+                        state.view,
+                        back,
+                        next,
+                        stack,
+                        error,
+                        "device list mutex lock failure",
+                        ()
+                    );
                     let devs = device_list.iter().map(|x| x.0.clone());
-                    // TODO: Handle Error
-                    let mounts = popsicle::Mount::all().unwrap();
-                    // TODO: Handle Error
-                    let disks = popsicle::disks_from_args(devs, &mounts, true).unwrap();
+
+                    let mounts = try_or_error!(
+                        popsicle::Mount::all(),
+                        state.view,
+                        back,
+                        next,
+                        stack,
+                        error,
+                        "unable to obtain mount points",
+                        ()
+                    );
+
+                    let disks = try_or_error!(
+                        popsicle::disks_from_args(devs, &mounts, true),
+                        state.view,
+                        back,
+                        next,
+                        stack,
+                        error,
+                        "unable to get collect devices",
+                        ()
+                    );
 
                     back.set_visible(false);
                     next.set_visible(false);
@@ -206,8 +292,27 @@ impl Connect for App {
                     summary_grid.get_children().iter().for_each(|c| c.destroy());
 
                     *start.borrow_mut() = Instant::now();
-                    let mut tasks = tasks.lock().unwrap();
-                    let mut task_handles = task_handles.lock().unwrap();
+                    let mut tasks = try_or_error!(
+                        tasks.lock(),
+                        state.view,
+                        back,
+                        next,
+                        stack,
+                        error,
+                        "tasks mutex lock failure",
+                        ()
+                    );
+
+                    let mut task_handles = try_or_error!(
+                        task_handles.lock(),
+                        state.view,
+                        back,
+                        next,
+                        stack,
+                        error,
+                        "task handles mutex lock failure",
+                        ()
+                    );
 
                     // Take ownership of the data, so that we may wrap it within an `Arc`
                     // and redistribute it across threads.
@@ -227,7 +332,16 @@ impl Connect for App {
                         bar.set_hexpand(true);
 
                         let label = {
-                            let disk_path = Path::new(&disk_path).canonicalize().unwrap();
+                            let disk_path = try_or_error!(
+                                Path::new(&disk_path).canonicalize(),
+                                state.view,
+                                back,
+                                next,
+                                stack,
+                                error,
+                                format!("unable to get canonical path of {}", disk_path),
+                                ()
+                            );
                             if let Some(block) = BlockDevice::new(&disk_path) {
                                 Label::new(
                                     [&block.label(), " (", &disk_path.to_string_lossy(), ")"]
@@ -295,13 +409,25 @@ impl Connect for App {
 
     fn connect_check_all(&self) {
         let all = self.content.devices_view.select_all.clone();
+        let back = self.header.back.clone();
+        let next = self.header.next.clone();
+        let stack = self.content.container.clone();
+        let error = self.content.error_view.buffer.clone();
         let state = self.state.clone();
         all.connect_clicked(move |all| {
             if all.get_active() {
-                state
-                    .devices
-                    .lock()
-                    .unwrap()
+                let devices = try_or_error!(
+                    state.devices.lock(),
+                    state.view,
+                    back,
+                    next,
+                    stack,
+                    error,
+                    "devices mutex lock failure",
+                    ()
+                );
+
+                devices
                     .iter()
                     .for_each(|&(_, ref device)| device.set_active(true));
             }
@@ -310,12 +436,14 @@ impl Connect for App {
 
     fn watch_flashing_devices(&self) {
         let stack = self.content.container.clone();
+        let back = self.header.back.clone();
         let next = self.header.next.clone();
         let description = self.content.summary_view.description.clone();
         let list = self.content.summary_view.list.clone();
         let state = self.state.clone();
         let image_label = self.content.image_view.image_path.clone();
         let chooser_container = self.content.image_view.chooser_container.clone();
+        let error = self.content.error_view.buffer.clone();
 
         gtk::timeout_add(500, move || {
             let tasks = &state.tasks;
@@ -336,9 +464,20 @@ impl Connect for App {
                 }
                 0b0010 => {
                     chooser_container.set_visible_child_name("chooser");
-                    let (ref path, ref data) = *state.buffer.data.lock().unwrap();
+                    let (ref path, ref data) = *try_or_error!(
+                        state.buffer.data.lock(),
+                        state.view,
+                        back,
+                        next,
+                        stack,
+                        error,
+                        "image buffer mutex lock failure",
+                        Continue(false)
+                    );
                     next.set_sensitive(true);
-                    image_label.set_text(&path.file_name().unwrap().to_string_lossy());
+                    image_label.set_text(&path.file_name()
+                        .expect("file chooser can't select directories")
+                        .to_string_lossy());
                     image_length.set(data.len());
                 }
                 0b0100 => {
@@ -352,7 +491,17 @@ impl Connect for App {
 
             let image_length = image_length.get();
 
-            let tasks = tasks.lock().unwrap();
+            let tasks = try_or_error!(
+                tasks.lock(),
+                state.view,
+                back,
+                next,
+                stack,
+                error,
+                "tasks mutex lock failure",
+                Continue(false)
+            );
+
             let ntasks = tasks.len();
             if ntasks == 0 {
                 return Continue(true);
@@ -370,22 +519,23 @@ impl Connect for App {
 
                 bar.set_fraction(value);
 
-                let mut prev_values = task.previous.lock().unwrap();
-                prev_values[1] = prev_values[2];
-                prev_values[2] = prev_values[3];
-                prev_values[3] = prev_values[4];
-                prev_values[4] = prev_values[5];
-                prev_values[5] = prev_values[6];
-                prev_values[6] = raw_value - prev_values[0];
-                prev_values[0] = raw_value;
+                if let Ok(mut prev_values) = task.previous.lock() {
+                    prev_values[1] = prev_values[2];
+                    prev_values[2] = prev_values[3];
+                    prev_values[3] = prev_values[4];
+                    prev_values[4] = prev_values[5];
+                    prev_values[5] = prev_values[6];
+                    prev_values[6] = raw_value - prev_values[0];
+                    prev_values[0] = raw_value;
 
-                let sum: usize = prev_values.iter().skip(1).sum();
-                let per_second = sum / 3;
-                label.set_label(&if per_second > (1024 * 1024) {
-                    format!("{} MiB/s", per_second / (1024 * 1024))
-                } else {
-                    format!("{} KiB/s", per_second / 1024)
-                });
+                    let sum: usize = prev_values.iter().skip(1).sum();
+                    let per_second = sum / 3;
+                    label.set_label(&if per_second > (1024 * 1024) {
+                        format!("{} MiB/s", per_second / (1024 * 1024))
+                    } else {
+                        format!("{} KiB/s", per_second / 1024)
+                    });
+                }
             }
 
             if finished {
@@ -396,13 +546,44 @@ impl Connect for App {
                 next.set_visible(true);
 
                 let mut errored: Vec<(String, DiskError)> = Vec::new();
-                let mut task_handles = task_handles.lock().unwrap();
-                let devices = devices.lock().unwrap();
+                let mut task_handles = try_or_error!(
+                    task_handles.lock(),
+                    state.view,
+                    back,
+                    next,
+                    stack,
+                    error,
+                    "task handles mutex lock failure",
+                    Continue(true)
+                );
+
+                let devices = try_or_error!(
+                    devices.lock(),
+                    state.view,
+                    back,
+                    next,
+                    stack,
+                    error,
+                    "devices mutex lock failure",
+                    Continue(true)
+                );
+
                 let handle_iter = task_handles.deref_mut().drain(..);
                 let mut device_iter = devices.deref().iter();
                 for handle in handle_iter {
                     if let Some(&(ref device, _)) = device_iter.next() {
-                        if let Err(why) = handle.join().unwrap() {
+                        let result = try_or_error!(
+                            handle.join(),
+                            state.view,
+                            back,
+                            next,
+                            stack,
+                            error,
+                            "thread handle join failure",
+                            Continue(false)
+                        );
+
+                        if let Err(why) = result {
                             errored.push((device.clone(), why));
                         }
                     }

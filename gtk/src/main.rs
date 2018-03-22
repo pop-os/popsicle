@@ -2,8 +2,8 @@ extern crate digest;
 extern crate gdk;
 extern crate gtk;
 extern crate md5;
-extern crate popsicle;
 extern crate pango;
+extern crate popsicle;
 extern crate pwd;
 extern crate sha3;
 
