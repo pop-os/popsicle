@@ -20,7 +20,7 @@ impl DevicesView {
         description.set_halign(Align::Start);
         description.get_style_context().map(|c| c.add_class("desc"));
 
-        let select_all = CheckButton::new_with_label("Select All");
+        let select_all = CheckButton::new_with_label("Select all");
         let list = ListBox::new();
         list.insert(&select_all, -1);
         list.get_style_context().map(|c| c.add_class("devices"));
