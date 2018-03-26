@@ -15,7 +15,7 @@ impl DevicesView {
             "Flashing will erase all data on the selected drives.",
         );
 
-        let select_all = CheckButton::new_with_label("Select All");
+        let select_all = CheckButton::new_with_label("Select all");
         let list = ListBox::new();
         list.insert(&select_all, -1);
         list.get_style_context().map(|c| c.add_class("devices"));
