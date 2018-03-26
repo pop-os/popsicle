@@ -180,6 +180,9 @@ impl Connect for App {
                     stack.set_transition_type(StackTransitionType::SlideRight);
                     stack.set_visible_child_name("image");
                     back.set_label("Cancel");
+                    back.get_style_context().map(|c| {
+                        c.remove_class("back-button");
+                    });
                     next.set_label("Next");
                     next.set_sensitive(true);
                     next.get_style_context().map(|c| {
@@ -230,6 +233,9 @@ impl Connect for App {
                 // Move to device selection screen
                 0 => {
                     back.set_label("Back");
+                    back.get_style_context().map(|c| {
+                        c.add_class("back-button");
+                    });
                     next.set_label("Flash");
                     next.get_style_context().map(|c| {
                         c.remove_class("suggested-action");
@@ -291,6 +297,10 @@ impl Connect for App {
                 }
                 // Begin the device flashing process
                 1 => {
+                    back.get_style_context().map(|c| {
+                        c.remove_class("back-button");
+                    });
+
                     let device_list = try_or_error!(
                         device_list.lock(),
                         state.view,
@@ -399,7 +409,7 @@ impl Connect for App {
                         label.set_justify(Justification::Right);
                         label
                             .get_style_context()
-                            .map(|c| c.add_class("progress-label"));
+                            .map(|c| c.add_class("bold"));
                         let bar_label = Label::new("");
                         bar_label.set_halign(Align::Center);
                         let bar_container = Box::new(Orientation::Vertical, 0);
@@ -595,7 +605,7 @@ impl Connect for App {
                     stack,
                     error,
                     "task handles mutex lock failure",
-                    Continue(true)
+                    Continue(false)
                 );
 
                 let devices = try_or_error!(
@@ -606,7 +616,7 @@ impl Connect for App {
                     stack,
                     error,
                     "devices mutex lock failure",
-                    Continue(true)
+                    Continue(false)
                 );
 
                 let handle_iter = task_handles.deref_mut().drain(..);
