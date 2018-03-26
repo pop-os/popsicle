@@ -58,7 +58,7 @@ impl App {
         // Set the window manager class.
         window.set_wmclass("popsicle", "Popsicle");
         // The default size of the window to create.
-        window.set_default_size(400, -1);
+        window.set_default_size(500, 250);
         // The icon the app will display.
         Window::set_default_icon_name("iconname");
         // Add the content to the window.
