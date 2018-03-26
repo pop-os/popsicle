@@ -49,8 +49,13 @@ impl ImageView {
         hash_container
             .get_style_context()
             .map(|c| c.add_class("hash-box"));
-        hash_container.pack_start(&hash, false, false, 0);
-        hash_container.pack_start(&hash_label, true, true, 0);
+        {
+            let label = Label::new("Hash:");
+            label.set_margin_right(6);
+            hash_container.pack_start(&label, false, false, 0);
+            hash_container.pack_start(&hash, false, false, 0);
+            hash_container.pack_start(&hash_label, true, true, 0);
+        }
 
         let chooser_container = Stack::new();
         chooser_container.add_named(&button_box, "chooser");
