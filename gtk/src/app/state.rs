@@ -1,21 +1,79 @@
-use super::{hash, App, FlashTask, OpenDialog};
 use super::super::BlockDevice;
+use super::{hash, App, OpenDialog};
 
+use image::BufferingData;
+use std::cell::{Cell, RefCell};
 use std::mem;
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::mpsc::Sender;
+use std::sync::{Arc, Mutex};
 use std::thread;
+use std::thread::JoinHandle;
 use std::time::Instant;
 
 use gtk;
 use gtk::*;
 use popsicle::{self, DiskError};
 
+/// Contains all of the state that needs to be shared across the program's lifetime.
+pub struct State {
+    /// Contains all of the progress bars in the flash view.
+    pub bars: RefCell<Vec<(ProgressBar, Label)>>,
+    /// Contains the disk image that is loaded into memory and shared across threads.
+    pub buffer: Arc<BufferingData>,
+    /// Contains a list of devices detected, and their check buttons.
+    pub devices: Mutex<Vec<(String, CheckButton)>>,
+    /// Useful for storing the size of the image that was loaded.
+    pub image_length: Cell<usize>,
+    /// Signals to load a new disk image into the `buffer` field.
+    pub image_sender: Sender<PathBuf>,
+    /// Stores the time when the flashing process began.
+    pub start: RefCell<Instant>,
+    /// Holds the task threads that write the image to each device.
+    /// The handles may contain errors when joined, for printing on the summary page.
+    pub task_handles: Mutex<Vec<JoinHandle<Result<(), DiskError>>>>,
+    /// Contains progress data regarding each active flash task -- namely the progress.
+    pub tasks: Mutex<Vec<FlashTask>>,
+    /// Stores an integer which defines the currently-active view.
+    pub view: Cell<u8>,
+}
+
+impl State {
+    /// Initailizes a new structure for managing the state of the application.
+    pub fn new(image_sender: Sender<PathBuf>) -> State {
+        State {
+            bars: RefCell::new(Vec::new()),
+            devices: Mutex::new(Vec::new()),
+            task_handles: Mutex::new(Vec::new()),
+            tasks: Mutex::new(Vec::new()),
+            view: Cell::new(0),
+            start: RefCell::new(unsafe { mem::uninitialized() }),
+            buffer: Arc::new(BufferingData::new()),
+            image_sender,
+            image_length: Cell::new(0),
+        }
+    }
+}
+
+pub struct FlashTask {
+    progress: Arc<AtomicUsize>,
+    previous: Arc<Mutex<[usize; 7]>>,
+    finished: Arc<AtomicUsize>,
+}
+
 macro_rules! try_or_error {
-    ($act: expr, $view: expr, $back: expr, $next: expr,
-     $stack: ident, $error: ident, $msg: expr, $val: expr) => {
+    (
+        $act: expr,
+        $view: expr,
+        $back: expr,
+        $next: expr,
+        $stack: ident,
+        $error: ident,
+        $msg: expr,
+        $val: expr
+    ) => {
         match $act {
             Ok(value) => value,
             Err(why) => {
@@ -33,20 +91,6 @@ macro_rules! try_or_error {
             }
         }
     };
-}
-
-pub struct BufferingData {
-    pub data:  Mutex<(PathBuf, Vec<u8>)>,
-    pub state: AtomicUsize,
-}
-
-impl BufferingData {
-    pub fn new() -> BufferingData {
-        BufferingData {
-            data:  Mutex::new((PathBuf::new(), Vec::new())),
-            state: 0.into(),
-        }
-    }
 }
 
 pub struct Connected(App);

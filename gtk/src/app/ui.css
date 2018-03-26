@@ -1,0 +1,12 @@
+.h2 {
+	font-size: 1.25em;
+	font-weight: bold;
+}
+
+.bold {
+    font-weight: bold;    
+}
+
+.hash-box button, .hash-box entry {
+    border-radius: 0;
+}

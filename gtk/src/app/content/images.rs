@@ -1,8 +1,9 @@
+use super::View;
 use gtk::*;
 use pango::EllipsizeMode;
 
 pub struct ImageView {
-    pub container:         Box,
+    pub view:              View,
     pub chooser_container: Stack,
     pub chooser:           Button,
     pub image_path:        Label,
@@ -12,24 +13,16 @@ pub struct ImageView {
 
 impl ImageView {
     pub fn new() -> ImageView {
-        let image = Image::new_from_icon_name("application-x-cd-image", 6);
-        image.set_valign(Align::Start);
-
-        let topic = Label::new("Choose an Image");
-        topic.set_halign(Align::Start);
-        topic.get_style_context().map(|c| c.add_class("h2"));
-
-        let description = Label::new(
+        let view = View::new(
+            "application-x-cd-image",
+            "Choose an Image",
             "Select the .iso or .img that you want to flash. You can also plug your USB drives in \
              now.",
         );
-        description.set_line_wrap(true);
-        description.set_halign(Align::Start);
-        description.get_style_context().map(|c| c.add_class("desc"));
 
         let chooser = Button::new_with_label("Choose Image");
         chooser.set_halign(Align::Center);
-        chooser.set_halign(Align::Center);
+        chooser.set_margin_bottom(6);
 
         let image_path = Label::new("No image selected");
         image_path.set_ellipsize(EllipsizeMode::End);
@@ -70,28 +63,17 @@ impl ImageView {
         chooser_container.add_named(&button_box, "chooser");
         chooser_container.add_named(&spinner_box, "loader");
         chooser_container.set_visible_child_name("chooser");
+        chooser_container.set_margin_top(12);
+        chooser_container.set_margin_bottom(24);
 
-        let left_panel = Box::new(Orientation::Vertical, 0);
-        left_panel
-            .get_style_context()
-            .map(|c| c.add_class("left-panel"));
-        left_panel.pack_start(&image, false, false, 0);
-
-        let right_panel = Box::new(Orientation::Vertical, 0);
-        right_panel
-            .get_style_context()
-            .map(|c| c.add_class("right-panel"));
-        right_panel.pack_start(&topic, false, false, 0);
-        right_panel.pack_start(&description, false, false, 0);
-        right_panel.pack_start(&chooser_container, true, false, 0);
-        right_panel.pack_start(&hash_container, false, false, 0);
-
-        let container = Box::new(Orientation::Horizontal, 5);
-        container.pack_start(&left_panel, false, false, 0);
-        container.pack_start(&right_panel, true, true, 0);
+        {
+            let right_panel = &view.panel;
+            right_panel.pack_start(&chooser_container, true, false, 0);
+            right_panel.pack_start(&hash_container, false, false, 0);
+        }
 
         ImageView {
-            container,
+            view,
             chooser_container,
             chooser,
             image_path,

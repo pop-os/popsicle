@@ -3,14 +3,18 @@ mod error;
 mod flashing;
 mod images;
 mod summary;
+mod view;
 
 pub use self::devices::DevicesView;
 pub use self::error::ErrorView;
 pub use self::flashing::FlashView;
 pub use self::images::ImageView;
 pub use self::summary::SummaryView;
+pub use self::view::View;
 
 use gtk::*;
+
+use super::set_margins;
 
 pub struct Content {
     pub container:    Stack,
@@ -24,6 +28,7 @@ pub struct Content {
 impl Content {
     pub fn new() -> Content {
         let container = Stack::new();
+        set_margins(&container, 12);
 
         let image_view = ImageView::new();
         let devices_view = DevicesView::new();
@@ -31,8 +36,8 @@ impl Content {
         let summary_view = SummaryView::new();
         let error_view = ErrorView::new();
 
-        container.add_named(&image_view.container, "image");
-        container.add_named(&devices_view.container, "devices");
+        container.add_named(&image_view.view.container, "image");
+        container.add_named(&devices_view.view.container, "devices");
         container.add_named(&flash_view.container, "flash");
         container.add_named(&summary_view.container, "summary");
         container.add_named(&error_view.container, "error");

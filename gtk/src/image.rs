@@ -1,10 +1,30 @@
-use super::ui::BufferingData;
 use popsicle::Image;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::Ordering;
+use std::sync::Mutex;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::Receiver;
 
+/// A structure for buffering disk images in the background.
+pub struct BufferingData {
+    /// Stores the path of the image, and the image contents stored in memory.
+    pub data: Mutex<(PathBuf, Vec<u8>)>,
+    /// This field will determine if the `data` field is ready to be used.
+    pub state: AtomicUsize,
+}
+
+impl BufferingData {
+    pub fn new() -> BufferingData {
+        BufferingData {
+            data:  Mutex::new((PathBuf::new(), Vec::new())),
+            state: 0.into(),
+        }
+    }
+}
+
+/// An event loop that is meant to be run in a background thread, receiving image paths
+/// to load, and buffering those images into the application's shared `BufferingData`
+/// field.
 pub fn image_load_event_loop(path_receiver: Receiver<PathBuf>, buffer: &BufferingData) {
     while let Ok(path) = path_receiver.recv() {
         buffer.state.store(0b1, Ordering::SeqCst);
