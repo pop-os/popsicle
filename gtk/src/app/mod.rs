@@ -1,29 +1,25 @@
 mod content;
-mod state;
 mod dialogs;
 mod hash;
 mod header;
+mod misc;
+mod state;
 
 use self::content::Content;
 pub use self::dialogs::OpenDialog;
 use self::header::Header;
-pub use self::state::{BufferingData, Connect};
+pub use self::misc::*;
+pub use self::state::{Connect, State};
 
 // TODO: Use AtomicU64 / Bool when https://github.com/rust-lang/rust/issues/32976 is stable.
 
-use std::cell::{Cell, RefCell};
-use std::mem;
 use std::path::PathBuf;
 use std::process;
-use std::sync::{Arc, Mutex};
-use std::sync::atomic::AtomicUsize;
+use std::sync::Arc;
 use std::sync::mpsc::Sender;
-use std::thread::JoinHandle;
-use std::time::Instant;
 
 use gtk;
 use gtk::*;
-use popsicle::DiskError;
 
 const CSS: &str = include_str!("ui.css");
 
@@ -32,48 +28,6 @@ pub struct App {
     pub header:  Header,
     pub content: Content,
     pub state:   Arc<State>,
-}
-
-/// Contains all of the state that needs to be shared across the program's lifetime.
-pub struct State {
-    /// Contains all of the progress bars in the flash view.
-    pub bars: RefCell<Vec<(ProgressBar, Label)>>,
-    /// Contains a list of devices detected, and their check buttons.
-    pub devices: Mutex<Vec<(String, CheckButton)>>,
-    /// Holds the task threads that write the image to each device.
-    /// The handles may contain errors when joined, for printing on the summary page.
-    pub task_handles: Mutex<Vec<JoinHandle<Result<(), DiskError>>>>,
-    /// Contains progress data regarding each active flash task -- namely the progress.
-    pub tasks: Mutex<Vec<FlashTask>>,
-    /// Stores an integer which defines the currently-active view.
-    pub view: Cell<u8>,
-    /// Stores the time when the flashing process began.
-    pub start: RefCell<Instant>,
-    pub buffer: Arc<BufferingData>,
-    pub image_sender: Sender<PathBuf>,
-    pub image_length: Cell<usize>,
-}
-
-impl State {
-    fn new(image_sender: Sender<PathBuf>) -> State {
-        State {
-            bars: RefCell::new(Vec::new()),
-            devices: Mutex::new(Vec::new()),
-            task_handles: Mutex::new(Vec::new()),
-            tasks: Mutex::new(Vec::new()),
-            view: Cell::new(0),
-            start: RefCell::new(unsafe { mem::uninitialized() }),
-            buffer: Arc::new(BufferingData::new()),
-            image_sender,
-            image_length: Cell::new(0),
-        }
-    }
-}
-
-pub struct FlashTask {
-    progress: Arc<AtomicUsize>,
-    previous: Arc<Mutex<[usize; 7]>>,
-    finished: Arc<AtomicUsize>,
 }
 
 impl App {
@@ -103,8 +57,9 @@ impl App {
         window.set_title("Popsicle");
         // Set the window manager class.
         window.set_wmclass("popsicle", "Popsicle");
+        // The default size of the window to create.
+        window.set_default_size(500, 250);
         // The icon the app will display.
-        window.set_default_size(400, -1);
         Window::set_default_icon_name("iconname");
         // Add the content to the window.
         window.add(&content.container);

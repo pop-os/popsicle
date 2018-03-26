@@ -7,10 +7,10 @@ extern crate popsicle;
 
 use clap::{App, Arg};
 use pbr::{MultiBar, ProgressBar, Units};
-use std::{process, thread};
 use std::cell::RefCell;
 use std::io::{self, Write};
 use std::sync::Arc;
+use std::{process, thread};
 
 use popsicle::{DiskError, Image, Mount};
 

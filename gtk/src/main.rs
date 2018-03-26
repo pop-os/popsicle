@@ -7,15 +7,15 @@ extern crate popsicle;
 extern crate pwd;
 extern crate sha3;
 
+mod app;
 mod block;
 mod image;
-mod ui;
 
+use app::{App, Connect};
 use std::env;
 use std::path::PathBuf;
 use std::sync::mpsc::channel;
 use std::thread;
-use ui::{App, Connect};
 
 pub use block::BlockDevice;
 

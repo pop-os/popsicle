@@ -1,21 +1,79 @@
-use super::{hash, App, FlashTask, OpenDialog};
 use super::super::BlockDevice;
+use super::{hash, App, OpenDialog};
 
+use image::BufferingData;
+use std::cell::{Cell, RefCell};
 use std::mem;
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::mpsc::Sender;
+use std::sync::{Arc, Mutex};
 use std::thread;
+use std::thread::JoinHandle;
 use std::time::Instant;
 
 use gtk;
 use gtk::*;
 use popsicle::{self, DiskError};
 
+/// Contains all of the state that needs to be shared across the program's lifetime.
+pub struct State {
+    /// Contains all of the progress bars in the flash view.
+    pub bars: RefCell<Vec<(ProgressBar, Label)>>,
+    /// Contains the disk image that is loaded into memory and shared across threads.
+    pub buffer: Arc<BufferingData>,
+    /// Contains a list of devices detected, and their check buttons.
+    pub devices: Mutex<Vec<(String, CheckButton)>>,
+    /// Useful for storing the size of the image that was loaded.
+    pub image_length: Cell<usize>,
+    /// Signals to load a new disk image into the `buffer` field.
+    pub image_sender: Sender<PathBuf>,
+    /// Stores the time when the flashing process began.
+    pub start: RefCell<Instant>,
+    /// Holds the task threads that write the image to each device.
+    /// The handles may contain errors when joined, for printing on the summary page.
+    pub task_handles: Mutex<Vec<JoinHandle<Result<(), DiskError>>>>,
+    /// Contains progress data regarding each active flash task -- namely the progress.
+    pub tasks: Mutex<Vec<FlashTask>>,
+    /// Stores an integer which defines the currently-active view.
+    pub view: Cell<u8>,
+}
+
+impl State {
+    /// Initailizes a new structure for managing the state of the application.
+    pub fn new(image_sender: Sender<PathBuf>) -> State {
+        State {
+            bars: RefCell::new(Vec::new()),
+            devices: Mutex::new(Vec::new()),
+            task_handles: Mutex::new(Vec::new()),
+            tasks: Mutex::new(Vec::new()),
+            view: Cell::new(0),
+            start: RefCell::new(unsafe { mem::uninitialized() }),
+            buffer: Arc::new(BufferingData::new()),
+            image_sender,
+            image_length: Cell::new(0),
+        }
+    }
+}
+
+pub struct FlashTask {
+    progress: Arc<AtomicUsize>,
+    previous: Arc<Mutex<[usize; 7]>>,
+    finished: Arc<AtomicUsize>,
+}
+
 macro_rules! try_or_error {
-    ($act: expr, $view: expr, $back: expr, $next: expr,
-     $stack: ident, $error: ident, $msg: expr, $val: expr) => {
+    (
+        $act: expr,
+        $view: expr,
+        $back: expr,
+        $next: expr,
+        $stack: ident,
+        $error: ident,
+        $msg: expr,
+        $val: expr
+    ) => {
         match $act {
             Ok(value) => value,
             Err(why) => {
@@ -33,20 +91,6 @@ macro_rules! try_or_error {
             }
         }
     };
-}
-
-pub struct BufferingData {
-    pub data:  Mutex<(PathBuf, Vec<u8>)>,
-    pub state: AtomicUsize,
-}
-
-impl BufferingData {
-    pub fn new() -> BufferingData {
-        BufferingData {
-            data:  Mutex::new((PathBuf::new(), Vec::new())),
-            state: 0.into(),
-        }
-    }
 }
 
 pub struct Connected(App);
@@ -136,6 +180,9 @@ impl Connect for App {
                     stack.set_transition_type(StackTransitionType::SlideRight);
                     stack.set_visible_child_name("image");
                     back.set_label("Cancel");
+                    back.get_style_context().map(|c| {
+                        c.remove_class("back-button");
+                    });
                     next.set_label("Next");
                     next.set_sensitive(true);
                     next.get_style_context().map(|c| {
@@ -159,7 +206,7 @@ impl Connect for App {
         let stack = self.content.container.clone();
         let summary_grid = self.content.flash_view.progress_list.clone();
         let state = self.state.clone();
-        let error = self.content.error_view.buffer.clone();
+        let error = self.content.error_view.view.description.clone();
 
         next.connect_clicked(move |next| {
             let device_list = &state.devices;
@@ -186,6 +233,9 @@ impl Connect for App {
                 // Move to device selection screen
                 0 => {
                     back.set_label("Back");
+                    back.get_style_context().map(|c| {
+                        c.add_class("back-button");
+                    });
                     next.set_label("Flash");
                     next.get_style_context().map(|c| {
                         c.remove_class("suggested-action");
@@ -196,7 +246,6 @@ impl Connect for App {
                     // Remove all but the first row
                     list.get_children()
                         .into_iter()
-                        .skip(1)
                         .for_each(|widget| widget.destroy());
 
                     let mut devices = vec![];
@@ -248,6 +297,10 @@ impl Connect for App {
                 }
                 // Begin the device flashing process
                 1 => {
+                    back.get_style_context().map(|c| {
+                        c.remove_class("back-button");
+                    });
+
                     let device_list = try_or_error!(
                         device_list.lock(),
                         state.view,
@@ -258,7 +311,9 @@ impl Connect for App {
                         "device list mutex lock failure",
                         ()
                     );
-                    let devs = device_list.iter().map(|x| x.0.clone());
+                    let devs = device_list.iter()
+                        .filter(|x| x.1.get_active())
+                        .map(|x| x.0.clone());
 
                     let mounts = try_or_error!(
                         popsicle::Mount::all(),
@@ -356,7 +411,7 @@ impl Connect for App {
                         label.set_justify(Justification::Right);
                         label
                             .get_style_context()
-                            .map(|c| c.add_class("progress-label"));
+                            .map(|c| c.add_class("bold"));
                         let bar_label = Label::new("");
                         bar_label.set_halign(Align::Center);
                         let bar_container = Box::new(Orientation::Vertical, 0);
@@ -412,25 +467,23 @@ impl Connect for App {
         let back = self.header.back.clone();
         let next = self.header.next.clone();
         let stack = self.content.container.clone();
-        let error = self.content.error_view.buffer.clone();
+        let error = self.content.error_view.view.description.clone();
         let state = self.state.clone();
         all.connect_clicked(move |all| {
-            if all.get_active() {
-                let devices = try_or_error!(
-                    state.devices.lock(),
-                    state.view,
-                    back,
-                    next,
-                    stack,
-                    error,
-                    "devices mutex lock failure",
-                    ()
-                );
+            let devices = try_or_error!(
+                state.devices.lock(),
+                state.view,
+                back,
+                next,
+                stack,
+                error,
+                "devices mutex lock failure",
+                ()
+            );
 
-                devices
-                    .iter()
-                    .for_each(|&(_, ref device)| device.set_active(true));
-            }
+            devices
+                .iter()
+                .for_each(|&(_, ref device)| device.set_active(all.get_active()));
         });
     }
 
@@ -438,12 +491,12 @@ impl Connect for App {
         let stack = self.content.container.clone();
         let back = self.header.back.clone();
         let next = self.header.next.clone();
-        let description = self.content.summary_view.description.clone();
+        let description = self.content.summary_view.view.description.clone();
         let list = self.content.summary_view.list.clone();
         let state = self.state.clone();
         let image_label = self.content.image_view.image_path.clone();
         let chooser_container = self.content.image_view.chooser_container.clone();
-        let error = self.content.error_view.buffer.clone();
+        let error = self.content.error_view.view.description.clone();
 
         gtk::timeout_add(500, move || {
             let tasks = &state.tasks;
@@ -554,7 +607,7 @@ impl Connect for App {
                     stack,
                     error,
                     "task handles mutex lock failure",
-                    Continue(true)
+                    Continue(false)
                 );
 
                 let devices = try_or_error!(
@@ -565,7 +618,7 @@ impl Connect for App {
                     stack,
                     error,
                     "devices mutex lock failure",
-                    Continue(true)
+                    Continue(false)
                 );
 
                 let handle_iter = task_handles.deref_mut().drain(..);
