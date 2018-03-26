@@ -240,7 +240,6 @@ impl Connect for App {
                     // Remove all but the first row
                     list.get_children()
                         .into_iter()
-                        .skip(1)
                         .for_each(|widget| widget.destroy());
 
                     let mut devices = vec![];
@@ -459,22 +458,20 @@ impl Connect for App {
         let error = self.content.error_view.view.description.clone();
         let state = self.state.clone();
         all.connect_clicked(move |all| {
-            if all.get_active() {
-                let devices = try_or_error!(
-                    state.devices.lock(),
-                    state.view,
-                    back,
-                    next,
-                    stack,
-                    error,
-                    "devices mutex lock failure",
-                    ()
-                );
+            let devices = try_or_error!(
+                state.devices.lock(),
+                state.view,
+                back,
+                next,
+                stack,
+                error,
+                "devices mutex lock failure",
+                ()
+            );
 
-                devices
-                    .iter()
-                    .for_each(|&(_, ref device)| device.set_active(true));
-            }
+            devices
+                .iter()
+                .for_each(|&(_, ref device)| device.set_active(all.get_active()));
         });
     }
 
