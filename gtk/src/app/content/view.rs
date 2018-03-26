@@ -3,14 +3,19 @@ use gtk::{self, Align, Image, Label, Orientation};
 
 pub struct View {
     pub container:   gtk::Box,
-    pub icon:        gtk::Image,
-    pub topic:       gtk::Label,
-    pub description: gtk::Label,
+    pub icon:        Image,
+    pub topic:       Label,
+    pub description: Label,
     pub panel:       gtk::Box,
 }
 
 impl View {
-    pub fn new(icon: &str, topic: &str, description: &str) -> View {
+    pub fn new<F: Fn(&gtk::Box)>(
+        icon: &str,
+        topic: &str,
+        description: &str,
+        configure_panel: F,
+    ) -> View {
         let icon = Image::new_from_icon_name(icon, 6);
         icon.set_valign(Align::Start);
 
@@ -41,6 +46,8 @@ impl View {
         let container = gtk::Box::new(Orientation::Horizontal, 12);
         container.pack_start(&left_panel, false, false, 0);
         container.pack_start(&right_panel, true, true, 0);
+
+        configure_panel(&right_panel);
 
         View {
             container,

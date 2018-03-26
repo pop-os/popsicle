@@ -38,9 +38,9 @@ impl Content {
 
         container.add_named(&image_view.view.container, "image");
         container.add_named(&devices_view.view.container, "devices");
-        container.add_named(&flash_view.container, "flash");
-        container.add_named(&summary_view.container, "summary");
-        container.add_named(&error_view.container, "error");
+        container.add_named(&flash_view.view.container, "flash");
+        container.add_named(&summary_view.view.container, "summary");
+        container.add_named(&error_view.view.container, "error");
         container.set_visible_child_name("image");
 
         Content {

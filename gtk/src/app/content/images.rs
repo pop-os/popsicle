@@ -13,13 +13,6 @@ pub struct ImageView {
 
 impl ImageView {
     pub fn new() -> ImageView {
-        let view = View::new(
-            "application-x-cd-image",
-            "Choose an Image",
-            "Select the .iso or .img that you want to flash. You can also plug your USB drives in \
-             now.",
-        );
-
         let chooser = Button::new_with_label("Choose Image");
         chooser.set_halign(Align::Center);
         chooser.set_margin_bottom(6);
@@ -66,11 +59,16 @@ impl ImageView {
         chooser_container.set_margin_top(12);
         chooser_container.set_margin_bottom(24);
 
-        {
-            let right_panel = &view.panel;
-            right_panel.pack_start(&chooser_container, true, false, 0);
-            right_panel.pack_start(&hash_container, false, false, 0);
-        }
+        let view = View::new(
+            "application-x-cd-image",
+            "Choose an Image",
+            "Select the .iso or .img that you want to flash. You can also plug your USB drives in \
+             now.",
+            |right_panel| {
+                right_panel.pack_start(&chooser_container, true, false, 0);
+                right_panel.pack_start(&hash_container, false, false, 0);
+            },
+        );
 
         ImageView {
             view,

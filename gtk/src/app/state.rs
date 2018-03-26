@@ -203,7 +203,7 @@ impl Connect for App {
         let stack = self.content.container.clone();
         let summary_grid = self.content.flash_view.progress_list.clone();
         let state = self.state.clone();
-        let error = self.content.error_view.buffer.clone();
+        let error = self.content.error_view.view.description.clone();
 
         next.connect_clicked(move |next| {
             let device_list = &state.devices;
@@ -456,7 +456,7 @@ impl Connect for App {
         let back = self.header.back.clone();
         let next = self.header.next.clone();
         let stack = self.content.container.clone();
-        let error = self.content.error_view.buffer.clone();
+        let error = self.content.error_view.view.description.clone();
         let state = self.state.clone();
         all.connect_clicked(move |all| {
             if all.get_active() {
@@ -482,12 +482,12 @@ impl Connect for App {
         let stack = self.content.container.clone();
         let back = self.header.back.clone();
         let next = self.header.next.clone();
-        let description = self.content.summary_view.description.clone();
+        let description = self.content.summary_view.view.description.clone();
         let list = self.content.summary_view.list.clone();
         let state = self.state.clone();
         let image_label = self.content.image_view.image_path.clone();
         let chooser_container = self.content.image_view.chooser_container.clone();
-        let error = self.content.error_view.buffer.clone();
+        let error = self.content.error_view.view.description.clone();
 
         gtk::timeout_add(500, move || {
             let tasks = &state.tasks;
