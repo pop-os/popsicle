@@ -311,7 +311,9 @@ impl Connect for App {
                         "device list mutex lock failure",
                         ()
                     );
-                    let devs = device_list.iter().map(|x| x.0.clone());
+                    let devs = device_list.iter()
+                        .filter(|x| x.1.get_active())
+                        .map(|x| x.0.clone());
 
                     let mounts = try_or_error!(
                         popsicle::Mount::all(),
