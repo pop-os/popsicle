@@ -1,6 +1,5 @@
 mod content;
 mod dialogs;
-mod hash;
 mod header;
 mod misc;
 mod state;
