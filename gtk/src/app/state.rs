@@ -1,7 +1,8 @@
 use super::super::BlockDevice;
-use super::{hash, App, OpenDialog};
+use super::{App, OpenDialog};
 
-use image::BufferingData;
+use hash::HashState;
+use image::{self, BufferingData};
 use std::cell::{Cell, RefCell};
 use std::mem;
 use std::ops::{Deref, DerefMut};
@@ -25,6 +26,8 @@ pub struct State {
     pub buffer: Arc<BufferingData>,
     /// Contains a list of devices detected, and their check buttons.
     pub devices: Mutex<Vec<(String, CheckButton)>>,
+    /// Manages the state of hash requests
+    pub(crate) hash: Arc<HashState>,
     /// Useful for storing the size of the image that was loaded.
     pub image_length: Cell<usize>,
     /// Signals to load a new disk image into the `buffer` field.
@@ -46,6 +49,7 @@ impl State {
         State {
             bars: RefCell::new(Vec::new()),
             devices: Mutex::new(Vec::new()),
+            hash: Arc::new(HashState::new()),
             task_handles: Mutex::new(Vec::new()),
             tasks: Mutex::new(Vec::new()),
             view: Cell::new(0),
@@ -65,14 +69,14 @@ pub struct FlashTask {
 
 macro_rules! try_or_error {
     (
-        $act: expr,
-        $view: expr,
-        $back: expr,
-        $next: expr,
-        $stack: ident,
-        $error: ident,
-        $msg: expr,
-        $val: expr
+        $act:expr,
+        $view:expr,
+        $back:expr,
+        $next:expr,
+        $stack:ident,
+        $error:ident,
+        $msg:expr,
+        $val:expr
     ) => {
         match $act {
             Ok(value) => value,
@@ -152,19 +156,40 @@ impl Connect for App {
     fn connect_hash_generator(&self) {
         let state = self.state.clone();
         let hash_label = self.content.image_view.hash_label.clone();
-        self.content.image_view.hash.connect_changed(move |hash| {
-            if state.buffer.state.load(Ordering::SeqCst) == 0b010 {
-                if let Ok(lock) = state.buffer.data.lock() {
-                    let (_, ref data) = *lock;
-                    hash_label.set_icon_from_icon_name(EntryIconPosition::Primary, "gnome-spinner");
-                    hash_label.set_icon_sensitive(EntryIconPosition::Primary, true);
-                    if let Some(text) = hash.get_active_text() {
-                        hash::set(&hash_label, text.as_str(), data);
+        self.content
+            .image_view
+            .hash
+            .connect_changed(move |hash_kind| {
+                let hash_kind = match hash_kind.get_active() {
+                    1 => Some("SHA256"),
+                    2 => Some("MD5"),
+                    _ => None,
+                };
+
+                if let Some(hash_kind) = hash_kind {
+                    if hash_kind != "Type" {
+                        let hash = state.hash.clone();
+                        thread::spawn(move || {
+                            while hash.is_busy() {
+                                thread::yield_now();
+                            }
+
+                            hash.request(hash_kind);
+                        });
+
+                        let hash = state.hash.clone();
+                        let hash_label = hash_label.clone();
+                        gtk::timeout_add(1000, move || {
+                            if !hash.is_ready() {
+                                return Continue(true);
+                            }
+
+                            hash_label.set_text(hash.obtain().as_str());
+                            Continue(false)
+                        });
                     }
-                    hash_label.set_icon_sensitive(EntryIconPosition::Primary, false);
                 }
-            }
-        });
+            });
     }
 
     fn connect_back_button(&self) {
@@ -210,7 +235,7 @@ impl Connect for App {
 
         next.connect_clicked(move |next| {
             let device_list = &state.devices;
-            state.buffer.state.store(0b1000, Ordering::SeqCst);
+            state.buffer.state.store(image::SLEEPING, Ordering::SeqCst);
             let (_, ref mut image_data) = *try_or_error!(
                 state.buffer.data.lock(),
                 state.view,
@@ -311,7 +336,8 @@ impl Connect for App {
                         "device list mutex lock failure",
                         ()
                     );
-                    let devs = device_list.iter()
+                    let devs = device_list
+                        .iter()
                         .filter(|x| x.1.get_active())
                         .map(|x| x.0.clone());
 
@@ -409,9 +435,7 @@ impl Connect for App {
                         };
 
                         label.set_justify(Justification::Right);
-                        label
-                            .get_style_context()
-                            .map(|c| c.add_class("bold"));
+                        label.get_style_context().map(|c| c.add_class("bold"));
                         let bar_label = Label::new("");
                         bar_label.set_halign(Align::Center);
                         let bar_container = Box::new(Orientation::Vertical, 0);
@@ -507,16 +531,21 @@ impl Connect for App {
 
             // Ensure that the image has been loaded before continuing.
             match state.buffer.state.load(Ordering::SeqCst) {
-                0b0000 => {
+                0 => {
                     return Continue(true);
                 }
-                0b0001 => {
+                image::PROCESSING => {
                     chooser_container.set_visible_child_name("loader");
                     next.set_sensitive(false);
                     return Continue(true);
                 }
-                0b0010 => {
+                image::COMPLETED => {
                     chooser_container.set_visible_child_name("chooser");
+
+                    if state.hash.is_busy() {
+                        return Continue(true);
+                    }
+
                     let (ref path, ref data) = *try_or_error!(
                         state.buffer.data.lock(),
                         state.view,
@@ -533,12 +562,12 @@ impl Connect for App {
                         .to_string_lossy());
                     image_length.set(data.len());
                 }
-                0b0100 => {
+                image::ERRORED => {
                     chooser_container.set_visible_child_name("chooser");
                     next.set_sensitive(false);
                     return Continue(true);
                 }
-                0b1000 => (),
+                image::SLEEPING => (),
                 _ => unreachable!(),
             }
 

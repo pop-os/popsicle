@@ -22,12 +22,17 @@ impl BufferingData {
     }
 }
 
+pub const PROCESSING: usize = 1;
+pub const COMPLETED: usize = 2;
+pub const ERRORED: usize = 3;
+pub const SLEEPING: usize = 4;
+
 /// An event loop that is meant to be run in a background thread, receiving image paths
 /// to load, and buffering those images into the application's shared `BufferingData`
 /// field.
-pub fn image_load_event_loop(path_receiver: Receiver<PathBuf>, buffer: &BufferingData) {
+pub fn event_loop(path_receiver: Receiver<PathBuf>, buffer: &BufferingData) {
     while let Ok(path) = path_receiver.recv() {
-        buffer.state.store(0b1, Ordering::SeqCst);
+        buffer.state.store(PROCESSING, Ordering::SeqCst);
         let (ref mut name, ref mut data) = *buffer
             .data
             .lock()
@@ -35,11 +40,11 @@ pub fn image_load_event_loop(path_receiver: Receiver<PathBuf>, buffer: &Bufferin
         match load_image(&path, data) {
             Ok(_) => {
                 *name = path;
-                buffer.state.store(0b10, Ordering::SeqCst);
+                buffer.state.store(COMPLETED, Ordering::SeqCst);
             }
             Err(why) => {
                 eprintln!("popsicle-gtk: image loading error: {}", why);
-                buffer.state.store(0b100, Ordering::SeqCst);
+                buffer.state.store(ERRORED, Ordering::SeqCst);
             }
         }
     }

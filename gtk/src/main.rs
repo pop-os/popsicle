@@ -9,6 +9,7 @@ extern crate sha3;
 
 mod app;
 mod block;
+mod hash;
 mod image;
 
 use app::{App, Connect};
@@ -34,7 +35,11 @@ fn main() {
 
     {
         let buffer = app.state.buffer.clone();
-        thread::spawn(move || image::image_load_event_loop(receiver, &buffer));
+        thread::spawn(move || image::event_loop(receiver, &buffer));
+
+        let buffer = app.state.buffer.clone();
+        let hash = app.state.hash.clone();
+        thread::spawn(move || hash::event_loop(&buffer, &hash));
     }
 
     if let Some(iso_argument) = env::args().skip(1).next() {
