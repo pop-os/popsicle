@@ -12,7 +12,7 @@ use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::thread::JoinHandle;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use gtk;
 use gtk::*;
@@ -171,7 +171,7 @@ impl Connect for App {
                         let hash = state.hash.clone();
                         thread::spawn(move || {
                             while hash.is_busy() {
-                                thread::yield_now();
+                                thread::sleep(Duration::from_millis(16));
                             }
 
                             hash.request(hash_kind);
@@ -179,7 +179,7 @@ impl Connect for App {
 
                         let hash = state.hash.clone();
                         let hash_label = hash_label.clone();
-                        gtk::timeout_add(1000, move || {
+                        gtk::timeout_add(16, move || {
                             if !hash.is_ready() {
                                 return Continue(true);
                             }

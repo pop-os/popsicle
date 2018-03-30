@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
+use std::time::Duration;
 
 pub(crate) const SLEEPING: usize = 0;
 pub(crate) const PROCESSING: usize = 1;
@@ -74,7 +75,7 @@ pub(crate) fn event_loop(buffer: &BufferingData, hash: &HashState) {
             hash.state.store(PROCESSING, Ordering::SeqCst);
             let mut hash_data = hash.data.lock().unwrap();
             while buffer.state.load(Ordering::SeqCst) != image::COMPLETED {
-                thread::yield_now();
+                thread::sleep(Duration::from_millis(16));
             }
 
             let buffer_data = buffer.data.lock().unwrap();
@@ -104,7 +105,7 @@ pub(crate) fn event_loop(buffer: &BufferingData, hash: &HashState) {
 
             hash.state.store(COMPLETED, Ordering::SeqCst);
         }
-        thread::yield_now();
+        thread::sleep(Duration::from_millis(16));
     }
 }
 
