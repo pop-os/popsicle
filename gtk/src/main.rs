@@ -5,7 +5,7 @@ extern crate md5;
 extern crate pango;
 extern crate popsicle;
 extern crate pwd;
-extern crate sha3;
+extern crate sha2;
 
 mod app;
 mod block;

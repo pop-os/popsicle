@@ -1,7 +1,7 @@
 use digest::{Digest, Input};
 use image::{self, BufferingData};
 use md5::Md5;
-use sha3::Sha3_256;
+use sha2::Sha256;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -116,7 +116,7 @@ pub(crate) fn md5_hasher(data: &[u8]) -> String {
 }
 
 pub(crate) fn sha256_hasher(data: &[u8]) -> String {
-    let mut hasher = Sha3_256::default();
+    let mut hasher = Sha256::default();
     hasher.process(data);
     format!("{:x}", hasher.result())
 }
