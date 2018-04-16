@@ -12,6 +12,17 @@ BIN=popsicle
 GTK_BIN=popsicle-gtk
 PKEXEC_BIN=popsicle-pkexec
 POLICY=com.system76.pkexec.popsicle.policy
+ICONS=\
+	512x512/apps/$(BIN).png \
+	16x16@2x/apps/$(BIN).png \
+	32x32@2x/apps/$(BIN).png \
+	32x32/apps/$(BIN).png \
+	48x48@2x/apps/$(BIN).png \
+	24x24/apps/$(BIN).png \
+	48x48/apps/$(BIN).png \
+	16x16/apps/$(BIN).png \
+	24x24@2x/apps/$(BIN).png \
+	512x512@2x/apps/$(BIN).png
 
 all: cli gtk
 
@@ -34,6 +45,9 @@ install-gtk: gtk
 	install -D -m 0755 "gtk/assets/popsicle-pkexec" "$(DESTDIR)$(bindir)/$(PKEXEC_BIN)"
 	install -D -m 0644 "gtk/assets/popsicle.desktop" "$(DESTDIR)$(datadir)/applications/popsicle.desktop"
 	install -D -m 0644 "gtk/assets/$(POLICY)" "$(DESTDIR)$(datadir)/polkit-1/actions/$(POLICY)"
+	for icon in $(ICONS); do \
+		install -D -m 0644 "gtk/assets/icons/$$icon" "$(DESTDIR)$(datadir)/icons/hicolor/$$icon"; \
+	done
 
 install: all install-cli install-gtk
 
@@ -46,6 +60,9 @@ uninstall-gtk:
 	rm -f "$(DESTDIR)$(bindir)/$(PKEXEC_BIN)"
 	rm -f "$(DESTDIR)$(datadir)/applications/popsicle.desktop"
 	rm -f "$(DESTDIR)$(datadir)/polkit-1/actions/$(POLICY)"
+	for icon in $(ICONS); do \
+		rm -f "$(DESTDIR)$(datadir)/icons/hicolor/$$icon"; \
+	done
 
 uninstall: uninstall-cli uninstall-gtk
 
