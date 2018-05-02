@@ -199,6 +199,10 @@ impl Connect for App {
                         c.add_class("suggested-action");
                     });
                 }
+                2 => {
+                    gtk::main_quit();
+                    return;
+                }
                 _ => unreachable!(),
             }
 

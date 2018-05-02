@@ -64,10 +64,6 @@ pub fn flash_devices(
         ()
     );
 
-    back.get_style_context().map(|c| {
-        c.remove_class("back-button");
-    });
-
     let device_list = try_or_error!(
         state.devices.lock(),
         state.view,
@@ -105,7 +101,13 @@ pub fn flash_devices(
         ()
     );
 
-    back.set_visible(false);
+    back.get_style_context().map(|c| {
+        c.remove_class("back-button");
+        c.add_class("destructive-action");
+    });
+
+    back.set_label("Cancel");
+    back.set_visible(true);
     next.set_visible(false);
     stack.set_visible_child_name("flash");
 
