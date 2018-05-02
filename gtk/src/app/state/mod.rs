@@ -1,3 +1,11 @@
+mod device_selection;
+mod flash_devices;
+#[macro_use]
+mod try;
+
+use self::device_selection::device_selection;
+use self::flash_devices::flash_devices;
+
 use super::super::BlockDevice;
 use super::{App, OpenDialog};
 
@@ -16,7 +24,7 @@ use std::time::{Duration, Instant};
 
 use gtk;
 use gtk::*;
-use popsicle::{self, DiskError};
+use popsicle::DiskError;
 
 /// Contains all of the state that needs to be shared across the program's lifetime.
 pub struct State {
@@ -67,35 +75,8 @@ pub struct FlashTask {
     finished: Arc<AtomicUsize>,
 }
 
-macro_rules! try_or_error {
-    (
-        $act:expr,
-        $view:expr,
-        $back:expr,
-        $next:expr,
-        $stack:ident,
-        $error:ident,
-        $msg:expr,
-        $val:expr
-    ) => {
-        match $act {
-            Ok(value) => value,
-            Err(why) => {
-                $back.set_visible(false);
-                $next.set_visible(true);
-                $next.set_label("Close");
-                $next.get_style_context().map(|c| {
-                    c.remove_class("destructive-action");
-                    c.remove_class("suggested-action");
-                });
-                $error.set_text(&format!("{}: {:?}", $msg, why));
-                $view.set(2);
-                $stack.set_visible_child_name("error");
-                return $val;
-            }
-        }
-    };
-}
+
+
 
 pub struct Connected(App);
 
@@ -200,7 +181,10 @@ impl Connect for App {
         back.connect_clicked(move |back| {
             let view = state.view.get();
             match view {
-                0 => gtk::main_quit(),
+                0 => {
+                    gtk::main_quit();
+                    return;
+                },
                 1 => {
                     stack.set_transition_type(StackTransitionType::SlideRight);
                     stack.set_visible_child_name("image");
@@ -233,256 +217,38 @@ impl Connect for App {
         let state = self.state.clone();
         let error = self.content.error_view.view.description.clone();
 
+        fn watch_device_selection(state: Arc<State>, next: gtk::Button) {
+            gtk::timeout_add(16, move || {
+                if state.view.get() == 1 {
+                    if let Ok(ref mut devices) = state.devices.try_lock() {
+                        next.set_sensitive(devices.iter().any(|x| x.1.get_active()));
+                    }
+                    gtk::Continue(true)
+                } else {
+                    gtk::Continue(false)
+                }
+            });
+        }
+
         next.connect_clicked(move |next| {
-            let device_list = &state.devices;
             state.buffer.state.store(image::SLEEPING, Ordering::SeqCst);
-            let (_, ref mut image_data) = *try_or_error!(
-                state.buffer.data.lock(),
-                state.view,
-                back,
-                next,
-                stack,
-                error,
-                "mutex lock failure",
-                ()
-            );
-            let start = &state.start;
-            let task_handles = &state.task_handles;
-            let bars = &state.bars;
-            let tasks = &state.tasks;
+
             let view = &state.view;
             let view_value = view.get();
             stack.set_transition_type(StackTransitionType::SlideLeft);
 
             match view_value {
-                // Move to device selection screen
-                0 => {
-                    back.set_label("Back");
-                    back.get_style_context().map(|c| {
-                        c.add_class("back-button");
-                    });
-                    next.set_label("Flash");
-                    next.get_style_context().map(|c| {
-                        c.remove_class("suggested-action");
-                        c.add_class("destructive-action");
-                    });
-                    stack.set_visible_child_name("devices");
-
-                    // Remove all but the first row
-                    list.get_children()
-                        .into_iter()
-                        .for_each(|widget| widget.destroy());
-
-                    let mut devices = vec![];
-                    if let Err(why) = popsicle::get_disk_args(&mut devices) {
-                        eprintln!("popsicle: unable to get devices: {}", why);
-                    }
-
-                    let mut device_list = try_or_error!(
-                        device_list.lock(),
-                        state.view,
-                        back,
-                        next,
-                        stack,
-                        error,
-                        "device list mutex lock failure",
-                        ()
-                    );
-                    device_list.clear();
-                    for device in &devices {
-                        // Attempt to get the canonical path of the device.
-                        // Display the error view if this fails.
-                        let name = try_or_error!(
-                            Path::new(&device).canonicalize(),
-                            state.view,
-                            back,
-                            next,
-                            stack,
-                            error,
-                            format!("unable to get canonical path of '{}'", device),
-                            ()
-                        );
-
-                        let button = if let Some(block) = BlockDevice::new(&name) {
-                            CheckButton::new_with_label(&[
-                                &block.label(),
-                                " (",
-                                &name.to_string_lossy(),
-                                ")",
-                            ].concat())
-                        } else {
-                            CheckButton::new_with_label(&name.to_string_lossy())
-                        };
-
-                        list.insert(&button, -1);
-                        device_list.push((device.clone(), button));
-                    }
-
-                    list.show_all();
-                }
-                // Begin the device flashing process
-                1 => {
-                    back.get_style_context().map(|c| {
-                        c.remove_class("back-button");
-                    });
-
-                    let device_list = try_or_error!(
-                        device_list.lock(),
-                        state.view,
-                        back,
-                        next,
-                        stack,
-                        error,
-                        "device list mutex lock failure",
-                        ()
-                    );
-                    let devs = device_list
-                        .iter()
-                        .filter(|x| x.1.get_active())
-                        .map(|x| x.0.clone());
-
-                    let mounts = try_or_error!(
-                        popsicle::Mount::all(),
-                        state.view,
-                        back,
-                        next,
-                        stack,
-                        error,
-                        "unable to obtain mount points",
-                        ()
-                    );
-
-                    let disks = try_or_error!(
-                        popsicle::disks_from_args(devs, &mounts, true),
-                        state.view,
-                        back,
-                        next,
-                        stack,
-                        error,
-                        "unable to get collect devices",
-                        ()
-                    );
-
-                    back.set_visible(false);
-                    next.set_visible(false);
-                    stack.set_visible_child_name("flash");
-
-                    // Clear the progress bar summaries.
-                    let mut bars = bars.borrow_mut();
-                    bars.clear();
-                    summary_grid.get_children().iter().for_each(|c| c.destroy());
-
-                    *start.borrow_mut() = Instant::now();
-                    let mut tasks = try_or_error!(
-                        tasks.lock(),
-                        state.view,
-                        back,
-                        next,
-                        stack,
-                        error,
-                        "tasks mutex lock failure",
-                        ()
-                    );
-
-                    let mut task_handles = try_or_error!(
-                        task_handles.lock(),
-                        state.view,
-                        back,
-                        next,
-                        stack,
-                        error,
-                        "task handles mutex lock failure",
-                        ()
-                    );
-
-                    // Take ownership of the data, so that we may wrap it within an `Arc`
-                    // and redistribute it across threads.
-                    //
-                    // Note: Possible optimization could be done to avoid the wrap.
-                    //       Avoiding the wrap could eliminate two allocations.
-                    let mut data = Vec::new();
-                    mem::swap(&mut data, image_data);
-                    let image_data = Arc::new(data);
-
-                    for (id, (disk_path, mut disk)) in disks.into_iter().enumerate() {
-                        let id = id as i32;
-                        let image_data = image_data.clone();
-                        let progress = Arc::new(AtomicUsize::new(0));
-                        let finished = Arc::new(AtomicUsize::new(0));
-                        let bar = ProgressBar::new();
-                        bar.set_hexpand(true);
-
-                        let label = {
-                            let disk_path = try_or_error!(
-                                Path::new(&disk_path).canonicalize(),
-                                state.view,
-                                back,
-                                next,
-                                stack,
-                                error,
-                                format!("unable to get canonical path of {}", disk_path),
-                                ()
-                            );
-                            if let Some(block) = BlockDevice::new(&disk_path) {
-                                Label::new(
-                                    [&block.label(), " (", &disk_path.to_string_lossy(), ")"]
-                                        .concat()
-                                        .as_str(),
-                                )
-                            } else {
-                                Label::new(disk_path.to_string_lossy().as_ref())
-                            }
-                        };
-
-                        label.set_justify(Justification::Right);
-                        label.get_style_context().map(|c| c.add_class("bold"));
-                        let bar_label = Label::new("");
-                        bar_label.set_halign(Align::Center);
-                        let bar_container = Box::new(Orientation::Vertical, 0);
-                        bar_container.pack_start(&bar, false, false, 0);
-                        bar_container.pack_start(&bar_label, false, false, 0);
-                        summary_grid.attach(&label, 0, id, 1, 1);
-                        summary_grid.attach(&bar_container, 1, id, 1, 1);
-                        bars.push((bar, bar_label));
-
-                        // Spawn a thread that will update the progress value over time.
-                        //
-                        // The value will be stored within an intermediary atomic integer,
-                        // because it is unsafe to send GTK widgets across threads.
-                        task_handles.push({
-                            let progress = progress.clone();
-                            let finished = finished.clone();
-                            thread::spawn(move || -> Result<(), DiskError> {
-                                let result = popsicle::write_to_disk(
-                                    |_msg| (),
-                                    || (),
-                                    |value| progress.store(value as usize, Ordering::SeqCst),
-                                    disk,
-                                    disk_path,
-                                    image_data.len() as u64,
-                                    &image_data,
-                                    false,
-                                );
-
-                                finished.store(1, Ordering::SeqCst);
-                                result
-                            })
-                        });
-
-                        tasks.push(FlashTask {
-                            previous: Arc::new(Mutex::new([0; 7])),
-                            progress,
-                            finished,
-                        });
-                    }
-
-                    summary_grid.show_all();
-                }
+                0 => device_selection(&state, &back, &error, &list, &next, &stack),
+                1 => flash_devices(&state, &back, &error, &next, &stack, &summary_grid),
                 2 => gtk::main_quit(),
                 _ => unreachable!(),
             }
 
             view.set(view_value + 1);
+
+            if view.get() == 1 {
+                watch_device_selection(state.clone(), next.clone());
+            }
         });
     }
 
