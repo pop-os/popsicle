@@ -219,9 +219,11 @@ impl Connect for App {
         let summary_grid = self.content.flash_view.progress_list.clone();
         let state = self.state.clone();
         let error = self.content.error_view.view.description.clone();
+        let all = self.content.devices_view.select_all.clone();
 
         fn watch_device_selection(
             state: Arc<State>,
+            all: gtk::CheckButton,
             back: gtk::Button,
             error: gtk::Label,
             list: gtk::ListBox,
@@ -233,6 +235,8 @@ impl Connect for App {
                     match device_selection::device_requires_refresh(&state, &back, &error, &next, &stack) {
                         Some(devices) => {
                             device_selection::refresh_device_list(&state, &devices, &back, &error, &list, &next, &stack);
+                            all.set_active(false);
+                            next.set_sensitive(false);
                         }
                         None => if let Ok(ref mut devices) = state.devices.try_lock() {
                             next.set_sensitive(devices.iter().any(|x| x.1.get_active()));
@@ -264,6 +268,7 @@ impl Connect for App {
             if view.get() == 1 {
                 watch_device_selection(
                     state.clone(),
+                    all.clone(),
                     back.clone(),
                     error.clone(),
                     list.clone(),
