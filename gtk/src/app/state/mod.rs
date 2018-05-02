@@ -3,7 +3,6 @@ mod flash_devices;
 #[macro_use]
 mod try;
 
-use self::device_selection::device_selection;
 use self::flash_devices::flash_devices;
 
 use super::super::BlockDevice;
@@ -221,11 +220,23 @@ impl Connect for App {
         let state = self.state.clone();
         let error = self.content.error_view.view.description.clone();
 
-        fn watch_device_selection(state: Arc<State>, next: gtk::Button) {
+        fn watch_device_selection(
+            state: Arc<State>,
+            back: gtk::Button,
+            error: gtk::Label,
+            list: gtk::ListBox,
+            next: gtk::Button,
+            stack: gtk::Stack,
+        ) {
             gtk::timeout_add(16, move || {
                 if state.view.get() == 1 {
-                    if let Ok(ref mut devices) = state.devices.try_lock() {
-                        next.set_sensitive(devices.iter().any(|x| x.1.get_active()));
+                    match device_selection::device_requires_refresh(&state, &back, &error, &next, &stack) {
+                        Some(devices) => {
+                            device_selection::refresh_device_list(&state, &devices, &back, &error, &list, &next, &stack);
+                        }
+                        None => if let Ok(ref mut devices) = state.devices.try_lock() {
+                            next.set_sensitive(devices.iter().any(|x| x.1.get_active()));
+                        }
                     }
                     gtk::Continue(true)
                 } else {
@@ -242,7 +253,7 @@ impl Connect for App {
             stack.set_transition_type(StackTransitionType::SlideLeft);
 
             match view_value {
-                0 => device_selection(&state, &back, &error, &list, &next, &stack),
+                0 => device_selection::initialize(&state, &back, &error, &list, &next, &stack),
                 1 => flash_devices(&state, &back, &error, &next, &stack, &summary_grid),
                 2 => gtk::main_quit(),
                 _ => unreachable!(),
@@ -251,7 +262,14 @@ impl Connect for App {
             view.set(view_value + 1);
 
             if view.get() == 1 {
-                watch_device_selection(state.clone(), next.clone());
+                watch_device_selection(
+                    state.clone(),
+                    back.clone(),
+                    error.clone(),
+                    list.clone(),
+                    next.clone(),
+                    stack.clone()
+                );
             }
         });
     }

@@ -35,7 +35,7 @@ macro_rules! try_or_error {
 }
 
 /// Move to device selection screen
-pub fn device_selection(
+pub fn initialize(
     state: &State,
     back: &gtk::Button,
     error: &gtk::Label,
@@ -43,8 +43,6 @@ pub fn device_selection(
     next: &gtk::Button,
     stack: &gtk::Stack,
 ) {
-    let device_list = &state.devices;
-
     back.set_label("Back");
     back.get_style_context().map(|c| {
         c.add_class("back-button");
@@ -66,6 +64,19 @@ pub fn device_selection(
         eprintln!("popsicle: unable to get devices: {}", why);
     }
 
+    refresh_device_list(state, &devices, back, error, list, next, stack);
+}
+
+pub fn refresh_device_list(
+    state: &State,
+    devices: &[String],
+    back: &gtk::Button,
+    error: &gtk::Label,
+    list: &gtk::ListBox,
+    next: &gtk::Button,
+    stack: &gtk::Stack,
+) {
+    let device_list = &state.devices;
     let mut device_list = try_or_error!(
         device_list.lock(),
         state.view,
@@ -77,7 +88,10 @@ pub fn device_selection(
         ()
     );
     device_list.clear();
-    for device in &devices {
+
+    list.get_children().iter().for_each(|c| c.destroy());
+
+    for device in devices {
         // Attempt to get the canonical path of the device.
         // Display the error view if this fails.
         let name = try_or_error!(
@@ -107,4 +121,40 @@ pub fn device_selection(
     }
 
     list.show_all();
+}
+
+pub fn device_requires_refresh(
+    state: &State,
+    back: &gtk::Button,
+    error: &gtk::Label,
+    next: &gtk::Button,
+    stack: &gtk::Stack,
+) -> Option<Vec<String>> {
+    let device_list = try_or_error!(
+        state.devices.lock(),
+        state.view,
+        back,
+        next,
+        stack,
+        error,
+        "device list mutex lock failure",
+        None
+    );
+
+    let mut devices = vec![];
+    if let Err(why) = popsicle::get_disk_args(&mut devices) {
+        eprintln!("popsicle: unable to get devices: {}", why);
+    }
+
+    if devices.len() != device_list.len() || devices_differ(&devices, &device_list) {
+        Some(devices)
+    } else {
+        None
+    }
+}
+
+fn devices_differ(devices: &[String], device_list: &[(String, gtk::CheckButton)]) -> bool {
+    devices.iter()
+        .zip(device_list.iter())
+        .any(|(ref x, &(ref y, _))| x.as_str() != y.as_str())
 }
