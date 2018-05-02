@@ -467,6 +467,7 @@ impl Connect for App {
 
                 if errored.is_empty() {
                     description.set_text(&format!("{} devices successfully flashed", ntasks));
+                    list.set_visible(false);
                 } else {
                     description.set_text(&format!(
                         "{} of {} devices successfully flashed",
