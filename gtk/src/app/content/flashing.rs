@@ -9,6 +9,8 @@ pub struct FlashView {
 impl FlashView {
     pub fn new() -> FlashView {
         let progress_list = Grid::new();
+        progress_list.set_row_spacing(6);
+        progress_list.set_column_spacing(6);
         let progress_scroller = ScrolledWindow::new(None, None);
         progress_scroller.add(&progress_list);
 

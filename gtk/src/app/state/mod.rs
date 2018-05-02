@@ -414,6 +414,7 @@ impl Connect for App {
             }
 
             if finished {
+                back.set_visible(false);
                 stack.set_visible_child_name("summary");
                 next.set_label("Close");
                 next.get_style_context()
