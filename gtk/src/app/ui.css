@@ -4,9 +4,5 @@
 }
 
 .bold {
-    font-weight: bold;    
-}
-
-.hash-box button, .hash-box entry {
-    border-radius: 0;
+    font-weight: bold;
 }

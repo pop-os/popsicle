@@ -1,6 +1,7 @@
 use super::View;
 use gtk::*;
 use pango::EllipsizeMode;
+use super::set_margins;
 
 pub struct ImageView {
     pub view:              View,
@@ -46,15 +47,19 @@ impl ImageView {
         hash_label.set_editable(false);
 
         let hash_container = Box::new(Orientation::Horizontal, 0);
-        hash_container
-            .get_style_context()
-            .map(|c| c.add_class("hash-box"));
+        set_margins(&hash_container, 6);
+    
         {
             let label = Label::new("Hash:");
             label.set_margin_right(6);
+
+            let combo_container = Box::new(Orientation::Horizontal, 0);
+            combo_container.get_style_context().map(|c| c.add_class("linked"));
+            combo_container.add(&hash);
+            combo_container.pack_start(&hash_label, true, true, 0);
+
             hash_container.pack_start(&label, false, false, 0);
-            hash_container.pack_start(&hash, false, false, 0);
-            hash_container.pack_start(&hash_label, true, true, 0);
+            hash_container.pack_start(&combo_container, true, true, 0);
         }
 
         let chooser_container = Stack::new();
