@@ -4,6 +4,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, Error, ErrorKind, Result};
 use std::os::unix::ffi::OsStringExt;
 
+#[derive(Clone)]
 pub struct Mount {
     pub source:  OsString,
     pub dest:    OsString,

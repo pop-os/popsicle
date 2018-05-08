@@ -2,9 +2,7 @@ use super::*;
 use gtk;
 use gtk::prelude::*;
 use std::sync::{Arc, Mutex};
-use popsicle::{self, DiskError};
-use std::sync::atomic::Ordering;
-use std::thread;
+use popsicle;
 use std::mem;
 use std::time::Instant;
 use std::path::Path;
@@ -77,7 +75,8 @@ pub fn flash_devices(
     let devs = device_list
         .iter()
         .filter(|x| x.1.get_active())
-        .map(|x| x.0.clone());
+        .map(|x| x.0.clone())
+        .collect::<Vec<_>>();
 
     let mounts = try_or_error!(
         popsicle::Mount::all(),
@@ -90,14 +89,36 @@ pub fn flash_devices(
         ()
     );
 
-    let disks = try_or_error!(
-        popsicle::disks_from_args(devs, &mounts, true),
+    try_or_error!(
+        state.devices_request.send((devs, mounts.clone())),
         state.view,
         back,
         next,
         stack,
         error,
-        "unable to get collect devices",
+        "unable to send device request",
+        ()
+    );
+
+    let disks_result = try_or_error!(
+        state.devices_response.recv(),
+        state.view,
+        back,
+        next,
+        stack,
+        error,
+        "unable to get device request response",
+        ()
+    );
+
+    let disks = try_or_error!(
+        disks_result,
+        state.view,
+        back,
+        next,
+        stack,
+        error,
+        "unable to get devices",
         ()
     );
 
@@ -194,23 +215,16 @@ pub fn flash_devices(
         // The value will be stored within an intermediary atomic integer,
         // because it is unsafe to send GTK widgets across threads.
         task_handles.push({
-            let progress = progress.clone();
-            let finished = finished.clone();
-            thread::spawn(move || -> Result<(), DiskError> {
-                let result = popsicle::write_to_disk(
-                    |_msg| (),
-                    || (),
-                    |value| progress.store(value as usize, Ordering::SeqCst),
-                    disk,
-                    disk_path,
-                    image_data.len() as u64,
-                    &image_data,
-                    false,
-                );
+            let _ = state.flash_request.send(FlashRequest::new(
+                disk,
+                disk_path,
+                image_data.len() as u64,
+                image_data,
+                progress.clone(),
+                finished.clone()
+            ));
 
-                finished.store(1, Ordering::SeqCst);
-                result
-            })
+            state.flash_response.recv().expect("expected join handle to be returned")
         });
 
         tasks.push(FlashTask {

@@ -15,7 +15,12 @@ pub use self::state::{Connect, State};
 use std::path::PathBuf;
 use std::process;
 use std::sync::Arc;
-use std::sync::mpsc::Sender;
+use std::sync::mpsc::{Sender, Receiver};
+use std::fs::File;
+use std::thread::JoinHandle;
+
+use flash::FlashRequest;
+use popsicle::{DiskError, Mount};
 
 use gtk;
 use gtk::*;
@@ -30,7 +35,13 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(sender: Sender<PathBuf>) -> App {
+    pub fn new(
+        sender: Sender<PathBuf>,
+        devices_request: Sender<(Vec<String>, Vec<Mount>)>,
+        devices_response: Receiver<Result<Vec<(String, File)>, DiskError>>,
+        flash_request: Sender<FlashRequest>,
+        flash_response: Receiver<JoinHandle<Result<(), DiskError>>>,
+    ) -> App {
         // Initialize GTK before proceeding.
         if gtk::init().is_err() {
             eprintln!("failed to initialize GTK Application");
@@ -74,7 +85,7 @@ impl App {
             window,
             header,
             content,
-            state: Arc::new(State::new(sender)),
+            state: Arc::new(State::new(sender, devices_request, devices_response, flash_request, flash_response)),
         }
     }
 }
