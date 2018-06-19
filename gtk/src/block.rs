@@ -29,6 +29,12 @@ impl BlockDevice {
         })
     }
 
+    pub fn sectors(&self) -> u64 {
+        read_file(&self.path.join("size"))
+            .parse::<u64>()
+            .unwrap_or(0)
+    }
+
     pub fn vendor(&self) -> String { read_file(&self.path.join("device/vendor")) }
 
     pub fn model(&self) -> String { read_file(&self.path.join("device/model")) }

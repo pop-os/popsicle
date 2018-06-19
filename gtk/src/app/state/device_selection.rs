@@ -90,6 +90,7 @@ pub fn refresh_device_list(
     device_list.clear();
 
     list.get_children().iter().for_each(|c| c.destroy());
+    let image_sectors = (state.image_length.get() / 512 + 1) as u64;
 
     for device in devices {
         // Attempt to get the canonical path of the device.
@@ -106,12 +107,22 @@ pub fn refresh_device_list(
         );
 
         let button = if let Some(block) = BlockDevice::new(&name) {
-            CheckButton::new_with_label(&[
-                &block.label(),
-                " (",
-                &name.to_string_lossy(),
-                ")",
-            ].concat())
+            let too_small = block.sectors() < image_sectors;
+
+            let button = CheckButton::new_with_label(&{
+                if too_small {
+                    [ &block.label(), " (", &name.to_string_lossy(), "): Device is too small" ].concat()
+                } else {
+                    [ &block.label(), " (", &name.to_string_lossy(), ")" ].concat()
+                }
+            });
+
+            if too_small {
+                button.set_tooltip_text("Device is too small");
+                button.set_has_tooltip(true);
+                button.set_sensitive(false);
+            }
+            button
         } else {
             CheckButton::new_with_label(&name.to_string_lossy())
         };
