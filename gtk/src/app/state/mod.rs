@@ -4,18 +4,20 @@ mod flash_devices;
 mod try;
 
 use self::flash_devices::flash_devices;
+use flash::FlashRequest;
 
 use super::super::BlockDevice;
 use super::{App, OpenDialog};
 
 use hash::HashState;
 use image::{self, BufferingData};
+use std::fs::File;
 use std::cell::{Cell, RefCell};
 use std::mem;
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::mpsc::Sender;
+use std::sync::mpsc::{Sender, Receiver};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::thread::JoinHandle;
@@ -23,7 +25,7 @@ use std::time::{Duration, Instant};
 
 use gtk;
 use gtk::*;
-use popsicle::DiskError;
+use popsicle::{DiskError, Mount};
 
 /// Contains all of the state that needs to be shared across the program's lifetime.
 pub struct State {
@@ -48,11 +50,25 @@ pub struct State {
     pub tasks: Mutex<Vec<FlashTask>>,
     /// Stores an integer which defines the currently-active view.
     pub view: Cell<u8>,
+    /// Requests for a list of devices to be returned by an authenticated user (ie: root).
+    pub devices_request: Sender<(Vec<String>, Vec<Mount>)>,
+    /// The accompanying response that follows a device request.
+    pub devices_response: Receiver<Result<Vec<(String, File)>, DiskError>>,
+    /// Requests for a device to be flashed by an authenticated user (ie: root).
+    pub flash_request: Sender<FlashRequest>,
+    /// Contains the join handle to the thread where the task is being flashed.
+    pub flash_response: Receiver<JoinHandle<Result<(), DiskError>>>,
 }
 
 impl State {
     /// Initailizes a new structure for managing the state of the application.
-    pub fn new(image_sender: Sender<PathBuf>) -> State {
+    pub fn new(
+        image_sender: Sender<PathBuf>,
+        devices_request: Sender<(Vec<String>, Vec<Mount>)>,
+        devices_response: Receiver<Result<Vec<(String, File)>, DiskError>>,
+        flash_request: Sender<FlashRequest>,
+        flash_response: Receiver<JoinHandle<Result<(), DiskError>>>,
+    ) -> State {
         State {
             bars: RefCell::new(Vec::new()),
             devices: Mutex::new(Vec::new()),
@@ -64,6 +80,10 @@ impl State {
             buffer: Arc::new(BufferingData::new()),
             image_sender,
             image_length: Cell::new(0),
+            devices_request,
+            devices_response,
+            flash_request,
+            flash_response,
         }
     }
 }
@@ -73,9 +93,6 @@ pub struct FlashTask {
     previous: Arc<Mutex<[usize; 7]>>,
     finished: Arc<AtomicUsize>,
 }
-
-
-
 
 pub struct Connected(App);
 
