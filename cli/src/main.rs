@@ -70,16 +70,14 @@ fn popsicle() -> Result<(), String> {
         if let Err(err) = popsicle::get_disk_args(&mut disk_args) {
             return Err(format!("error getting USB disks: {}", err));
         }
-    } else {
-        if let Some(disks) = matches.values_of("DISKS") {
-            for arg in disks {
-                disk_args.push(arg.to_string());
-            }
+    } else if let Some(disks) = matches.values_of("DISKS") {
+        for arg in disks {
+            disk_args.push(arg.to_string());
         }
     }
 
     if disk_args.is_empty() {
-        return Err(format!("no disks specified"));
+        return Err("no disks specified".to_owned());
     }
 
     let mounts = match mnt::get_submounts(Path::new("/")) {
@@ -115,7 +113,8 @@ fn popsicle() -> Result<(), String> {
             "Are you sure you want to flash '{}' to the following drives?",
             image_path
         );
-        for ref disk_tuple in disks.iter() {
+
+        for disk_tuple in &disks {
             println!("  - {}", disk_tuple.0);
         }
 
@@ -126,13 +125,13 @@ fn popsicle() -> Result<(), String> {
         io::stdin().read_line(&mut confirm).unwrap();
 
         if confirm.trim() != "y" && confirm.trim() != "yes" {
-            return Err(format!("exiting without flashing"));
+            return Err("exiting without flashing".to_owned());
         }
     }
 
     let check = matches.is_present("check");
 
-    println!("");
+    println!();
 
     let mut mb = MultiBar::new();
 
@@ -159,7 +158,7 @@ fn popsicle() -> Result<(), String> {
                     }
                 },
                 disk,
-                disk_path,
+                &disk_path,
                 image_size,
                 &&image_data,
                 check,
@@ -183,7 +182,7 @@ fn main() {
     match popsicle() {
         Ok(()) => (),
         Err(err) => {
-            writeln!(io::stderr(), "popsicle: {}", err).unwrap();
+            eprintln!("popsicle: {}", err);
             process::exit(1);
         }
     }

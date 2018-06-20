@@ -174,8 +174,8 @@ pub fn flash_devices(
         let image_data = image_data.clone();
         let progress = Arc::new(AtomicUsize::new(0));
         let finished = Arc::new(AtomicUsize::new(0));
-        let bar = ProgressBar::new();
-        bar.set_hexpand(true);
+        let pbar = ProgressBar::new();
+        pbar.set_hexpand(true);
 
         let label = {
             let disk_path = try_or_error!(
@@ -204,11 +204,11 @@ pub fn flash_devices(
         let bar_label = gtk::Label::new("");
         bar_label.set_halign(gtk::Align::Center);
         let bar_container = gtk::Box::new(Orientation::Vertical, 0);
-        bar_container.pack_start(&bar, false, false, 0);
+        bar_container.pack_start(&pbar, false, false, 0);
         bar_container.pack_start(&bar_label, false, false, 0);
         summary_grid.attach(&label, 0, id, 1, 1);
         summary_grid.attach(&bar_container, 1, id, 1, 1);
-        bars.push((bar, bar_label));
+        bars.push((pbar, bar_label));
 
         // Spawn a thread that will update the progress value over time.
         //

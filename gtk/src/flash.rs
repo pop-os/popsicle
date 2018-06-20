@@ -46,7 +46,7 @@ impl FlashRequest {
                 PopsicleLog::Progress(value) => progress.store(value as usize, Ordering::SeqCst)
             },
             disk,
-            disk_path,
+            &disk_path,
             image_len,
             &image_data,
             false,

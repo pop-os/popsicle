@@ -258,7 +258,7 @@ pub enum PopsicleLog<'a> {
 pub fn write_to_disk<F: FnMut(PopsicleLog)>(
     mut callback: F,
     mut disk: File,
-    disk_path: String,
+    disk_path: &str,
     image_size: u64,
     image_data: &[u8],
     check: bool,
@@ -270,7 +270,7 @@ pub fn write_to_disk<F: FnMut(PopsicleLog)>(
             callback(PopsicleLog::Message(&format!("! {}: ", disk_path)));
             callback(PopsicleLog::Finished);
             DiskError::Write {
-                disk: disk_path.clone(),
+                disk: disk_path.to_string(),
                 why,
             }
         })?;
@@ -280,7 +280,7 @@ pub fn write_to_disk<F: FnMut(PopsicleLog)>(
             callback(PopsicleLog::Finished);
 
             return Err(DiskError::WriteEOF {
-                disk: disk_path.clone(),
+                disk: disk_path.to_string(),
             });
         }
         total += count;
@@ -292,7 +292,7 @@ pub fn write_to_disk<F: FnMut(PopsicleLog)>(
         callback(PopsicleLog::Finished);
 
         DiskError::Flush {
-            disk: disk_path.clone(),
+            disk: disk_path.to_string(),
             why,
         }
     })?;
@@ -305,7 +305,7 @@ pub fn write_to_disk<F: FnMut(PopsicleLog)>(
                 callback(PopsicleLog::Finished);
 
                 return Err(DiskError::SeekInvalid {
-                    disk: disk_path.clone(),
+                    disk: disk_path.to_string(),
                     invalid,
                 });
             }
@@ -314,7 +314,7 @@ pub fn write_to_disk<F: FnMut(PopsicleLog)>(
                 callback(PopsicleLog::Finished);
 
                 return Err(DiskError::Seek {
-                    disk: disk_path.clone(),
+                    disk: disk_path.to_string(),
                     why,
                 });
             }
@@ -334,7 +334,7 @@ pub fn write_to_disk<F: FnMut(PopsicleLog)>(
                     callback(PopsicleLog::Finished);
 
                     return Err(DiskError::Verify {
-                        disk: disk_path.clone(),
+                        disk: disk_path.to_string(),
                         why,
                     });
                 }
@@ -345,7 +345,7 @@ pub fn write_to_disk<F: FnMut(PopsicleLog)>(
                 callback(PopsicleLog::Finished);
 
                 return Err(DiskError::VerifyEOF {
-                    disk: disk_path.clone(),
+                    disk: disk_path.to_string(),
                 });
             }
 
@@ -354,7 +354,7 @@ pub fn write_to_disk<F: FnMut(PopsicleLog)>(
                 callback(PopsicleLog::Finished);
 
                 return Err(DiskError::VerifyMismatch {
-                    disk: disk_path.clone(),
+                    disk: disk_path.to_string(),
                     x:    total,
                     y:    total + count,
                 });

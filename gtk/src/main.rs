@@ -1,3 +1,6 @@
+#![allow(unknown_lints)]
+#![allow(option_map_unit_fn)]
+
 extern crate digest;
 extern crate gdk;
 extern crate gtk;
@@ -46,7 +49,7 @@ fn main() {
 
     // If running in pkexec or sudo, restore home directory for open dialog,
     // and then downgrade permissions back to a regular user.
-    if let Ok(pkexec_uid) = env::var("PKEXEC_UID").or(env::var("SUDO_UID")) {
+    if let Ok(pkexec_uid) = env::var("PKEXEC_UID").or_else(|_| env::var("SUDO_UID")) {
         if let Ok(uid) = pkexec_uid.parse::<u32>() {
             if let Some(passwd) = pwd::Passwd::from_uid(uid) {
                 env::set_var("HOME", passwd.dir);
@@ -60,14 +63,14 @@ fn main() {
 
     {
         let buffer = app.state.buffer.clone();
-        thread::spawn(move || image::event_loop(receiver, &buffer));
+        thread::spawn(move || image::event_loop(&receiver, &buffer));
 
         let buffer = app.state.buffer.clone();
         let hash = app.state.hash.clone();
         thread::spawn(move || hash::event_loop(&buffer, &hash));
     }
 
-    if let Some(iso_argument) = env::args().skip(1).next() {
+    if let Some(iso_argument) = env::args().nth(1) {
         let _ = app.state.image_sender.send(PathBuf::from(iso_argument));
     }
 
