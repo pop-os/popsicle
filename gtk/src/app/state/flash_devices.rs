@@ -2,7 +2,7 @@ use super::*;
 use gtk;
 use gtk::prelude::*;
 use std::sync::{Arc, Mutex};
-use popsicle;
+use mnt;
 use std::mem;
 use std::time::Instant;
 use std::path::Path;
@@ -79,7 +79,7 @@ pub fn flash_devices(
         .collect::<Vec<_>>();
 
     let mounts = try_or_error!(
-        popsicle::Mount::all(),
+        mnt::get_submounts(Path::new("/")),
         state.view,
         back,
         next,

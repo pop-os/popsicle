@@ -352,6 +352,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "mnt"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "libc 0.2.39 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "pango"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -399,6 +407,7 @@ dependencies = [
  "failure 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure_derive 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.39 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mnt 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -424,6 +433,7 @@ dependencies = [
  "gtk 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.39 (registry+https://github.com/rust-lang/crates.io-index)",
  "md-5 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mnt 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "pango 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "popsicle 0.1.5",
  "pwd 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -617,6 +627,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum lazy_static 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "c8f31047daa365f19be14b47c29df4f7c3b581832407daabe6ae77397619237d"
 "checksum libc 0.2.39 (registry+https://github.com/rust-lang/crates.io-index)" = "f54263ad99207254cf58b5f701ecb432c717445ea2ee8af387334bdd1a03fdff"
 "checksum md-5 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "9402eaae33a9e144ce18ef488a0e4ca19869673c7bcdbbfe2030fdc3f84211cd"
+"checksum mnt 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "1587ebb20a5b04738f16cffa7e2526f1b8496b84f92920facd518362ff1559eb"
 "checksum pango 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3e81c404ab81ea7ea2fc2431a0a7672507b80e4b8bf4b41eac3fc83cc665104e"
 "checksum pango-sys 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "34f34a1be107fe16abb2744e0e206bee4b3b07460b5fddd3009a6aaf60bd69ab"
 "checksum pbr 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "e048e3afebb6c454bb1c5d0fe73fda54698b4715d78ed8e7302447c37736d23a"

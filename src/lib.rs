@@ -2,13 +2,11 @@ extern crate failure;
 #[macro_use]
 extern crate failure_derive;
 extern crate libc;
+extern crate mnt;
 
-mod mount;
-
-pub use self::mount::Mount;
+use mnt::MountEntry;
 
 use std::cmp;
-use std::ffi::OsString;
 use std::fs::{canonicalize, read_dir, File, OpenOptions};
 use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::os::unix::ffi::OsStrExt;
@@ -113,11 +111,11 @@ pub enum DiskError {
     #[fail(display = "unable to find disk '{}': {}", disk, why)]
     NoDisk { disk: String, why: io::Error },
     #[fail(display = "failed to unmount {:?}: exit status {}", path, status)]
-    UnmountStatus { path: OsString, status: ExitStatus },
+    UnmountStatus { path: String, status: ExitStatus },
     #[fail(display = "failed to unmount {:?}: {}", path, why)]
-    UnmountCommand { path: OsString, why: io::Error },
+    UnmountCommand { path: String, why: io::Error },
     #[fail(display = "error using disk '{}': {:?} already mounted at {:?}", arg, source, dest)]
-    AlreadyMounted { arg: String, source: OsString, dest: OsString },
+    AlreadyMounted { arg: String, source: String, dest: PathBuf },
     #[fail(display = "'{}' is not a block device", arg)]
     NotABlock { arg: String },
     #[fail(display = "unable to get metadata of disk '{}': {}", arg, why)]
@@ -171,7 +169,7 @@ pub fn get_disk_args(disks: &mut Vec<String>) -> Result<(), DiskError> {
 
 pub fn disks_from_args<D: Iterator<Item = String>>(
     disk_args: D,
-    mounts: &[Mount],
+    mounts: &[MountEntry],
     unmount: bool,
 ) -> Result<Vec<(String, File)>, DiskError> {
     let mut disks = Vec::new();
@@ -184,27 +182,27 @@ pub fn disks_from_args<D: Iterator<Item = String>>(
 
         for mount in mounts.iter() {
             if mount
-                .source
+                .spec
                 .as_bytes()
                 .starts_with(canonical_path.as_os_str().as_bytes())
             {
                 if unmount {
                     eprintln!(
                         "unmounting '{}': {:?} is mounted at {:?}",
-                        disk_arg, mount.source, mount.dest
+                        disk_arg, mount.spec, mount.file
                     );
 
                     Command::new("umount")
-                        .arg(&mount.source)
+                        .arg(&mount.spec)
                         .status()
                         .map_err(|why| DiskError::UnmountCommand {
-                            path: mount.source.clone(),
+                            path: mount.spec.clone(),
                             why,
                         })
                         .and_then(|status| {
                             if !status.success() {
                                 Err(DiskError::UnmountStatus {
-                                    path: mount.source.clone(),
+                                    path: mount.spec.clone(),
                                     status,
                                 })
                             } else {
@@ -214,8 +212,8 @@ pub fn disks_from_args<D: Iterator<Item = String>>(
                 } else {
                     return Err(DiskError::AlreadyMounted {
                         arg:    disk_arg.clone(),
-                        source: mount.source.clone(),
-                        dest:   mount.dest.clone(),
+                        source: mount.spec.clone(),
+                        dest:   mount.file.clone(),
                     });
                 }
             }

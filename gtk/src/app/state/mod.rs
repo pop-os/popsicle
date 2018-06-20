@@ -25,7 +25,8 @@ use std::time::{Duration, Instant};
 
 use gtk;
 use gtk::*;
-use popsicle::{DiskError, Mount};
+use mnt::MountEntry;
+use popsicle::DiskError;
 
 /// Contains all of the state that needs to be shared across the program's lifetime.
 pub struct State {
@@ -51,7 +52,7 @@ pub struct State {
     /// Stores an integer which defines the currently-active view.
     pub view: Cell<u8>,
     /// Requests for a list of devices to be returned by an authenticated user (ie: root).
-    pub devices_request: Sender<(Vec<String>, Vec<Mount>)>,
+    pub devices_request: Sender<(Vec<String>, Vec<MountEntry>)>,
     /// The accompanying response that follows a device request.
     pub devices_response: Receiver<Result<Vec<(String, File)>, DiskError>>,
     /// Requests for a device to be flashed by an authenticated user (ie: root).
@@ -64,7 +65,7 @@ impl State {
     /// Initailizes a new structure for managing the state of the application.
     pub fn new(
         image_sender: Sender<PathBuf>,
-        devices_request: Sender<(Vec<String>, Vec<Mount>)>,
+        devices_request: Sender<(Vec<String>, Vec<MountEntry>)>,
         devices_response: Receiver<Result<Vec<(String, File)>, DiskError>>,
         flash_request: Sender<FlashRequest>,
         flash_response: Receiver<JoinHandle<Result<(), DiskError>>>,

@@ -3,6 +3,7 @@ extern crate gdk;
 extern crate gtk;
 extern crate libc;
 extern crate md5;
+extern crate mnt;
 extern crate pango;
 extern crate popsicle;
 extern crate pwd;
@@ -26,11 +27,12 @@ use std::thread::JoinHandle;
 pub use block::BlockDevice;
 pub use flash::FlashRequest;
 
-use popsicle::{DiskError, Mount};
+use mnt::MountEntry;
+use popsicle::DiskError;
 
 fn main() {
     let (devices_request, devices_request_receiver) =
-        channel::<(Vec<String>, Vec<Mount>)>();
+        channel::<(Vec<String>, Vec<MountEntry>)>();
     let (devices_response_sender, devices_response) =
         channel::<Result<Vec<(String, File)>, DiskError>>();
     let (flash_request, flash_request_receiver) = channel::<FlashRequest>();
@@ -77,7 +79,7 @@ fn main() {
 ///
 /// This function should be called before `downgrade_permissions()`.
 fn authenticated_threads(
-    devices_request: Receiver<(Vec<String>, Vec<Mount>)>,
+    devices_request: Receiver<(Vec<String>, Vec<MountEntry>)>,
     devices_response: Sender<Result<Vec<(String, File)>, DiskError>>,
     flash_request: Receiver<FlashRequest>,
     flash_response: Sender<JoinHandle<Result<(), DiskError>>>
