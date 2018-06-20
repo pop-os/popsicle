@@ -400,38 +400,44 @@ impl Connect for App {
                 return Continue(true);
             }
 
-            let mut finished = true;
+            let mut all_tasks_finished = true;
             for (task, &(ref bar, ref label)) in tasks.deref().iter().zip(bars.borrow().iter()) {
                 let raw_value = task.progress.load(Ordering::SeqCst);
-                let value = if task.finished.load(Ordering::SeqCst) == 1 {
+                let task_is_finished = task.finished.load(Ordering::SeqCst) == 1;
+                let value = if task_is_finished {
                     1.0f64
                 } else {
-                    finished = false;
+                    all_tasks_finished = false;
                     raw_value as f64 / image_length as f64
                 };
 
                 bar.set_fraction(value);
 
-                if let Ok(mut prev_values) = task.previous.lock() {
-                    prev_values[1] = prev_values[2];
-                    prev_values[2] = prev_values[3];
-                    prev_values[3] = prev_values[4];
-                    prev_values[4] = prev_values[5];
-                    prev_values[5] = prev_values[6];
-                    prev_values[6] = raw_value - prev_values[0];
-                    prev_values[0] = raw_value;
+                if task_is_finished {
+                    label.set_label("Complete");
+                } else {
+                    if let Ok(mut prev_values) = task.previous.lock() {
+                        prev_values[1] = prev_values[2];
+                        prev_values[2] = prev_values[3];
+                        prev_values[3] = prev_values[4];
+                        prev_values[4] = prev_values[5];
+                        prev_values[5] = prev_values[6];
+                        prev_values[6] = raw_value - prev_values[0];
+                        prev_values[0] = raw_value;
 
-                    let sum: usize = prev_values.iter().skip(1).sum();
-                    let per_second = sum / 3;
-                    label.set_label(&if per_second > (1024 * 1024) {
-                        format!("{} MiB/s", per_second / (1024 * 1024))
-                    } else {
-                        format!("{} KiB/s", per_second / 1024)
-                    });
+                        let sum: usize = prev_values.iter().skip(1).sum();
+                        let per_second = sum / 3;
+                        label.set_label(&if per_second > (1024 * 1024) {
+                            format!("{} MiB/s", per_second / (1024 * 1024))
+                        } else {
+                            format!("{} KiB/s", per_second / 1024)
+                        });
+                    }
                 }
+
             }
 
-            if finished {
+            if all_tasks_finished {
                 back.set_visible(false);
                 stack.set_visible_child_name("summary");
                 next.set_label("Close");
