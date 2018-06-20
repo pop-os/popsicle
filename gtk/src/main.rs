@@ -20,7 +20,7 @@ use std::path::PathBuf;
 use std::sync::mpsc::channel;
 use std::thread;
 use std::fs::File;
-use std::sync::mpsc::{Sender, Receiver};
+use std::sync::mpsc::{Sender, Receiver, TryRecvError};
 use std::thread::JoinHandle;
 
 pub use block::BlockDevice;
@@ -84,16 +84,29 @@ fn authenticated_threads(
     flash_response: Sender<JoinHandle<Result<(), DiskError>>>
 ) {
     thread::spawn(move || {
-        while let Ok((devs, mounts)) = devices_request.recv() {
-            let resp = popsicle::disks_from_args(devs.into_iter(), &mounts, true);
-            let _ = devices_response.send(resp);
-        }
-    });
+        loop {
+            let mut disconnected = 0;
 
-    thread::spawn(move || {
-        while let Ok(flash_request) = flash_request.recv() {
-            let handle = thread::spawn(move || flash_request.write());
-            let _ = flash_response.send(handle);
+            match devices_request.try_recv() {
+                Ok((devs, mounts)) => {
+                    let resp = popsicle::disks_from_args(devs.into_iter(), &mounts, true);
+                    let _ = devices_response.send(resp);
+                }
+                Err(TryRecvError::Empty) => (),
+                Err(TryRecvError::Disconnected) => disconnected += 1,
+            }
+
+            match flash_request.try_recv() {
+                Ok(flash_request) => {
+                    let _ = flash_response.send(thread::spawn(move || flash_request.write()));
+                }
+                Err(TryRecvError::Empty) => (),
+                Err(TryRecvError::Disconnected) => disconnected += 1,
+            }
+
+            if disconnected == 2 {
+                break
+            }
         }
     });
 }
