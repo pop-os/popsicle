@@ -3,7 +3,6 @@ extern crate gdk;
 extern crate gtk;
 extern crate libc;
 extern crate md5;
-extern crate mnt;
 extern crate pango;
 extern crate popsicle;
 extern crate pwd;
@@ -27,7 +26,7 @@ use std::thread::JoinHandle;
 pub use block::BlockDevice;
 pub use flash::FlashRequest;
 
-use mnt::MountEntry;
+use popsicle::mnt::MountEntry;
 use popsicle::DiskError;
 
 fn main() {

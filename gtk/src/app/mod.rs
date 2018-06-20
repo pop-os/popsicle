@@ -20,7 +20,7 @@ use std::fs::File;
 use std::thread::JoinHandle;
 
 use flash::FlashRequest;
-use mnt::MountEntry;
+use popsicle::mnt::MountEntry;
 use popsicle::DiskError;
 
 use gtk;

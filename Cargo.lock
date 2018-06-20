@@ -433,7 +433,6 @@ dependencies = [
  "gtk 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.39 (registry+https://github.com/rust-lang/crates.io-index)",
  "md-5 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "mnt 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "pango 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "popsicle 0.1.5",
  "pwd 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",

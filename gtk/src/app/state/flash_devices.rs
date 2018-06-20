@@ -2,7 +2,7 @@ use super::*;
 use gtk;
 use gtk::prelude::*;
 use std::sync::{Arc, Mutex};
-use mnt;
+use popsicle::mnt;
 use std::mem;
 use std::time::Instant;
 use std::path::Path;

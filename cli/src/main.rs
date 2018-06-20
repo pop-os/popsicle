@@ -10,9 +10,10 @@ use pbr::{MultiBar, ProgressBar, Units};
 use std::cell::RefCell;
 use std::io::{self, Write};
 use std::sync::Arc;
+use std::path::Path;
 use std::{process, thread};
 
-use popsicle::{DiskError, Image, Mount};
+use popsicle::{mnt, DiskError, Image, PopsicleLog};
 
 fn popsicle() -> Result<(), String> {
     let matches = App::new(env!("CARGO_PKG_NAME"))
@@ -81,7 +82,7 @@ fn popsicle() -> Result<(), String> {
         return Err(format!("no disks specified"));
     }
 
-    let mounts = match Mount::all() {
+    let mounts = match mnt::get_submounts(Path::new("/")) {
         Ok(mounts) => mounts,
         Err(err) => {
             return Err(format!("error reading mounts: {}", err));
@@ -146,10 +147,16 @@ fn popsicle() -> Result<(), String> {
         let pb = RefCell::new(pb);
         threads.push(thread::spawn(move || -> Result<(), DiskError> {
             popsicle::write_to_disk(
-                |msg| pb.borrow_mut().message(msg),
-                || pb.borrow_mut().finish(),
-                |progress| {
-                    pb.borrow_mut().set(progress);
+                |log| match log {
+                    PopsicleLog::Message(msg) => {
+                        pb.borrow_mut().message(msg);
+                    },
+                    PopsicleLog::Progress(progress) => {
+                        pb.borrow_mut().set(progress);
+                    },
+                    PopsicleLog::Finished => {
+                        pb.borrow_mut().finish();
+                    }
                 },
                 disk,
                 disk_path,

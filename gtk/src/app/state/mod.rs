@@ -25,7 +25,7 @@ use std::time::{Duration, Instant};
 
 use gtk;
 use gtk::*;
-use mnt::MountEntry;
+use popsicle::mnt::MountEntry;
 use popsicle::DiskError;
 
 /// Contains all of the state that needs to be shared across the program's lifetime.
