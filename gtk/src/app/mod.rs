@@ -20,7 +20,8 @@ use std::fs::File;
 use std::thread::JoinHandle;
 
 use flash::FlashRequest;
-use popsicle::{DiskError, Mount};
+use popsicle::mnt::MountEntry;
+use popsicle::DiskError;
 
 use gtk;
 use gtk::*;
@@ -37,7 +38,7 @@ pub struct App {
 impl App {
     pub fn new(
         sender: Sender<PathBuf>,
-        devices_request: Sender<(Vec<String>, Vec<Mount>)>,
+        devices_request: Sender<(Vec<String>, Vec<MountEntry>)>,
         devices_response: Receiver<Result<Vec<(String, File)>, DiskError>>,
         flash_request: Sender<FlashRequest>,
         flash_response: Receiver<JoinHandle<Result<(), DiskError>>>,

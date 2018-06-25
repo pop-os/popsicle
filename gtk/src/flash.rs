@@ -2,7 +2,7 @@ use std::fs::File;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
-use popsicle::{self, DiskError};
+use popsicle::{self, DiskError, PopsicleLog};
 
 pub struct FlashRequest {
     disk: File,
@@ -40,11 +40,13 @@ impl FlashRequest {
         let image_data = self.image_data;
 
         let result = popsicle::write_to_disk(
-            |_msg| (),
-            || (),
-            |value| progress.store(value as usize, Ordering::SeqCst),
+            |log| match log {
+                PopsicleLog::Message(_) => (),
+                PopsicleLog::Finished => (),
+                PopsicleLog::Progress(value) => progress.store(value as usize, Ordering::SeqCst)
+            },
             disk,
-            disk_path,
+            &disk_path,
             image_len,
             &image_data,
             false,

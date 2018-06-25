@@ -1,3 +1,6 @@
+#![allow(unknown_lints)]
+#![allow(option_map_unit_fn)]
+
 extern crate digest;
 extern crate gdk;
 extern crate gtk;
@@ -20,17 +23,18 @@ use std::path::PathBuf;
 use std::sync::mpsc::channel;
 use std::thread;
 use std::fs::File;
-use std::sync::mpsc::{Sender, Receiver};
+use std::sync::mpsc::{Sender, Receiver, TryRecvError};
 use std::thread::JoinHandle;
 
 pub use block::BlockDevice;
 pub use flash::FlashRequest;
 
-use popsicle::{DiskError, Mount};
+use popsicle::mnt::MountEntry;
+use popsicle::DiskError;
 
 fn main() {
     let (devices_request, devices_request_receiver) =
-        channel::<(Vec<String>, Vec<Mount>)>();
+        channel::<(Vec<String>, Vec<MountEntry>)>();
     let (devices_response_sender, devices_response) =
         channel::<Result<Vec<(String, File)>, DiskError>>();
     let (flash_request, flash_request_receiver) = channel::<FlashRequest>();
@@ -45,7 +49,7 @@ fn main() {
 
     // If running in pkexec or sudo, restore home directory for open dialog,
     // and then downgrade permissions back to a regular user.
-    if let Ok(pkexec_uid) = env::var("PKEXEC_UID").or(env::var("SUDO_UID")) {
+    if let Ok(pkexec_uid) = env::var("PKEXEC_UID").or_else(|_| env::var("SUDO_UID")) {
         if let Ok(uid) = pkexec_uid.parse::<u32>() {
             if let Some(passwd) = pwd::Passwd::from_uid(uid) {
                 env::set_var("HOME", passwd.dir);
@@ -59,14 +63,14 @@ fn main() {
 
     {
         let buffer = app.state.buffer.clone();
-        thread::spawn(move || image::event_loop(receiver, &buffer));
+        thread::spawn(move || image::event_loop(&receiver, &buffer));
 
         let buffer = app.state.buffer.clone();
         let hash = app.state.hash.clone();
         thread::spawn(move || hash::event_loop(&buffer, &hash));
     }
 
-    if let Some(iso_argument) = env::args().skip(1).next() {
+    if let Some(iso_argument) = env::args().nth(1) {
         let _ = app.state.image_sender.send(PathBuf::from(iso_argument));
     }
 
@@ -77,22 +81,35 @@ fn main() {
 ///
 /// This function should be called before `downgrade_permissions()`.
 fn authenticated_threads(
-    devices_request: Receiver<(Vec<String>, Vec<Mount>)>,
+    devices_request: Receiver<(Vec<String>, Vec<MountEntry>)>,
     devices_response: Sender<Result<Vec<(String, File)>, DiskError>>,
     flash_request: Receiver<FlashRequest>,
     flash_response: Sender<JoinHandle<Result<(), DiskError>>>
 ) {
     thread::spawn(move || {
-        while let Ok((devs, mounts)) = devices_request.recv() {
-            let resp = popsicle::disks_from_args(devs.into_iter(), &mounts, true);
-            let _ = devices_response.send(resp);
-        }
-    });
+        loop {
+            let mut disconnected = 0;
 
-    thread::spawn(move || {
-        while let Ok(flash_request) = flash_request.recv() {
-            let handle = thread::spawn(move || flash_request.write());
-            let _ = flash_response.send(handle);
+            match devices_request.try_recv() {
+                Ok((devs, mounts)) => {
+                    let resp = popsicle::disks_from_args(devs.into_iter(), &mounts, true);
+                    let _ = devices_response.send(resp);
+                }
+                Err(TryRecvError::Empty) => (),
+                Err(TryRecvError::Disconnected) => disconnected += 1,
+            }
+
+            match flash_request.try_recv() {
+                Ok(flash_request) => {
+                    let _ = flash_response.send(thread::spawn(move || flash_request.write()));
+                }
+                Err(TryRecvError::Empty) => (),
+                Err(TryRecvError::Disconnected) => disconnected += 1,
+            }
+
+            if disconnected == 2 {
+                break
+            }
         }
     });
 }

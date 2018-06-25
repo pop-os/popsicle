@@ -10,7 +10,7 @@ fn read_file(path: &Path) -> String {
             file.read_to_string(&mut string)
                 .map(|_| string.trim().to_owned())
         })
-        .unwrap_or(String::default())
+        .unwrap_or_else(|_| String::default())
 }
 
 pub struct BlockDevice {

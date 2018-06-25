@@ -14,6 +14,7 @@ path = "src/lib.rs"
 members = ["cli", "gtk"]
 
 [dependencies]
-"libc" = "0.2"
+libc = "0.2"
 failure = "0.1.1"
 failure_derive = "0.1.1"
+mnt = "0.3.1"

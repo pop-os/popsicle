@@ -2,13 +2,11 @@ extern crate failure;
 #[macro_use]
 extern crate failure_derive;
 extern crate libc;
+pub extern crate mnt;
 
-mod mount;
-
-pub use self::mount::Mount;
+use mnt::MountEntry;
 
 use std::cmp;
-use std::ffi::OsString;
 use std::fs::{canonicalize, read_dir, File, OpenOptions};
 use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::os::unix::ffi::OsStrExt;
@@ -113,11 +111,11 @@ pub enum DiskError {
     #[fail(display = "unable to find disk '{}': {}", disk, why)]
     NoDisk { disk: String, why: io::Error },
     #[fail(display = "failed to unmount {:?}: exit status {}", path, status)]
-    UnmountStatus { path: OsString, status: ExitStatus },
+    UnmountStatus { path: String, status: ExitStatus },
     #[fail(display = "failed to unmount {:?}: {}", path, why)]
-    UnmountCommand { path: OsString, why: io::Error },
+    UnmountCommand { path: String, why: io::Error },
     #[fail(display = "error using disk '{}': {:?} already mounted at {:?}", arg, source, dest)]
-    AlreadyMounted { arg: String, source: OsString, dest: OsString },
+    AlreadyMounted { arg: String, source: String, dest: PathBuf },
     #[fail(display = "'{}' is not a block device", arg)]
     NotABlock { arg: String },
     #[fail(display = "unable to get metadata of disk '{}': {}", arg, why)]
@@ -171,7 +169,7 @@ pub fn get_disk_args(disks: &mut Vec<String>) -> Result<(), DiskError> {
 
 pub fn disks_from_args<D: Iterator<Item = String>>(
     disk_args: D,
-    mounts: &[Mount],
+    mounts: &[MountEntry],
     unmount: bool,
 ) -> Result<Vec<(String, File)>, DiskError> {
     let mut disks = Vec::new();
@@ -184,27 +182,27 @@ pub fn disks_from_args<D: Iterator<Item = String>>(
 
         for mount in mounts.iter() {
             if mount
-                .source
+                .spec
                 .as_bytes()
                 .starts_with(canonical_path.as_os_str().as_bytes())
             {
                 if unmount {
                     eprintln!(
                         "unmounting '{}': {:?} is mounted at {:?}",
-                        disk_arg, mount.source, mount.dest
+                        disk_arg, mount.spec, mount.file
                     );
 
                     Command::new("umount")
-                        .arg(&mount.source)
+                        .arg(&mount.spec)
                         .status()
                         .map_err(|why| DiskError::UnmountCommand {
-                            path: mount.source.clone(),
+                            path: mount.spec.clone(),
                             why,
                         })
                         .and_then(|status| {
                             if !status.success() {
                                 Err(DiskError::UnmountStatus {
-                                    path: mount.source.clone(),
+                                    path: mount.spec.clone(),
                                     status,
                                 })
                             } else {
@@ -214,8 +212,8 @@ pub fn disks_from_args<D: Iterator<Item = String>>(
                 } else {
                     return Err(DiskError::AlreadyMounted {
                         arg:    disk_arg.clone(),
-                        source: mount.source.clone(),
-                        dest:   mount.dest.clone(),
+                        source: mount.spec.clone(),
+                        dest:   mount.file.clone(),
                     });
                 }
             }
@@ -250,52 +248,51 @@ pub fn disks_from_args<D: Iterator<Item = String>>(
     Ok(disks)
 }
 
+pub enum PopsicleLog<'a> {
+    Message(&'a str),
+    Finished,
+    Progress(u64)
+}
+
 /// Writes an image to the specified disk.
-pub fn write_to_disk<M, F, S>(
-    mut message: M,
-    finish: F,
-    mut set: S,
+pub fn write_to_disk<F: FnMut(PopsicleLog)>(
+    mut callback: F,
     mut disk: File,
-    disk_path: String,
+    disk_path: &str,
     image_size: u64,
     image_data: &[u8],
     check: bool,
-) -> Result<(), DiskError>
-where
-    M: FnMut(&str),
-    F: Fn(),
-    S: FnMut(u64),
-{
+) -> Result<(), DiskError> {
     let mut total = 0;
     while total < image_data.len() {
         let end = cmp::min(image_size as usize, total + BUFFER_SIZE);
         let count = disk.write(&image_data[total..end]).map_err(|why| {
-            message(&format!("! {}: ", disk_path));
-            finish();
+            callback(PopsicleLog::Message(&format!("! {}: ", disk_path)));
+            callback(PopsicleLog::Finished);
             DiskError::Write {
-                disk: disk_path.clone(),
+                disk: disk_path.to_string(),
                 why,
             }
         })?;
 
         if count == 0 {
-            message(&format!("! {}: ", disk_path));
-            finish();
+            callback(PopsicleLog::Message(&format!("! {}: ", disk_path)));
+            callback(PopsicleLog::Finished);
 
             return Err(DiskError::WriteEOF {
-                disk: disk_path.clone(),
+                disk: disk_path.to_string(),
             });
         }
         total += count;
-        set(total as u64);
+        callback(PopsicleLog::Progress(total as u64));
     }
 
     disk.flush().map_err(|why| {
-        message(&format!("! {}: ", disk_path));
-        finish();
+        callback(PopsicleLog::Message(&format!("! {}: ", disk_path)));
+        callback(PopsicleLog::Finished);
 
         DiskError::Flush {
-            disk: disk_path.clone(),
+            disk: disk_path.to_string(),
             why,
         }
     })?;
@@ -304,27 +301,27 @@ where
         match disk.seek(SeekFrom::Start(0)) {
             Ok(0) => (),
             Ok(invalid) => {
-                message(&format!("! {}: ", disk_path));
-                finish();
+                callback(PopsicleLog::Message(&format!("! {}: ", disk_path)));
+                callback(PopsicleLog::Finished);
 
                 return Err(DiskError::SeekInvalid {
-                    disk: disk_path.clone(),
+                    disk: disk_path.to_string(),
                     invalid,
                 });
             }
             Err(why) => {
-                message(&format!("! {}: ", disk_path));
-                finish();
+                callback(PopsicleLog::Message(&format!("! {}: ", disk_path)));
+                callback(PopsicleLog::Finished);
 
                 return Err(DiskError::Seek {
-                    disk: disk_path.clone(),
+                    disk: disk_path.to_string(),
                     why,
                 });
             }
         }
 
-        message(&format!("V {}: ", disk_path));
-        set(0);
+        callback(PopsicleLog::Message(&format!("V {}: ", disk_path)));
+        callback(PopsicleLog::Progress(0));
         total = 0;
 
         let mut buf = vec![0; BUFFER_SIZE];
@@ -333,42 +330,42 @@ where
             let count = match disk.read(&mut buf[..end - total]) {
                 Ok(count) => count,
                 Err(why) => {
-                    message(&format!("! {}: ", disk_path));
-                    finish();
+                    callback(PopsicleLog::Message(&format!("! {}: ", disk_path)));
+                    callback(PopsicleLog::Finished);
 
                     return Err(DiskError::Verify {
-                        disk: disk_path.clone(),
+                        disk: disk_path.to_string(),
                         why,
                     });
                 }
             };
 
             if count == 0 {
-                message(&format!("! {}: ", disk_path));
-                finish();
+                callback(PopsicleLog::Message(&format!("! {}: ", disk_path)));
+                callback(PopsicleLog::Finished);
 
                 return Err(DiskError::VerifyEOF {
-                    disk: disk_path.clone(),
+                    disk: disk_path.to_string(),
                 });
             }
 
             if buf[..count] != image_data[total..total + count] {
-                message(&format!("! {}: ", disk_path));
-                finish();
+                callback(PopsicleLog::Message(&format!("! {}: ", disk_path)));
+                callback(PopsicleLog::Finished);
 
                 return Err(DiskError::VerifyMismatch {
-                    disk: disk_path.clone(),
+                    disk: disk_path.to_string(),
                     x:    total,
                     y:    total + count,
                 });
             }
 
             total += count;
-            set(total as u64);
+            callback(PopsicleLog::Progress(total as u64));
         }
     }
 
-    finish();
+    callback(PopsicleLog::Finished);
 
     Ok(())
 }
