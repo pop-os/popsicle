@@ -252,7 +252,7 @@ impl Connect for App {
                 if state.view.get() == 1 {
                     match device_selection::device_requires_refresh(&state, &back, &error, &next, &stack) {
                         Some(devices) => {
-                            device_selection::refresh_device_list(&state, &devices, &back, &error, &list, &next, &stack);
+                            device_selection::refresh_device_list(&state, &devices, &all, &back, &error, &list, &next, &stack);
                             all.set_active(false);
                             next.set_sensitive(false);
                         }
@@ -275,7 +275,7 @@ impl Connect for App {
             stack.set_transition_type(StackTransitionType::SlideLeft);
 
             match view_value {
-                0 => device_selection::initialize(&state, &back, &error, &list, &next, &stack),
+                0 => device_selection::initialize(&state, &all, &back, &error, &list, &next, &stack),
                 1 => flash_devices(&state, &back, &error, &next, &stack, &summary_grid),
                 2 => gtk::main_quit(),
                 _ => unreachable!(),
@@ -318,7 +318,7 @@ impl Connect for App {
 
             devices
                 .iter()
-                .for_each(|&(_, ref device)| device.set_active(all.get_active()));
+                .for_each(|&(_, ref device)| device.set_active(all.get_active() && device.is_sensitive()));
         });
     }
 
