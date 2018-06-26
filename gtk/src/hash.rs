@@ -82,7 +82,7 @@ pub(crate) fn event_loop(buffer: &BufferingData, hash: &HashState) {
             let current_image = &buffer_data.0;
             let image_data = &buffer_data.1;
             let requested = hash_data.requested;
-            let same_image = &last_image != current_image.as_path();
+            let same_image = last_image != current_image.as_path();
 
             if !same_image || !hash_data.store.contains_key(requested) {
                 if !same_image {

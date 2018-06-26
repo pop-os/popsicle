@@ -25,7 +25,8 @@ use std::time::{Duration, Instant};
 
 use gtk;
 use gtk::*;
-use popsicle::{DiskError, Mount};
+use popsicle::mnt::MountEntry;
+use popsicle::DiskError;
 
 /// Contains all of the state that needs to be shared across the program's lifetime.
 pub struct State {
@@ -51,7 +52,7 @@ pub struct State {
     /// Stores an integer which defines the currently-active view.
     pub view: Cell<u8>,
     /// Requests for a list of devices to be returned by an authenticated user (ie: root).
-    pub devices_request: Sender<(Vec<String>, Vec<Mount>)>,
+    pub devices_request: Sender<(Vec<String>, Vec<MountEntry>)>,
     /// The accompanying response that follows a device request.
     pub devices_response: Receiver<Result<Vec<(String, File)>, DiskError>>,
     /// Requests for a device to be flashed by an authenticated user (ie: root).
@@ -64,7 +65,7 @@ impl State {
     /// Initailizes a new structure for managing the state of the application.
     pub fn new(
         image_sender: Sender<PathBuf>,
-        devices_request: Sender<(Vec<String>, Vec<Mount>)>,
+        devices_request: Sender<(Vec<String>, Vec<MountEntry>)>,
         devices_response: Receiver<Result<Vec<(String, File)>, DiskError>>,
         flash_request: Sender<FlashRequest>,
         flash_response: Receiver<JoinHandle<Result<(), DiskError>>>,
@@ -399,19 +400,22 @@ impl Connect for App {
                 return Continue(true);
             }
 
-            let mut finished = true;
-            for (task, &(ref bar, ref label)) in tasks.deref().iter().zip(bars.borrow().iter()) {
+            let mut all_tasks_finished = true;
+            for (task, &(ref pbar, ref label)) in tasks.deref().iter().zip(bars.borrow().iter()) {
                 let raw_value = task.progress.load(Ordering::SeqCst);
-                let value = if task.finished.load(Ordering::SeqCst) == 1 {
+                let task_is_finished = task.finished.load(Ordering::SeqCst) == 1;
+                let value = if task_is_finished {
                     1.0f64
                 } else {
-                    finished = false;
+                    all_tasks_finished = false;
                     raw_value as f64 / image_length as f64
                 };
 
-                bar.set_fraction(value);
+                pbar.set_fraction(value);
 
-                if let Ok(mut prev_values) = task.previous.lock() {
+                if task_is_finished {
+                    label.set_label("Complete");
+                } else if let Ok(mut prev_values) = task.previous.lock() {
                     prev_values[1] = prev_values[2];
                     prev_values[2] = prev_values[3];
                     prev_values[3] = prev_values[4];
@@ -428,9 +432,10 @@ impl Connect for App {
                         format!("{} KiB/s", per_second / 1024)
                     });
                 }
+
             }
 
-            if finished {
+            if all_tasks_finished {
                 back.set_visible(false);
                 stack.set_visible_child_name("summary");
                 next.set_label("Close");

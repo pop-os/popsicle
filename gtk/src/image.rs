@@ -30,7 +30,7 @@ pub const SLEEPING: usize = 4;
 /// An event loop that is meant to be run in a background thread, receiving image paths
 /// to load, and buffering those images into the application's shared `BufferingData`
 /// field.
-pub fn event_loop(path_receiver: Receiver<PathBuf>, buffer: &BufferingData) {
+pub fn event_loop(path_receiver: &Receiver<PathBuf>, buffer: &BufferingData) {
     while let Ok(path) = path_receiver.recv() {
         buffer.state.store(PROCESSING, Ordering::SeqCst);
         let (ref mut name, ref mut data) = *buffer
