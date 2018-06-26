@@ -318,7 +318,7 @@ impl Connect for App {
 
             devices
                 .iter()
-                .for_each(|&(_, ref device)| device.set_active(all.get_active()));
+                .for_each(|&(_, ref device)| device.set_active(all.get_active() && device.is_sensitive()));
         });
     }
 
