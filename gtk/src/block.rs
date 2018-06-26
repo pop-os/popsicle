@@ -2,6 +2,11 @@ use std::default::Default;
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
+use std::thread::sleep;
+use std::time::Duration;
+
+const SLEEP_AFTER_FAIL: u64 = 500;
+const ATTEMPTS: u64 = 10_000 / SLEEP_AFTER_FAIL;
 
 fn read_file(path: &Path) -> String {
     File::open(path)
@@ -30,9 +35,16 @@ impl BlockDevice {
     }
 
     pub fn sectors(&self) -> u64 {
-        read_file(&self.path.join("size"))
-            .parse::<u64>()
-            .unwrap_or(0)
+        let get_sectors = || read_file(&self.path.join("size")).parse::<u64>().unwrap_or(0);
+        let (mut result, mut attempts) = (get_sectors(), 0);
+
+        while result == 0 || attempts == ATTEMPTS {
+            result = get_sectors();
+            sleep(Duration::from_millis(SLEEP_AFTER_FAIL));
+            attempts += 1;
+        }
+
+        result
     }
 
     pub fn vendor(&self) -> String { read_file(&self.path.join("device/vendor")) }

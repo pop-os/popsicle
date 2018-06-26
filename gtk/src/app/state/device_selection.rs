@@ -37,6 +37,7 @@ macro_rules! try_or_error {
 /// Move to device selection screen
 pub fn initialize(
     state: &State,
+    all: &gtk::CheckButton,
     back: &gtk::Button,
     error: &gtk::Label,
     list: &gtk::ListBox,
@@ -64,12 +65,13 @@ pub fn initialize(
         eprintln!("popsicle: unable to get devices: {}", why);
     }
 
-    refresh_device_list(state, &devices, back, error, list, next, stack);
+    refresh_device_list(state, &devices, all, back, error, list, next, stack);
 }
 
 pub fn refresh_device_list(
     state: &State,
     devices: &[String],
+    all: &gtk::CheckButton,
     back: &gtk::Button,
     error: &gtk::Label,
     list: &gtk::ListBox,
@@ -91,7 +93,7 @@ pub fn refresh_device_list(
 
     list.get_children().iter().for_each(|c| c.destroy());
     let image_sectors = (state.image_length.get() / 512 + 1) as u64;
-
+    let mut all_is_sensitive = false;
     for device in devices {
         // Attempt to get the canonical path of the device.
         // Display the error view if this fails.
@@ -121,6 +123,8 @@ pub fn refresh_device_list(
                 button.set_tooltip_text("Device is too small");
                 button.set_has_tooltip(true);
                 button.set_sensitive(false);
+            } else {
+                all_is_sensitive = true;
             }
             button
         } else {
@@ -132,6 +136,7 @@ pub fn refresh_device_list(
     }
 
     list.show_all();
+    all.set_sensitive(all_is_sensitive);
 }
 
 pub fn device_requires_refresh(
