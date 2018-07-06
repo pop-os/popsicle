@@ -37,16 +37,18 @@ pub fn event_loop(path_receiver: &Receiver<PathBuf>, buffer: &BufferingData) {
             .data
             .lock()
             .expect("failed to unlock image buffer mutex");
-        match load_image(&path, data) {
+        let signal = match load_image(&path, data) {
             Ok(_) => {
                 *name = path;
-                buffer.state.store(COMPLETED, Ordering::SeqCst);
+                COMPLETED
             }
             Err(why) => {
                 eprintln!("popsicle-gtk: image loading error: {}", why);
-                buffer.state.store(ERRORED, Ordering::SeqCst);
+                ERRORED
             }
-        }
+        };
+
+        buffer.state.store(signal, Ordering::SeqCst);
     }
 }
 

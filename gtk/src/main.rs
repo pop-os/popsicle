@@ -22,6 +22,7 @@ use std::env;
 use std::path::PathBuf;
 use std::sync::mpsc::channel;
 use std::thread;
+use std::time::Duration;
 use std::fs::File;
 use std::sync::mpsc::{Sender, Receiver, TryRecvError};
 use std::thread::JoinHandle;
@@ -110,6 +111,8 @@ fn authenticated_threads(
             if disconnected == 2 {
                 break
             }
+
+            thread::sleep(Duration::from_millis(1));
         }
     });
 }
