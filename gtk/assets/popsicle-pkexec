@@ -1,2 +1,2 @@
 #!/bin/sh
-pkexec /usr/bin/popsicle-gtk $@
+pkexec /usr/local/bin/popsicle-gtk $@

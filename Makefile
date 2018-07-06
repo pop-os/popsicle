@@ -1,4 +1,5 @@
-prefix ?= /usr/local
+default_prefix = /usr/local
+prefix ?= $(default_prefix)
 exec_prefix = $(prefix)
 bindir = $(exec_prefix)/bin
 libdir = $(exec_prefix)/lib
@@ -24,6 +25,9 @@ ICONS=\
 	24x24@2x/apps/$(BIN).png \
 	512x512@2x/apps/$(BIN).png
 
+BEFORE := $(shell echo $(default_prefix) | sed 's/\//\\\//g')
+AFTER := $(shell echo $(prefix) | sed 's/\//\\\//g')
+
 all: cli gtk
 
 cli: target/release/$(BIN) target/release/$(BIN).1.gz
@@ -48,6 +52,11 @@ install-gtk: gtk
 	for icon in $(ICONS); do \
 		install -D -m 0644 "gtk/assets/icons/$$icon" "$(DESTDIR)$(datadir)/icons/hicolor/$$icon"; \
 	done
+
+	# Fix paths in assets
+	sed -i -e 's/$(BEFORE)/$(AFTER)/g' $(DESTDIR)$(datadir)/applications/popsicle.desktop \
+		&& sed -i -e 's/$(BEFORE)/$(AFTER)/g' $(DESTDIR)$(datadir)/polkit-1/actions/$(POLICY) \
+		&& sed -i -e 's/$(BEFORE)/$(AFTER)/g' $(DESTDIR)$(bindir)/$(PKEXEC_BIN)
 
 install: all install-cli install-gtk
 
