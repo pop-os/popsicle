@@ -59,6 +59,8 @@ pub struct State {
     pub flash_request: Sender<FlashRequest>,
     /// Contains the join handle to the thread where the task is being flashed.
     pub flash_response: Receiver<JoinHandle<Result<(), DiskError>>>,
+    /// Signifies the status of flashing
+    pub flash_state: Arc<AtomicUsize>,
 }
 
 impl State {
@@ -73,11 +75,12 @@ impl State {
         State {
             bars: RefCell::new(Vec::new()),
             devices: Mutex::new(Vec::new()),
-            hash: Arc::new(HashState::new()),
             task_handles: Mutex::new(Vec::new()),
             tasks: Mutex::new(Vec::new()),
             view: Cell::new(0),
             start: RefCell::new(unsafe { mem::uninitialized() }),
+            flash_state: Arc::new(AtomicUsize::new(0)),
+            hash: Arc::new(HashState::new()),
             buffer: Arc::new(BufferingData::new()),
             image_sender,
             image_length: Cell::new(0),
@@ -86,6 +89,25 @@ impl State {
             flash_request,
             flash_response,
         }
+    }
+
+    pub fn reset(&self) {
+        self.bars.borrow_mut().clear();
+        if let Ok(ref mut devices) = self.devices.lock() {
+            devices.clear();
+        }
+
+        if let Ok(ref mut handles) = self.task_handles.lock() {
+            if !handles.is_empty() {
+                handles.drain(..).for_each(|x| { let _ = x.join(); });
+            }
+        }
+
+        if let Ok(ref mut tasks) = self.tasks.lock() {
+            tasks.clear();
+        }
+
+        self.flash_state.store(0, Ordering::SeqCst);
     }
 }
 
@@ -100,7 +122,7 @@ pub struct Connected(App);
 impl Connected {
     /// Display the window, and execute the gtk main event loop.
     pub fn then_execute(self) {
-        self.0.window.show_all();
+        self.0.widgets.window.show_all();
         gtk::main();
     }
 }
@@ -144,7 +166,7 @@ impl Connect for App {
 
     fn connect_image_chooser(&self) {
         let state = self.state.clone();
-        self.content.image_view.chooser.connect_clicked(move |_| {
+        self.widgets.content.image_view.chooser.connect_clicked(move |_| {
             if let Some(path) = OpenDialog::new(None).run() {
                 let _ = state.image_sender.send(path);
             }
@@ -153,8 +175,8 @@ impl Connect for App {
 
     fn connect_hash_generator(&self) {
         let state = self.state.clone();
-        let hash_label = self.content.image_view.hash_label.clone();
-        self.content
+        let hash_label = self.widgets.content.image_view.hash_label.clone();
+        self.widgets.content
             .image_view
             .hash
             .connect_changed(move |hash_kind| {
@@ -191,53 +213,39 @@ impl Connect for App {
     }
 
     fn connect_back_button(&self) {
-        let stack = self.content.container.clone();
-        let back = self.header.back.clone();
-        let next = self.header.next.clone();
+        let widgets = self.widgets.clone();
         let state = self.state.clone();
-        back.connect_clicked(move |back| {
-            let view = state.view.get();
-            match view {
+        self.widgets.header.back.connect_clicked(move |_| {
+            match state.view.get() {
                 0 => {
                     gtk::main_quit();
                     return;
                 },
-                1 => {
-                    stack.set_transition_type(StackTransitionType::SlideRight);
-                    stack.set_visible_child_name("image");
-                    back.set_label("Cancel");
-                    back.get_style_context().map(|c| {
-                        c.remove_class("back-button");
-                    });
-                    next.set_label("Next");
-                    next.set_sensitive(true);
-                    next.get_style_context().map(|c| {
-                        c.remove_class("destructive-action");
-                        c.add_class("suggested-action");
-                    });
-                }
-                2 => {
-                    gtk::main_quit();
-                    return;
-                }
-                _ => unreachable!(),
+                _ => {
+                    // If tasks are running, signify that tasks should be considered as completed.
+                    if 1 == state.flash_state.load(Ordering::SeqCst) {
+                        state.flash_state.store(2, Ordering::SeqCst);
+                    }
+
+                    widgets.switch_to_main();
+                },
             }
 
-            state.view.set(view - 1);
+            state.view.set(0);
         });
     }
 
     fn connect_next_button(&self) {
         #[allow(unused_variables)]
-        let back = self.header.back.clone();
-        let list = self.content.devices_view.list.clone();
-        let back = self.header.back.clone();
-        let next = self.header.next.clone();
-        let stack = self.content.container.clone();
-        let summary_grid = self.content.flash_view.progress_list.clone();
+        let back = self.widgets.header.back.clone();
+        let list = self.widgets.content.devices_view.list.clone();
+        let back = self.widgets.header.back.clone();
+        let next = self.widgets.header.next.clone();
+        let stack = self.widgets.content.container.clone();
+        let summary_grid = self.widgets.content.flash_view.progress_list.clone();
         let state = self.state.clone();
-        let error = self.content.error_view.view.description.clone();
-        let all = self.content.devices_view.select_all.clone();
+        let error = self.widgets.content.error_view.view.description.clone();
+        let all = self.widgets.content.devices_view.select_all.clone();
 
         fn watch_device_selection(
             state: Arc<State>,
@@ -260,10 +268,9 @@ impl Connect for App {
                             next.set_sensitive(devices.iter().any(|x| x.1.get_active()));
                         }
                     }
-                    gtk::Continue(true)
-                } else {
-                    gtk::Continue(false)
                 }
+
+                gtk::Continue(true)
             });
         }
 
@@ -276,7 +283,14 @@ impl Connect for App {
 
             match view_value {
                 0 => device_selection::initialize(&state, &all, &back, &error, &list, &next, &stack),
-                1 => flash_devices(&state, &back, &error, &next, &stack, &summary_grid),
+                1 => {
+                    // Wait for the flash state to be 0 before proceeding.
+                    while state.flash_state.load(Ordering::SeqCst) != 0 {
+                        thread::sleep(Duration::from_millis(16));
+                    }
+
+                    flash_devices(&state, &back, &error, &next, &stack, &summary_grid);
+                },
                 2 => gtk::main_quit(),
                 _ => unreachable!(),
             }
@@ -298,11 +312,11 @@ impl Connect for App {
     }
 
     fn connect_check_all(&self) {
-        let all = self.content.devices_view.select_all.clone();
-        let back = self.header.back.clone();
-        let next = self.header.next.clone();
-        let stack = self.content.container.clone();
-        let error = self.content.error_view.view.description.clone();
+        let all = self.widgets.content.devices_view.select_all.clone();
+        let back = self.widgets.header.back.clone();
+        let next = self.widgets.header.next.clone();
+        let stack = self.widgets.content.container.clone();
+        let error = self.widgets.content.error_view.view.description.clone();
         let state = self.state.clone();
         all.connect_clicked(move |all| {
             let devices = try_or_error!(
@@ -323,15 +337,15 @@ impl Connect for App {
     }
 
     fn watch_flashing_devices(&self) {
-        let stack = self.content.container.clone();
-        let back = self.header.back.clone();
-        let next = self.header.next.clone();
-        let description = self.content.summary_view.view.description.clone();
-        let list = self.content.summary_view.list.clone();
+        let stack = self.widgets.content.container.clone();
+        let back = self.widgets.header.back.clone();
+        let next = self.widgets.header.next.clone();
+        let description = self.widgets.content.summary_view.view.description.clone();
+        let list = self.widgets.content.summary_view.list.clone();
         let state = self.state.clone();
-        let image_label = self.content.image_view.image_path.clone();
-        let chooser_container = self.content.image_view.chooser_container.clone();
-        let error = self.content.error_view.view.description.clone();
+        let image_label = self.widgets.content.image_view.image_path.clone();
+        let chooser_container = self.widgets.content.image_view.chooser_container.clone();
+        let error = self.widgets.content.error_view.view.description.clone();
 
         gtk::timeout_add(500, move || {
             let tasks = &state.tasks;
@@ -383,60 +397,62 @@ impl Connect for App {
             }
 
             let image_length = image_length.get();
-
-            let tasks = try_or_error!(
-                tasks.lock(),
-                state.view,
-                back,
-                next,
-                stack,
-                error,
-                "tasks mutex lock failure",
-                Continue(false)
-            );
-
-            let ntasks = tasks.len();
-            if ntasks == 0 {
-                return Continue(true);
-            }
-
             let mut all_tasks_finished = true;
-            for (task, &(ref pbar, ref label)) in tasks.deref().iter().zip(bars.borrow().iter()) {
-                let raw_value = task.progress.load(Ordering::SeqCst);
-                let task_is_finished = task.finished.load(Ordering::SeqCst) == 1;
-                let value = if task_is_finished {
-                    1.0f64
-                } else {
-                    all_tasks_finished = false;
-                    raw_value as f64 / image_length as f64
-                };
+            let ntasks;
 
-                pbar.set_fraction(value);
+            {
+                let tasks = try_or_error!(
+                    tasks.lock(),
+                    state.view,
+                    back,
+                    next,
+                    stack,
+                    error,
+                    "tasks mutex lock failure",
+                    Continue(false)
+                );
 
-                if task_is_finished {
-                    label.set_label("Complete");
-                } else if let Ok(mut prev_values) = task.previous.lock() {
-                    prev_values[1] = prev_values[2];
-                    prev_values[2] = prev_values[3];
-                    prev_values[3] = prev_values[4];
-                    prev_values[4] = prev_values[5];
-                    prev_values[5] = prev_values[6];
-                    prev_values[6] = raw_value - prev_values[0];
-                    prev_values[0] = raw_value;
-
-                    let sum: usize = prev_values.iter().skip(1).sum();
-                    let per_second = sum / 3;
-                    label.set_label(&if per_second > (1024 * 1024) {
-                        format!("{} MiB/s", per_second / (1024 * 1024))
-                    } else {
-                        format!("{} KiB/s", per_second / 1024)
-                    });
+                ntasks = tasks.len();
+                if ntasks == 0 {
+                    return Continue(true);
                 }
 
+                for (task, &(ref pbar, ref label)) in tasks.deref().iter().zip(bars.borrow().iter()) {
+                    let raw_value = task.progress.load(Ordering::SeqCst);
+                    let task_is_finished = task.finished.load(Ordering::SeqCst) == 1;
+                    let value = if task_is_finished {
+                        1.0f64
+                    } else {
+                        all_tasks_finished = false;
+                        raw_value as f64 / image_length as f64
+                    };
+
+                    pbar.set_fraction(value);
+
+                    if task_is_finished {
+                        label.set_label("Complete");
+                    } else if let Ok(mut prev_values) = task.previous.lock() {
+                        prev_values[1] = prev_values[2];
+                        prev_values[2] = prev_values[3];
+                        prev_values[3] = prev_values[4];
+                        prev_values[4] = prev_values[5];
+                        prev_values[5] = prev_values[6];
+                        prev_values[6] = raw_value - prev_values[0];
+                        prev_values[0] = raw_value;
+
+                        let sum: usize = prev_values.iter().skip(1).sum();
+                        let per_second = sum / 3;
+                        label.set_label(&if per_second > (1024 * 1024) {
+                            format!("{} MiB/s", per_second / (1024 * 1024))
+                        } else {
+                            format!("{} KiB/s", per_second / 1024)
+                        });
+                    }
+                }
             }
 
             if all_tasks_finished {
-                back.set_visible(false);
+                back.set_label("Back");
                 stack.set_visible_child_name("summary");
                 next.set_label("Close");
                 next.get_style_context()
@@ -507,10 +523,21 @@ impl Connect for App {
                     }
                 }
 
-                Continue(false)
-            } else {
-                Continue(true)
+                state.flash_state.store(2, Ordering::SeqCst);
+                while 3 != state.flash_state.load(Ordering::SeqCst) {
+                    thread::sleep(Duration::from_millis(16));
+                }
             }
+
+            if 3 == state.flash_state.load(Ordering::SeqCst) {
+                state.flash_state.store(4, Ordering::SeqCst);
+                while 5 != state.flash_state.load(Ordering::SeqCst) {
+                    thread::sleep(Duration::from_millis(16));
+                }
+                state.reset();
+            }
+
+            Continue(true)
         });
     }
 }

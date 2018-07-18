@@ -14,6 +14,7 @@ pub use self::state::{Connect, State};
 
 use std::path::PathBuf;
 use std::process;
+use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::mpsc::{Sender, Receiver};
 use std::fs::File;
@@ -29,10 +30,41 @@ use gtk::*;
 const CSS: &str = include_str!("ui.css");
 
 pub struct App {
+    pub widgets: Rc<AppWidgets>,
+    pub state:   Arc<State>,
+}
+
+pub struct AppWidgets {
     pub window:  Window,
     pub header:  Header,
     pub content: Content,
-    pub state:   Arc<State>,
+}
+
+impl AppWidgets {
+    pub fn switch_to_main(&self) {
+        let stack = &self.content.container;
+        let back =  &self.header.back;
+        let next = &self.header.next;
+
+        self.content.devices_view.select_all.set_active(false);
+
+        stack.set_transition_type(StackTransitionType::SlideRight);
+        stack.set_visible_child_name("image");
+
+        back.set_visible(true);
+        back.set_label("Cancel");
+        back.get_style_context().map(|c| {
+            c.remove_class("back-button");
+        });
+
+        next.set_visible(true);
+        next.set_label("Next");
+        next.set_sensitive(true);
+        next.get_style_context().map(|c| {
+            c.remove_class("destructive-action");
+            c.add_class("suggested-action");
+        });
+    }
 }
 
 impl App {
@@ -83,9 +115,7 @@ impl App {
 
         // Return the application structure.
         App {
-            window,
-            header,
-            content,
+            widgets: Rc::new(AppWidgets { window, header, content }),
             state: Arc::new(State::new(sender, devices_request, devices_response, flash_request, flash_response)),
         }
     }

@@ -2,7 +2,7 @@
 name = "popsicle_gtk"
 description = "USB Flasher"
 version = "0.1.5"
-authors = ["Jeremy Soller <jeremy@system76.com>"]
+authors = [ "Michael Aaron Murphy <michael@system76.com>" ]
 license = "MIT"
 readme = "README.md"
 
