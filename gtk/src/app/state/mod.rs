@@ -443,12 +443,14 @@ impl Connect for App {
             }
 
             if all_tasks_finished {
-                back.set_label("Back");
-                stack.set_visible_child_name("summary");
+                back.set_label("Flash Again");
+                back.get_style_context()
+                    .map(|c| c.remove_class("destructive-action"));
                 next.set_label("Close");
                 next.get_style_context()
                     .map(|c| c.remove_class("destructive-action"));
                 next.set_visible(true);
+                stack.set_visible_child_name("summary");
 
                 let mut errored: Vec<(String, DiskError)> = Vec::new();
                 let mut task_handles = try_or_error!(
