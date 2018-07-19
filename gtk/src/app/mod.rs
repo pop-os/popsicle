@@ -22,7 +22,7 @@ use std::thread::JoinHandle;
 
 use flash::FlashRequest;
 use popsicle::mnt::MountEntry;
-use popsicle::DiskError;
+use popsicle::{self, DiskError};
 
 use gtk;
 use gtk::*;
@@ -43,10 +43,10 @@ pub struct AppWidgets {
 impl AppWidgets {
     pub fn switch_to_main(&self) {
         let stack = &self.content.container;
-        let back =  &self.header.back;
+        let back = &self.header.back;
         let next = &self.header.next;
 
-        self.content.devices_view.select_all.set_active(false);
+        self.content.devices_view.list.select_all.set_active(false);
 
         stack.set_transition_type(StackTransitionType::SlideRight);
         stack.set_visible_child_name("image");
@@ -64,6 +64,57 @@ impl AppWidgets {
             c.remove_class("destructive-action");
             c.add_class("suggested-action");
         });
+    }
+
+    pub fn switch_to_device_selection(&self, state: &State) {
+        let stack = &self.content.container;
+        let back = &self.header.back;
+        let next = &self.header.next;
+        let list = &self.content.devices_view.list;
+
+        back.set_label("Back");
+        back.get_style_context().map(|c| {
+            c.add_class("back-button");
+        });
+        next.set_label("Flash");
+        next.get_style_context().map(|c| {
+            c.remove_class("suggested-action");
+            c.add_class("destructive-action");
+        });
+        stack.set_visible_child_name("devices");
+
+        let image_sectors = (state.image_length.get() / 512 + 1) as u64;
+        let mut devices = vec![];
+        if let Err(why) = popsicle::get_disk_args(&mut devices) {
+            eprintln!("popsicle: unable to get devices: {}", why);
+        }
+
+        if let Err(why) = state.devices.lock()
+            .map_err(|why| format!("mutex lock failed: {}", why))
+            .and_then(|ref mut device_list| {
+                list.refresh(device_list, &devices, image_sectors)
+            })
+        {
+            self.set_error(state, &why);
+        }
+    }
+
+    pub fn set_error(&self, state: &State, msg: &str) {
+        let stack = &self.content.container;
+        let back = &self.header.back;
+        let next = &self.header.next;
+        let error = &self.content.error_view.view.description;
+
+        back.set_visible(false);
+        next.set_visible(true);
+        next.set_label("Close");
+        next.get_style_context().map(|c| {
+            c.remove_class("destructive-action");
+            c.remove_class("suggested-action");
+        });
+        error.set_text(&msg);
+        state.view.set(2);
+        stack.set_visible_child_name("error");
     }
 }
 

@@ -1,4 +1,3 @@
-mod device_selection;
 mod flash_devices;
 #[macro_use]
 mod try;
@@ -8,6 +7,8 @@ use flash::FlashRequest;
 
 use super::super::BlockDevice;
 use super::{App, OpenDialog};
+use app::AppWidgets;
+use app::content::DeviceList;
 
 use hash::HashState;
 use image::{self, BufferingData};
@@ -15,7 +16,8 @@ use std::fs::File;
 use std::cell::{Cell, RefCell};
 use std::mem;
 use std::ops::{Deref, DerefMut};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
+use std::rc::Rc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::{Sender, Receiver};
 use std::sync::{Arc, Mutex};
@@ -237,37 +239,45 @@ impl Connect for App {
 
     fn connect_next_button(&self) {
         #[allow(unused_variables)]
-        let back = self.widgets.header.back.clone();
-        let list = self.widgets.content.devices_view.list.clone();
-        let back = self.widgets.header.back.clone();
-        let next = self.widgets.header.next.clone();
-        let stack = self.widgets.content.container.clone();
-        let summary_grid = self.widgets.content.flash_view.progress_list.clone();
+        let widgets = self.widgets.clone();
+        let back = widgets.header.back.clone();
+        let next = widgets.header.next.clone();
+        let stack = widgets.content.container.clone();
+        let summary_grid = widgets.content.flash_view.progress_list.clone();
         let state = self.state.clone();
-        let error = self.widgets.content.error_view.view.description.clone();
-        let all = self.widgets.content.devices_view.select_all.clone();
+        let error = widgets.content.error_view.view.description.clone();
 
         fn watch_device_selection(
             state: Arc<State>,
-            all: gtk::CheckButton,
-            back: gtk::Button,
-            error: gtk::Label,
-            list: gtk::ListBox,
-            next: gtk::Button,
-            stack: gtk::Stack,
+            widgets: Rc<AppWidgets>,
         ) {
             gtk::timeout_add(16, move || {
-                if state.view.get() == 1 {
-                    match device_selection::device_requires_refresh(&state, &back, &error, &next, &stack) {
-                        Some(devices) => {
-                            device_selection::refresh_device_list(&state, &devices, &all, &back, &error, &list, &next, &stack);
-                            all.set_active(false);
-                            next.set_sensitive(false);
+                let list = &widgets.content.devices_view.list;
+                let next = &widgets.header.next;
+
+                if state.view.get() != 1 {
+                    return gtk::Continue(false);
+                }
+
+                if let Err(why) = state.devices.lock()
+                    .map_err(|why| format!("mutex lock failed: {}", why))
+                    .and_then(|mut device_list| {
+                        match DeviceList::requires_refresh(&device_list) {
+                            Some(devices) => {
+                                let image_sectors = (state.image_length.get() / 512 + 1) as u64;
+                                list.refresh(&mut device_list, &devices, image_sectors)?;
+                                list.select_all.set_active(false);
+                                next.set_sensitive(false);
+                            }
+                            None => if let Ok(ref mut devices) = state.devices.try_lock() {
+                                next.set_sensitive(devices.iter().any(|x| x.1.get_active()));
+                            }
                         }
-                        None => if let Ok(ref mut devices) = state.devices.try_lock() {
-                            next.set_sensitive(devices.iter().any(|x| x.1.get_active()));
-                        }
-                    }
+
+                        Ok(())
+                    })
+                {
+                    widgets.set_error(&state, &why);
                 }
 
                 gtk::Continue(true)
@@ -282,15 +292,8 @@ impl Connect for App {
             stack.set_transition_type(StackTransitionType::SlideLeft);
 
             match view_value {
-                0 => device_selection::initialize(&state, &all, &back, &error, &list, &next, &stack),
-                1 => {
-                    // Wait for the flash state to be 0 before proceeding.
-                    while state.flash_state.load(Ordering::SeqCst) != 0 {
-                        thread::sleep(Duration::from_millis(16));
-                    }
-
-                    flash_devices(&state, &back, &error, &next, &stack, &summary_grid);
-                },
+                0 => widgets.switch_to_device_selection(&state),
+                1 => flash_devices(&state, &back, &error, &next, &stack, &summary_grid),
                 2 => gtk::main_quit(),
                 _ => unreachable!(),
             }
@@ -298,42 +301,30 @@ impl Connect for App {
             view.set(view_value + 1);
 
             if view.get() == 1 {
-                watch_device_selection(
-                    state.clone(),
-                    all.clone(),
-                    back.clone(),
-                    error.clone(),
-                    list.clone(),
-                    next.clone(),
-                    stack.clone()
-                );
+                watch_device_selection(state.clone(), widgets.clone());
             }
         });
     }
 
     fn connect_check_all(&self) {
-        let all = self.widgets.content.devices_view.select_all.clone();
         let back = self.widgets.header.back.clone();
         let next = self.widgets.header.next.clone();
         let stack = self.widgets.content.container.clone();
         let error = self.widgets.content.error_view.view.description.clone();
         let state = self.state.clone();
-        all.connect_clicked(move |all| {
-            let devices = try_or_error!(
-                state.devices.lock(),
+        self.widgets.content.devices_view.list.connect_select_all(
+            state.clone(),
+            move |result| try_or_error!(
+                result,
                 state.view,
                 back,
                 next,
                 stack,
                 error,
-                "devices mutex lock failure",
+                "select all",
                 ()
-            );
-
-            devices
-                .iter()
-                .for_each(|&(_, ref device)| device.set_active(all.get_active() && device.is_sensitive()));
-        });
+            )
+        )
     }
 
     fn watch_flashing_devices(&self) {

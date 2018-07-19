@@ -52,6 +52,11 @@ pub fn flash_devices(
     let tasks = &state.tasks;
     let flash_state = state.flash_state.clone();
 
+    // Wait for the flash state to be 0 before proceeding.
+    while state.flash_state.load(Ordering::SeqCst) != 0 {
+        thread::sleep(Duration::from_millis(16));
+    }
+
     let mut data = Vec::new();
     let image_data: Arc<Vec<u8>>;
 
