@@ -188,7 +188,7 @@ pub fn flash_devices(
                 format!("unable to get canonical path of {}", disk_path),
                 ()
             );
-            if let Some(block) = BlockDevice::new(&disk_path) {
+            if let Some(block) = BlockDevice::new(&disk_path, 0) {
                 gtk::Label::new(
                     [&block.label(), " (", &disk_path.to_string_lossy(), ")"]
                         .concat()

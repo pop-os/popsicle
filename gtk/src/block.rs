@@ -6,7 +6,6 @@ use std::thread::sleep;
 use std::time::Duration;
 
 const SLEEP_AFTER_FAIL: u64 = 500;
-const ATTEMPTS: u64 = 10_000 / SLEEP_AFTER_FAIL;
 
 fn read_file(path: &Path) -> String {
     File::open(path)
@@ -20,14 +19,15 @@ fn read_file(path: &Path) -> String {
 
 pub struct BlockDevice {
     path: PathBuf,
+    timeout: u64
 }
 
 impl BlockDevice {
-    pub fn new(path: &Path) -> Option<BlockDevice> {
+    pub fn new(path: &Path, timeout: u64) -> Option<BlockDevice> {
         path.file_name().and_then(|file_name| {
             let path = PathBuf::from("/sys/class/block/").join(file_name);
             if path.exists() {
-                Some(BlockDevice { path })
+                Some(BlockDevice { path, timeout })
             } else {
                 None
             }
@@ -38,7 +38,7 @@ impl BlockDevice {
         let get_sectors = || read_file(&self.path.join("size")).parse::<u64>().unwrap_or(0);
         let (mut result, mut attempts) = (get_sectors(), 0);
 
-        while result == 0 || attempts == ATTEMPTS {
+        while result == 0 || attempts == self.timeout / SLEEP_AFTER_FAIL {
             result = get_sectors();
             sleep(Duration::from_millis(SLEEP_AFTER_FAIL));
             attempts += 1;

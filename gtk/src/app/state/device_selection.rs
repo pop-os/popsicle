@@ -65,7 +65,7 @@ pub fn initialize(
         eprintln!("popsicle: unable to get devices: {}", why);
     }
 
-    refresh_device_list(state, &devices, all, back, error, list, next, stack);
+    refresh_device_list(state, &devices, all, back, error, list, next, stack, 0);
 }
 
 pub fn refresh_device_list(
@@ -77,6 +77,7 @@ pub fn refresh_device_list(
     list: &gtk::ListBox,
     next: &gtk::Button,
     stack: &gtk::Stack,
+    timeout: u64,
 ) {
     let device_list = &state.devices;
     let mut device_list = try_or_error!(
@@ -108,7 +109,7 @@ pub fn refresh_device_list(
             ()
         );
 
-        let button = if let Some(block) = BlockDevice::new(&name) {
+        let button = if let Some(block) = BlockDevice::new(&name, timeout) {
             let too_small = block.sectors() < image_sectors;
 
             let button = CheckButton::new_with_label(&{
