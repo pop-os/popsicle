@@ -1,11 +1,8 @@
-mod flash_devices;
 #[macro_use]
 mod try;
 
-use self::flash_devices::flash_devices;
 use flash::FlashRequest;
 
-use super::super::BlockDevice;
 use super::{App, OpenDialog};
 use app::AppWidgets;
 use app::content::DeviceList;
@@ -93,7 +90,17 @@ impl State {
         }
     }
 
-    pub fn reset(&self) {
+    pub fn reset_after_reacquiring_image(&self) {
+        if 3 == self.flash_state.load(Ordering::SeqCst) {
+            self.flash_state.store(4, Ordering::SeqCst);
+            while 5 != self.flash_state.load(Ordering::SeqCst) {
+                thread::sleep(Duration::from_millis(16));
+            }
+            self.reset();
+        }
+    }
+
+    fn reset(&self) {
         self.bars.borrow_mut().clear();
         if let Ok(ref mut devices) = self.devices.lock() {
             devices.clear();
@@ -111,12 +118,41 @@ impl State {
 
         self.flash_state.store(0, Ordering::SeqCst);
     }
+
+    pub fn async_reattain_image_data(&self, image_data: Arc<Vec<u8>>) {
+        let buffer = self.buffer.clone();
+        let flash_state = self.flash_state.clone();
+        thread::spawn(move || loop {
+            if flash_state.load(Ordering::SeqCst) == 2 {
+                flash_state.store(3, Ordering::SeqCst);
+
+                // Wait for the main GTK event loop to sleep so that we have exclusive state lock access.
+                while 4 != flash_state.load(Ordering::SeqCst) {
+                    thread::sleep(Duration::from_millis(16))
+                }
+
+                // This will be 1 once the device flashing threads have exited.
+                while 1 != Arc::strong_count(&image_data) {
+                    thread::sleep(Duration::from_millis(16));
+                }
+
+                let (_, ref mut data) = *buffer.data.lock().expect("failed to get lock on buffer.data");
+                let mut replace_with = Arc::try_unwrap(image_data).expect("image_data is still shared");
+                mem::swap(data, &mut replace_with);
+
+                flash_state.store(5, Ordering::SeqCst);
+                break
+            }
+
+            thread::sleep(Duration::from_millis(16));
+        });
+    }
 }
 
 pub struct FlashTask {
-    progress: Arc<AtomicUsize>,
-    previous: Arc<Mutex<[usize; 7]>>,
-    finished: Arc<AtomicUsize>,
+    pub progress: Arc<AtomicUsize>,
+    pub previous: Arc<Mutex<[usize; 7]>>,
+    pub finished: Arc<AtomicUsize>,
 }
 
 pub struct Connected(App);
@@ -240,12 +276,9 @@ impl Connect for App {
     fn connect_next_button(&self) {
         #[allow(unused_variables)]
         let widgets = self.widgets.clone();
-        let back = widgets.header.back.clone();
         let next = widgets.header.next.clone();
         let stack = widgets.content.container.clone();
-        let summary_grid = widgets.content.flash_view.progress_list.clone();
         let state = self.state.clone();
-        let error = widgets.content.error_view.view.description.clone();
 
         fn watch_device_selection(
             state: Arc<State>,
@@ -284,7 +317,7 @@ impl Connect for App {
             });
         }
 
-        next.connect_clicked(move |next| {
+        next.connect_clicked(move |_| {
             state.buffer.state.store(image::SLEEPING, Ordering::SeqCst);
 
             let view = &state.view;
@@ -293,7 +326,7 @@ impl Connect for App {
 
             match view_value {
                 0 => widgets.switch_to_device_selection(&state),
-                1 => flash_devices(&state, &back, &error, &next, &stack, &summary_grid),
+                1 => widgets.switch_to_device_flashing(&state),
                 2 => gtk::main_quit(),
                 _ => unreachable!(),
             }
@@ -307,23 +340,13 @@ impl Connect for App {
     }
 
     fn connect_check_all(&self) {
-        let back = self.widgets.header.back.clone();
-        let next = self.widgets.header.next.clone();
-        let stack = self.widgets.content.container.clone();
-        let error = self.widgets.content.error_view.view.description.clone();
         let state = self.state.clone();
-        self.widgets.content.devices_view.list.connect_select_all(
+        let widgets = self.widgets.clone();
+        widgets.clone().content.devices_view.list.connect_select_all(
             state.clone(),
-            move |result| try_or_error!(
-                result,
-                state.view,
-                back,
-                next,
-                stack,
-                error,
-                "select all",
-                ()
-            )
+            move |result| if let Err(why) = result {
+                widgets.set_error(&state, &format!("select all failed: {}", why));
+            }
         )
     }
 
@@ -522,13 +545,7 @@ impl Connect for App {
                 }
             }
 
-            if 3 == state.flash_state.load(Ordering::SeqCst) {
-                state.flash_state.store(4, Ordering::SeqCst);
-                while 5 != state.flash_state.load(Ordering::SeqCst) {
-                    thread::sleep(Duration::from_millis(16));
-                }
-                state.reset();
-            }
+            state.reset_after_reacquiring_image();
 
             Continue(true)
         });
