@@ -5,16 +5,14 @@ use flash::FlashRequest;
 
 use super::{App, OpenDialog};
 use app::AppWidgets;
-use app::content::DeviceList;
 
 use hash::HashState;
 use image::{self, BufferingData};
 use std::fs::File;
 use std::cell::{Cell, RefCell};
 use std::mem;
-use std::ops::{Deref, DerefMut};
+use std::ops::Deref;
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::{Sender, Receiver};
 use std::sync::{Arc, Mutex};
@@ -87,6 +85,13 @@ impl State {
             devices_response,
             flash_request,
             flash_response,
+        }
+    }
+
+    pub fn set_as_complete(&self) {
+        self.flash_state.store(2, Ordering::SeqCst);
+        while 3 != self.flash_state.load(Ordering::SeqCst) {
+            thread::sleep(Duration::from_millis(16));
         }
     }
 
@@ -259,17 +264,8 @@ impl Connect for App {
                     gtk::main_quit();
                     return;
                 },
-                _ => {
-                    // If tasks are running, signify that tasks should be considered as completed.
-                    if 1 == state.flash_state.load(Ordering::SeqCst) {
-                        state.flash_state.store(2, Ordering::SeqCst);
-                    }
-
-                    widgets.switch_to_main();
-                },
+                _ => widgets.switch_to_main(&state),
             }
-
-            state.view.set(0);
         });
     }
 
@@ -279,43 +275,6 @@ impl Connect for App {
         let next = widgets.header.next.clone();
         let stack = widgets.content.container.clone();
         let state = self.state.clone();
-
-        fn watch_device_selection(
-            state: Arc<State>,
-            widgets: Rc<AppWidgets>,
-        ) {
-            gtk::timeout_add(16, move || {
-                let list = &widgets.content.devices_view.list;
-                let next = &widgets.header.next;
-
-                if state.view.get() != 1 {
-                    return gtk::Continue(false);
-                }
-
-                if let Err(why) = state.devices.lock()
-                    .map_err(|why| format!("mutex lock failed: {}", why))
-                    .and_then(|mut device_list| {
-                        match DeviceList::requires_refresh(&device_list) {
-                            Some(devices) => {
-                                let image_sectors = (state.image_length.get() / 512 + 1) as u64;
-                                list.refresh(&mut device_list, &devices, image_sectors)?;
-                                list.select_all.set_active(false);
-                                next.set_sensitive(false);
-                            }
-                            None => if let Ok(ref mut devices) = state.devices.try_lock() {
-                                next.set_sensitive(devices.iter().any(|x| x.1.get_active()));
-                            }
-                        }
-
-                        Ok(())
-                    })
-                {
-                    widgets.set_error(&state, &why);
-                }
-
-                gtk::Continue(true)
-            });
-        }
 
         next.connect_clicked(move |_| {
             state.buffer.state.store(image::SLEEPING, Ordering::SeqCst);
@@ -334,7 +293,7 @@ impl Connect for App {
             view.set(view_value + 1);
 
             if view.get() == 1 {
-                watch_device_selection(state.clone(), widgets.clone());
+                AppWidgets::watch_device_selection(widgets.clone(), state.clone());
             }
         });
     }
@@ -351,22 +310,28 @@ impl Connect for App {
     }
 
     fn watch_flashing_devices(&self) {
-        let stack = self.widgets.content.container.clone();
-        let back = self.widgets.header.back.clone();
         let next = self.widgets.header.next.clone();
-        let description = self.widgets.content.summary_view.view.description.clone();
-        let list = self.widgets.content.summary_view.list.clone();
         let state = self.state.clone();
         let image_label = self.widgets.content.image_view.image_path.clone();
         let chooser_container = self.widgets.content.image_view.chooser_container.clone();
-        let error = self.widgets.content.error_view.view.description.clone();
+        let widgets = self.widgets.clone();
 
         gtk::timeout_add(500, move || {
             let tasks = &state.tasks;
             let bars = &state.bars;
-            let devices = &state.devices;
-            let task_handles = &state.task_handles;
             let image_length = &state.image_length;
+
+            macro_rules! try_or_error {
+                ($action:expr, $msg:expr, $val:expr) => {{
+                    match $action {
+                        Ok(value) => value,
+                        Err(why) => {
+                            widgets.set_error(&state, &format!("{}: {:?}", $msg, why));
+                            return $val;
+                        }
+                    }
+                }}
+            }
 
             // Ensure that the image has been loaded before continuing.
             match state.buffer.state.load(Ordering::SeqCst) {
@@ -387,11 +352,6 @@ impl Connect for App {
 
                     let (ref path, ref data) = *try_or_error!(
                         state.buffer.data.lock(),
-                        state.view,
-                        back,
-                        next,
-                        stack,
-                        error,
                         "image buffer mutex lock failure",
                         Continue(false)
                     );
@@ -417,11 +377,6 @@ impl Connect for App {
             {
                 let tasks = try_or_error!(
                     tasks.lock(),
-                    state.view,
-                    back,
-                    next,
-                    stack,
-                    error,
                     "tasks mutex lock failure",
                     Continue(false)
                 );
@@ -465,84 +420,8 @@ impl Connect for App {
                 }
             }
 
-            if all_tasks_finished {
-                back.set_label("Flash Again");
-                back.get_style_context()
-                    .map(|c| c.remove_class("destructive-action"));
-                next.set_label("Close");
-                next.get_style_context()
-                    .map(|c| c.remove_class("destructive-action"));
-                next.set_visible(true);
-                stack.set_visible_child_name("summary");
-
-                let mut errored: Vec<(String, DiskError)> = Vec::new();
-                let mut task_handles = try_or_error!(
-                    task_handles.lock(),
-                    state.view,
-                    back,
-                    next,
-                    stack,
-                    error,
-                    "task handles mutex lock failure",
-                    Continue(false)
-                );
-
-                let devices = try_or_error!(
-                    devices.lock(),
-                    state.view,
-                    back,
-                    next,
-                    stack,
-                    error,
-                    "devices mutex lock failure",
-                    Continue(false)
-                );
-
-                let handle_iter = task_handles.deref_mut().drain(..);
-                let mut device_iter = devices.deref().iter();
-                for handle in handle_iter {
-                    if let Some(&(ref device, _)) = device_iter.next() {
-                        let result = try_or_error!(
-                            handle.join(),
-                            state.view,
-                            back,
-                            next,
-                            stack,
-                            error,
-                            "thread handle join failure",
-                            Continue(false)
-                        );
-
-                        if let Err(why) = result {
-                            errored.push((device.clone(), why));
-                        }
-                    }
-                }
-
-                if errored.is_empty() {
-                    description.set_text(&format!("{} devices successfully flashed", ntasks));
-                    list.set_visible(false);
-                } else {
-                    description.set_text(&format!(
-                        "{} of {} devices successfully flashed",
-                        ntasks - errored.len(),
-                        ntasks
-                    ));
-                    list.set_visible(true);
-                    for (device, why) in errored {
-                        let container = Box::new(Orientation::Horizontal, 0);
-                        let device = Label::new(device.as_str());
-                        let why = Label::new(format!("{}", why).as_str());
-                        container.pack_start(&device, false, false, 0);
-                        container.pack_start(&why, true, true, 0);
-                        list.insert(&container, -1);
-                    }
-                }
-
-                state.flash_state.store(2, Ordering::SeqCst);
-                while 3 != state.flash_state.load(Ordering::SeqCst) {
-                    thread::sleep(Duration::from_millis(16));
-                }
+            if all_tasks_finished && widgets.switch_to_summary(&state, ntasks).is_err() {
+                return Continue(false);
             }
 
             state.reset_after_reacquiring_image();

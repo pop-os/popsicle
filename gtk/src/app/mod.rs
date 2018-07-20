@@ -4,7 +4,7 @@ mod header;
 mod misc;
 mod state;
 
-use self::content::Content;
+use self::content::{Content, DeviceList};
 pub use self::dialogs::OpenDialog;
 use self::header::Header;
 pub use self::misc::*;
@@ -13,6 +13,7 @@ pub use self::state::{Connect, FlashTask, State};
 // TODO: Use AtomicU64 / Bool when https://github.com/rust-lang/rust/issues/32976 is stable.
 
 use std::mem;
+use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::process;
 use std::rc::Rc;
@@ -39,6 +40,60 @@ pub struct App {
     pub state:   Arc<State>,
 }
 
+impl App {
+    pub fn new(
+        sender: Sender<PathBuf>,
+        devices_request: Sender<(Vec<String>, Vec<MountEntry>)>,
+        devices_response: Receiver<Result<Vec<(String, File)>, DiskError>>,
+        flash_request: Sender<FlashRequest>,
+        flash_response: Receiver<JoinHandle<Result<(), DiskError>>>,
+    ) -> App {
+        // Initialize GTK before proceeding.
+        if gtk::init().is_err() {
+            eprintln!("failed to initialize GTK Application");
+            process::exit(1);
+        }
+
+        // Create a new top level window.
+        let window = Window::new(WindowType::Toplevel);
+        // Create a the headerbar and it's associated content.
+        let header = Header::new();
+        // Create the content container and all of it's widgets.
+        let content = Content::new();
+
+        // Add a custom CSS style
+        let screen = window.get_screen().unwrap();
+        let style = CssProvider::new();
+        let _ = CssProviderExt::load_from_data(&style, CSS.as_bytes());
+        StyleContext::add_provider_for_screen(&screen, &style, STYLE_PROVIDER_PRIORITY_USER);
+
+        // Set the headerbar as the title bar widget.
+        window.set_titlebar(&header.container);
+        // Set the title of the window.
+        window.set_title("Popsicle");
+        // Set the window manager class.
+        window.set_wmclass("popsicle", "Popsicle");
+        // The default size of the window to create.
+        window.set_default_size(500, 250);
+        // The icon the app will display.
+        Window::set_default_icon_name("iconname");
+        // Add the content to the window.
+        window.add(&content.container);
+
+        // Programs what to do when the exit button is used.
+        window.connect_delete_event(move |_, _| {
+            main_quit();
+            Inhibit(false)
+        });
+
+        // Return the application structure.
+        App {
+            widgets: Rc::new(AppWidgets { window, header, content }),
+            state: Arc::new(State::new(sender, devices_request, devices_response, flash_request, flash_response)),
+        }
+    }
+}
+
 pub struct AppWidgets {
     pub window:  Window,
     pub header:  Header,
@@ -46,10 +101,15 @@ pub struct AppWidgets {
 }
 
 impl AppWidgets {
-    pub fn switch_to_main(&self) {
+    pub fn switch_to_main(&self, state: &State) {
         let stack = &self.content.container;
         let back = &self.header.back;
         let next = &self.header.next;
+
+        // If tasks are running, signify that tasks should be considered as completed.
+        if 1 == state.flash_state.load(Ordering::SeqCst) {
+            state.flash_state.store(2, Ordering::SeqCst);
+        }
 
         self.content.devices_view.list.select_all.set_active(false);
 
@@ -69,6 +129,8 @@ impl AppWidgets {
             c.remove_class("destructive-action");
             c.add_class("suggested-action");
         });
+
+        state.view.set(0)
     }
 
     pub fn switch_to_device_selection(&self, state: &State) {
@@ -102,6 +164,40 @@ impl AppWidgets {
         {
             self.set_error(state, &why);
         }
+    }
+
+    pub fn watch_device_selection(widgets: Rc<AppWidgets>, state: Arc<State>) {
+        gtk::timeout_add(16, move || {
+            let list = &widgets.content.devices_view.list;
+            let next = &widgets.header.next;
+
+            if state.view.get() != 1 {
+                return gtk::Continue(false);
+            }
+
+            if let Err(why) = state.devices.lock()
+                .map_err(|why| format!("mutex lock failed: {}", why))
+                .and_then(|mut device_list| {
+                    match DeviceList::requires_refresh(&device_list) {
+                        Some(devices) => {
+                            let image_sectors = (state.image_length.get() / 512 + 1) as u64;
+                            list.refresh(&mut device_list, &devices, image_sectors)?;
+                            list.select_all.set_active(false);
+                            next.set_sensitive(false);
+                        }
+                        None => if let Ok(ref mut devices) = state.devices.try_lock() {
+                            next.set_sensitive(devices.iter().any(|x| x.1.get_active()));
+                        }
+                    }
+
+                    Ok(())
+                })
+            {
+                widgets.set_error(&state, &why);
+            }
+
+            gtk::Continue(true)
+        });
     }
 
     pub fn switch_to_device_flashing(&self, state: &State) {
@@ -275,6 +371,87 @@ impl AppWidgets {
         summary_grid.show_all();
     }
 
+    pub fn switch_to_summary(&self, state: &State, ntasks: usize) -> Result<(), ()> {
+        let stack = &self.content.container;
+        let back = &self.header.back;
+        let next = &self.header.next;
+        let description = &self.content.summary_view.view.description.clone();
+        let list = &self.content.summary_view.list.clone();
+        let devices = &state.devices;
+        let task_handles = &state.task_handles;
+
+        back.set_label("Flash Again");
+        back.get_style_context()
+            .map(|c| c.remove_class("destructive-action"));
+        next.set_label("Close");
+        next.get_style_context()
+            .map(|c| c.remove_class("destructive-action"));
+        next.set_visible(true);
+        stack.set_visible_child_name("summary");
+
+        macro_rules! try_or_error {
+            ($action:expr, $msg:expr) => {{
+                match $action {
+                    Ok(value) => value,
+                    Err(why) => {
+                        self.set_error(state, &format!("{}: {:?}", $msg, why));
+                        return Err(());
+                    }
+                }
+            }}
+        }
+
+        let mut errored: Vec<(String, DiskError)> = Vec::new();
+        let mut task_handles = try_or_error!(
+            task_handles.lock(),
+            "task handles mutex lock failure"
+        );
+
+        let devices = try_or_error!(
+            devices.lock(),
+            "devices mutex lock failure"
+        );
+
+        let handle_iter = task_handles.deref_mut().drain(..);
+        let mut device_iter = devices.deref().iter();
+        for handle in handle_iter {
+            if let Some(&(ref device, _)) = device_iter.next() {
+                let result = try_or_error!(
+                    handle.join(),
+                    "thread handle join failure"
+                );
+
+                if let Err(why) = result {
+                    errored.push((device.clone(), why));
+                }
+            }
+        }
+
+        if errored.is_empty() {
+            description.set_text(&format!("{} devices successfully flashed", ntasks));
+            list.set_visible(false);
+        } else {
+            description.set_text(&format!(
+                "{} of {} devices successfully flashed",
+                ntasks - errored.len(),
+                ntasks
+            ));
+            list.set_visible(true);
+            for (device, why) in errored {
+                let container = Box::new(Orientation::Horizontal, 0);
+                let device = Label::new(device.as_str());
+                let why = Label::new(format!("{}", why).as_str());
+                container.pack_start(&device, false, false, 0);
+                container.pack_start(&why, true, true, 0);
+                list.insert(&container, -1);
+            }
+        }
+
+        state.set_as_complete();
+
+        Ok(())
+    }
+
     pub fn set_error(&self, state: &State, msg: &str) {
         let stack = &self.content.container;
         let back = &self.header.back;
@@ -291,59 +468,8 @@ impl AppWidgets {
         error.set_text(&msg);
         state.view.set(2);
         stack.set_visible_child_name("error");
-    }
-}
 
-impl App {
-    pub fn new(
-        sender: Sender<PathBuf>,
-        devices_request: Sender<(Vec<String>, Vec<MountEntry>)>,
-        devices_response: Receiver<Result<Vec<(String, File)>, DiskError>>,
-        flash_request: Sender<FlashRequest>,
-        flash_response: Receiver<JoinHandle<Result<(), DiskError>>>,
-    ) -> App {
-        // Initialize GTK before proceeding.
-        if gtk::init().is_err() {
-            eprintln!("failed to initialize GTK Application");
-            process::exit(1);
-        }
-
-        // Create a new top level window.
-        let window = Window::new(WindowType::Toplevel);
-        // Create a the headerbar and it's associated content.
-        let header = Header::new();
-        // Create the content container and all of it's widgets.
-        let content = Content::new();
-
-        // Add a custom CSS style
-        let screen = window.get_screen().unwrap();
-        let style = CssProvider::new();
-        let _ = CssProviderExt::load_from_data(&style, CSS.as_bytes());
-        StyleContext::add_provider_for_screen(&screen, &style, STYLE_PROVIDER_PRIORITY_USER);
-
-        // Set the headerbar as the title bar widget.
-        window.set_titlebar(&header.container);
-        // Set the title of the window.
-        window.set_title("Popsicle");
-        // Set the window manager class.
-        window.set_wmclass("popsicle", "Popsicle");
-        // The default size of the window to create.
-        window.set_default_size(500, 250);
-        // The icon the app will display.
-        Window::set_default_icon_name("iconname");
-        // Add the content to the window.
-        window.add(&content.container);
-
-        // Programs what to do when the exit button is used.
-        window.connect_delete_event(move |_, _| {
-            main_quit();
-            Inhibit(false)
-        });
-
-        // Return the application structure.
-        App {
-            widgets: Rc::new(AppWidgets { window, header, content }),
-            state: Arc::new(State::new(sender, devices_request, devices_response, flash_request, flash_response)),
-        }
+        state.set_as_complete();
+        state.reset_after_reacquiring_image();
     }
 }
