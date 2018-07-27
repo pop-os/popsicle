@@ -2,7 +2,6 @@
 
 Popsicle is a Linux utility for flashing multiple USB devices in parallel, written in [Rust](https://www.rust-lang.org/en-US/).
 
-![GIF Demo](./demo.gif)
 
 ## Build Dependencies
 
@@ -17,3 +16,26 @@ For those who need to vendor Cargo's crate dependencies which are fetched from [
 - `make cli && sudo make install-cli` will build and install just the CLI workspace
 - `make gtk && sudo make install-gtk` will build and install just the GTK workspace
 - `make && sudo make install` will build and install both the CLI and GTK workspaces
+
+## Screenshots
+
+### Image Selection
+
+![Image Selection](./screenshots/screenshot-01.png)
+
+### Device Selection
+
+![Device Selection](./screenshots/screenshot-02.png)
+
+The list will also dynamically refresh as devices are added and removed
+
+![GIF Demo](./screenshots/device-monitoring.gif)
+
+### Device Flashing
+
+![Flashing Devices](./screenshots/screenshot-03.png)
+![Flashing Devices](./screenshots/screenshot-04.png)
+
+### Summary
+
+![Summary](./screenshots/screenshot-05.png)
