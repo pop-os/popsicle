@@ -120,6 +120,7 @@ impl AppWidgets {
         back.set_label("Cancel");
         back.get_style_context().map(|c| {
             c.remove_class("back-button");
+            c.remove_class("destructive-action");
         });
 
         next.set_visible(true);
