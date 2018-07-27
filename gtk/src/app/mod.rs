@@ -178,16 +178,16 @@ impl AppWidgets {
 
             if let Err(why) = state.devices.lock()
                 .map_err(|why| format!("mutex lock failed: {}", why))
-                .and_then(|mut device_list| {
+                .and_then(|ref mut device_list| {
                     match DeviceList::requires_refresh(&device_list) {
                         Some(devices) => {
                             let image_sectors = (state.image_length.get() / 512 + 1) as u64;
-                            list.refresh(&mut device_list, &devices, image_sectors)?;
+                            list.refresh(device_list, &devices, image_sectors)?;
                             list.select_all.set_active(false);
                             next.set_sensitive(false);
                         }
-                        None => if let Ok(ref mut devices) = state.devices.try_lock() {
-                            next.set_sensitive(devices.iter().any(|x| x.1.get_active()));
+                        None => {
+                            next.set_sensitive(device_list.iter().any(|x| x.1.get_active()));
                         }
                     }
 
@@ -384,7 +384,7 @@ impl AppWidgets {
         back.set_label("Flash Again");
         back.get_style_context()
             .map(|c| c.remove_class("destructive-action"));
-        next.set_label("Close");
+        next.set_label("Done");
         next.get_style_context()
             .map(|c| c.remove_class("destructive-action"));
         next.set_visible(true);
