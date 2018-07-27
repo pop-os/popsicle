@@ -49,12 +49,6 @@ pub struct DeviceList {
 }
 
 impl DeviceList {
-    pub fn clear(&self) {
-        self.list.get_children()
-            .into_iter()
-            .for_each(|widget| widget.destroy());
-    }
-
     pub fn connect_select_all<F>(&self, state: Arc<State>, result: F )
         where F: 'static + Fn(Result<(), String>)
     {
@@ -83,9 +77,10 @@ impl DeviceList {
         devices: &[String],
         image_sectors: u64,
     ) -> Result<(), String> {
-        device_list.clear();
-        self.clear();
-
+        device_list.drain(..).for_each(|(_, button)| {
+            button.set_sensitive(false);
+            button.destroy();
+        });
         let mut all_is_sensitive = false;
         for device in devices {
             // Attempt to get the canonical path of the device.
