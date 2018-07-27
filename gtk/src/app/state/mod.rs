@@ -252,7 +252,7 @@ impl Connect for App {
                 if state.view.get() == 1 {
                     match device_selection::device_requires_refresh(&state, &back, &error, &next, &stack) {
                         Some(devices) => {
-                            device_selection::refresh_device_list(&state, &devices, &all, &back, &error, &list, &next, &stack);
+                            device_selection::refresh_device_list(&state, &devices, &all, &back, &error, &list, &next, &stack, 5_000);
                             all.set_active(false);
                             next.set_sensitive(false);
                         }
