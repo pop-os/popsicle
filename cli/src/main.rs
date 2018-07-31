@@ -157,6 +157,7 @@ fn popsicle() -> Result<(), String> {
                         pb.borrow_mut().finish();
                     }
                 },
+                || false,
                 disk,
                 &disk_path,
                 image_size,

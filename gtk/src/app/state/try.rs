@@ -5,8 +5,8 @@ macro_rules! try_or_error {
         $view:expr,
         $back:expr,
         $next:expr,
-        $stack:ident,
-        $error:ident,
+        $stack:expr,
+        $error:expr,
         $msg:expr,
         $val:expr
     ) => {
