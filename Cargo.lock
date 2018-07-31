@@ -85,7 +85,7 @@ dependencies = [
 
 [[package]]
 name = "bus_writer"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "bus 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -477,7 +477,7 @@ dependencies = [
 name = "popsicle_cli"
 version = "0.1.5"
 dependencies = [
- "bus_writer 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bus_writer 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 2.32.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure_derive 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -697,7 +697,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum bitflags 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "d0c54bb8f454c567f21197eefcdbf5679d0bd99f2ddbe52e84c77061952e6789"
 "checksum block-buffer 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "a076c298b9ecdb530ed9d967e74a6027d6a7478924520acddcddc24c1c8ab3ab"
 "checksum bus 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "c9bae43b6e578339f337e4d591b08022f0107e3d7cfb3712010fc7940fa50e0f"
-"checksum bus_writer 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5fead22d8601d6464486818abd31870bc4fb2eb4ca4fdaac036ff6f95150c7ee"
+"checksum bus_writer 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "bc242ac0387ba8e0bce1a1fd3769e85a2e89fb782ba8a712ed8e075427cbe837"
 "checksum byte-tools 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "560c32574a12a89ecd91f5e742165893f86e3ab98d21f8ea548658eb9eef5f40"
 "checksum c_vec 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "6237ac5a4b1e81c213c24c6437964c61e646df910a914b4ab1487b46df20bd13"
 "checksum cairo-rs 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b6b5695f59fd036fe5741bc5a4eb20c78fbe42256e3b08a2af26bbcbe8070bf3"
