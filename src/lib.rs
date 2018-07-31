@@ -106,6 +106,8 @@ impl Image {
 pub enum DiskError {
     #[fail(display = "unable to open directory at '{}': {}", dir, why)]
     Directory { dir: &'static str, why: io::Error },
+    #[fail(display = "writing to the device was killed")]
+    Killed,
     #[fail(display = "unable to read directory entry at '{:?}': invalid UTF-8", dir)]
     UTF8 { dir: PathBuf },
     #[fail(display = "unable to find disk '{}': {}", disk, why)]
@@ -255,8 +257,9 @@ pub enum PopsicleLog<'a> {
 }
 
 /// Writes an image to the specified disk.
-pub fn write_to_disk<F: FnMut(PopsicleLog)>(
+pub fn write_to_disk<F: FnMut(PopsicleLog), K: FnMut() -> bool>(
     mut callback: F,
+    mut kill: K,
     mut disk: File,
     disk_path: &str,
     image_size: u64,
@@ -265,6 +268,10 @@ pub fn write_to_disk<F: FnMut(PopsicleLog)>(
 ) -> Result<(), DiskError> {
     let mut total = 0;
     while total < image_data.len() {
+        if kill() {
+            return Err(DiskError::Killed);
+        }
+
         let end = cmp::min(image_size as usize, total + BUFFER_SIZE);
         let count = disk.write(&image_data[total..end]).map_err(|why| {
             callback(PopsicleLog::Message(&format!("! {}: ", disk_path)));
@@ -326,6 +333,9 @@ pub fn write_to_disk<F: FnMut(PopsicleLog)>(
 
         let mut buf = vec![0; BUFFER_SIZE];
         while total < image_data.len() {
+            if kill() {
+                return Err(DiskError::Killed);
+            }
             let end = cmp::min(image_size as usize, total + BUFFER_SIZE);
             let count = match disk.read(&mut buf[..end - total]) {
                 Ok(count) => count,

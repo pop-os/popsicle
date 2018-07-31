@@ -45,7 +45,7 @@ fn main() {
         devices_request_receiver,
         devices_response_sender,
         flash_request_receiver,
-        flash_response_sender
+        flash_response_sender,
     );
 
     // If running in pkexec or sudo, restore home directory for open dialog,
@@ -85,7 +85,7 @@ fn authenticated_threads(
     devices_request: Receiver<(Vec<String>, Vec<MountEntry>)>,
     devices_response: Sender<Result<Vec<(String, File)>, DiskError>>,
     flash_request: Receiver<FlashRequest>,
-    flash_response: Sender<JoinHandle<Result<(), DiskError>>>
+    flash_response: Sender<JoinHandle<Result<(), DiskError>>>,
 ) {
     thread::spawn(move || {
         loop {

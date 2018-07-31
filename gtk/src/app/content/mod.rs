@@ -5,7 +5,7 @@ mod images;
 mod summary;
 mod view;
 
-pub use self::devices::DevicesView;
+pub use self::devices::{DeviceList, DevicesView};
 pub use self::error::ErrorView;
 pub use self::flashing::FlashView;
 pub use self::images::ImageView;
