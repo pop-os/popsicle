@@ -2,7 +2,6 @@ use flash::FlashRequest;
 
 use super::{App, OpenDialog};
 use app::AppWidgets;
-
 use hash::HashState;
 use std::io;
 use std::fs::File;
@@ -170,6 +169,8 @@ impl Connect for App {
     fn connect_hash_generator(&self) {
         let state = self.state.clone();
         let hash_label = self.widgets.content.image_view.hash_label.clone();
+        let chooser = self.widgets.content.image_view.chooser_container.clone();
+
         self.widgets.content
             .image_view
             .hash
@@ -183,16 +184,20 @@ impl Connect for App {
 
                     if let Some(hash_kind) = hash_kind {
                         let hash = state.hash.clone();
+                        chooser.set_visible_child_name("checksum");
                         let _ = state.hash_request.send((path.clone(), hash_kind));
+
                         let hash_label = hash_label.clone();
                         let path = path.clone();
+                        let chooser = chooser.clone();
                         gtk::timeout_add(16, move || {
                             match hash.try_obtain(&path, hash_kind) {
                                 Some(hash) => {
                                     hash_label.set_text(&hash);
+                                    chooser.set_visible_child_name("chooser");
                                     Continue(false)
                                 }
-                                None =>  Continue(true)
+                                None => Continue(true)
                             }
                         });
                     }

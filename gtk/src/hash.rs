@@ -46,7 +46,7 @@ impl HashState {
                 Some(ref hash) => hash.as_ref()
                     .map(|x| x.clone())
                     .unwrap_or_else(|why| format!("ERROR: {}", why)),
-                None => "ERROR: hash does not exist".to_owned(),
+                None => return None,
             };
 
             Some(value)
@@ -70,33 +70,29 @@ pub(crate) fn event_loop(
     images: &Receiver<(PathBuf, &'static str)>,
     hash: &HashState
 ) {
-    let mut last_image = PathBuf::new();
     let mut set = false;
     loop {
         while let Ok((image, type_of)) = images.try_recv() {
+            eprintln!("received image to flash");
             set = true;
             let identifying_hash = hash_id(&image, type_of);
 
             hash.state.store(PROCESSING, Ordering::SeqCst);
             let mut hash_data = hash.data.lock().unwrap();
-            let same_image = last_image != image;
-
-            if !same_image {
-                if !hash_data.store.get(&identifying_hash).map_or(false, |e| e.is_ok()) {
-                    hash_data.store.insert(
-                        identifying_hash,
-                        match type_of {
-                            "MD5" => hasher::<Md5>(&image),
-                            "SHA256" => hasher::<Sha256>(&image),
-                            _ => Err(io::Error::new(
-                                io::ErrorKind::InvalidInput,
-                                format!("{} not supported", type_of)
-                            )),
-                        },
-                    );
-                }
-
-                last_image = image;
+            if hash_data.store.get(&identifying_hash).map_or(true, |e| !e.is_ok()) {
+                eprintln!("storing hash");
+                hash_data.store.insert(
+                    identifying_hash,
+                    match type_of {
+                        "MD5" => hasher::<Md5>(&image),
+                        "SHA256" => hasher::<Sha256>(&image),
+                        _ => Err(io::Error::new(
+                            io::ErrorKind::InvalidInput,
+                            format!("{} not supported", type_of)
+                        )),
+                    },
+                );
+                eprintln!("stored new image checksum");
             }
         }
 
@@ -117,6 +113,7 @@ fn hash_id(image: &Path, kind: &'static str) -> u64 {
 }
 
 pub(crate) fn hasher<H: Digest>(image: &Path) -> io::Result<String> {
+    eprintln!("hashing image");
     File::open(image).and_then(move |mut file| {
         let mut buffer = [0u8; 8 * 1024];
         let mut hasher = H::new();
