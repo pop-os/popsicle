@@ -1,18 +1,22 @@
-use digest::{Digest, Input};
-use image::{self, BufferingData};
+use digest::Digest;
+use hex_view::HexView;
 use md5::Md5;
 use sha2::Sha256;
+use std::hash::Hasher;
 use std::collections::BTreeMap;
-use std::path::PathBuf;
+use std::collections::hash_map::DefaultHasher;
+use std::io::{self, Read};
+use std::fs::File;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::mpsc::Receiver;
 use std::thread;
 use std::time::Duration;
+use std::os::unix::ffi::OsStrExt;
 
 pub(crate) const SLEEPING: usize = 0;
 pub(crate) const PROCESSING: usize = 1;
-pub(crate) const COMPLETED: usize = 2;
-pub(crate) const INTERRUPT: usize = 3;
 
 pub(crate) struct HashState {
     // K = Variant, V = Hashed Value
@@ -25,98 +29,104 @@ impl HashState {
     pub(crate) fn new() -> HashState {
         HashState {
             data:  Mutex::new(HashData::new()),
-            state: SLEEPING.into(),
+            state: AtomicUsize::new(SLEEPING)
         }
     }
 
     /// If it's true, it's not sleeping.
-    pub(crate) fn is_busy(&self) -> bool { self.state.load(Ordering::SeqCst) != SLEEPING }
+    fn is_busy(&self) -> bool { self.state.load(Ordering::SeqCst) != SLEEPING }
 
-    pub(crate) fn is_ready(&self) -> bool { self.state.load(Ordering::SeqCst) == COMPLETED }
-
-    /// Requests for a new hash to be generated, if it hasn't been generated already.
-    pub(crate) fn request(&self, requested: &'static str) {
-        let mut data = self.data.lock().unwrap();
-        data.requested = requested;
-        self.state.store(INTERRUPT, Ordering::SeqCst);
-    }
-
-    /// Obtains the current hash stored within the state, if it exists.
-    pub(crate) fn obtain(&self) -> String {
+    /// Attempt to receive the hash for the given path.
+    pub(crate) fn try_obtain(&self, requested: &Path, hash: &'static str) -> Option<String> {
         let data = self.data.lock().unwrap();
-        let output = match data.store.get(data.requested) {
-            Some(hash) => hash.clone(),
-            None => "failed".into(),
-        };
-        self.state.store(SLEEPING, Ordering::SeqCst);
-        output
+        if self.is_busy() {
+            None
+        } else {
+            let value: String = match data.store.get(&hash_id(requested, hash)) {
+                Some(ref hash) => hash.as_ref()
+                    .map(|x| x.clone())
+                    .unwrap_or_else(|why| format!("ERROR: {}", why)),
+                None => "ERROR: hash does not exist".to_owned(),
+            };
+
+            Some(value)
+        }
     }
 }
 
 pub(crate) struct HashData {
-    requested: &'static str,
-    store:     BTreeMap<&'static str, String>,
+    store: BTreeMap<u64, io::Result<String>>,
 }
 
 impl HashData {
     fn new() -> HashData {
         HashData {
-            requested: "",
-            store:     BTreeMap::new(),
+            store: BTreeMap::new(),
         }
     }
 }
 
-pub(crate) fn event_loop(buffer: &BufferingData, hash: &HashState) {
+pub(crate) fn event_loop(
+    images: &Receiver<(PathBuf, &'static str)>,
+    hash: &HashState
+) {
     let mut last_image = PathBuf::new();
-
+    let mut set = false;
     loop {
-        if hash.state.load(Ordering::SeqCst) == INTERRUPT {
+        while let Ok((image, type_of)) = images.try_recv() {
+            set = true;
+            let identifying_hash = hash_id(&image, type_of);
+
             hash.state.store(PROCESSING, Ordering::SeqCst);
             let mut hash_data = hash.data.lock().unwrap();
-            while buffer.state.load(Ordering::SeqCst) != image::COMPLETED {
-                thread::sleep(Duration::from_millis(16));
-            }
-
-            let buffer_data = buffer.data.lock().unwrap();
-            let current_image = &buffer_data.0;
-            let image_data = &buffer_data.1;
-            let requested = hash_data.requested;
-            let same_image = last_image != current_image.as_path();
-
-            if !same_image || !hash_data.store.contains_key(requested) {
-                if !same_image {
-                    hash_data.store.clear();
-                }
-
-                hash_data.store.insert(
-                    requested,
-                    match requested {
-                        "MD5" => md5_hasher(&image_data),
-                        "SHA256" => sha256_hasher(&image_data),
-                        _ => "Critical Error".into(),
-                    },
-                );
-            }
+            let same_image = last_image != image;
 
             if !same_image {
-                last_image = current_image.to_path_buf();
-            }
+                if !hash_data.store.get(&identifying_hash).map_or(false, |e| e.is_ok()) {
+                    hash_data.store.insert(
+                        identifying_hash,
+                        match type_of {
+                            "MD5" => hasher::<Md5>(&image),
+                            "SHA256" => hasher::<Sha256>(&image),
+                            _ => Err(io::Error::new(
+                                io::ErrorKind::InvalidInput,
+                                format!("{} not supported", type_of)
+                            )),
+                        },
+                    );
+                }
 
-            hash.state.store(COMPLETED, Ordering::SeqCst);
+                last_image = image;
+            }
         }
+
+        if set {
+            hash.state.store(SLEEPING, Ordering::SeqCst);
+            set = false;
+        }
+
         thread::sleep(Duration::from_millis(16));
     }
 }
 
-pub(crate) fn md5_hasher(data: &[u8]) -> String {
-    let mut hasher = Md5::default();
-    hasher.process(data);
-    format!("{:x}", hasher.result())
+fn hash_id(image: &Path, kind: &'static str) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    hasher.write(image.as_os_str().as_bytes());
+    hasher.write(kind.as_bytes());
+    hasher.finish()
 }
 
-pub(crate) fn sha256_hasher(data: &[u8]) -> String {
-    let mut hasher = Sha256::default();
-    hasher.process(data);
-    format!("{:x}", hasher.result())
+pub(crate) fn hasher<H: Digest>(image: &Path) -> io::Result<String> {
+    File::open(image).and_then(move |mut file| {
+        let mut buffer = [0u8; 8 * 1024];
+        let mut hasher = H::new();
+
+        loop {
+            let read = file.read(&mut buffer)?;
+            if read == 0 { break }
+            hasher.input(&buffer[..read]);
+        }
+
+        Ok(format!("{:x}", HexView::from(hasher.result().as_slice())))
+    })
 }

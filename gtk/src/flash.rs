@@ -1,62 +1,70 @@
+use bus_writer::{BusWriter, BusWriterMessage};
+use std::io;
 use std::fs::File;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use popsicle::{self, DiskError, PopsicleLog};
+use app::{KILL, CANCELLED};
 
 pub struct FlashRequest {
-    disk: File,
-    disk_path: String,
-    image_len: u64,
-    image_data: Arc<Vec<u8>>,
-    status:   Arc<AtomicUsize>,
-    progress: Arc<AtomicUsize>,
-    finished: Arc<AtomicUsize>,
+    source:       File,
+    destinations: Vec<File>,
+    status:       Arc<AtomicUsize>,
+    progress:     Arc<Vec<AtomicUsize>>,
+    finished:     Arc<Vec<AtomicUsize>>,
 }
 
 impl FlashRequest {
     pub fn new(
-        disk: File,
-        disk_path: String,
-        image_len: u64,
-        image_data: Arc<Vec<u8>>,
+        source: File,
+        destinations: Vec<File>,
         status: Arc<AtomicUsize>,
-        progress: Arc<AtomicUsize>,
-        finished: Arc<AtomicUsize>,
+        progress: Arc<Vec<AtomicUsize>>,
+        finished: Arc<Vec<AtomicUsize>>,
     ) -> FlashRequest {
         FlashRequest {
-            disk,
-            disk_path,
-            image_len,
-            image_data,
+            source,
+            destinations,
             status,
             progress,
             finished,
         }
     }
 
-    pub fn write(self) -> Result<(), DiskError> {
-        let disk = self.disk;
-        let disk_path = self.disk_path;
-        let progress = self.progress;
-        let image_len = self.image_len;
-        let image_data = self.image_data;
+    pub fn write(self) -> io::Result<Vec<io::Result<()>>> {
         let status = self.status;
-        let result = popsicle::write_to_disk(
-            |log| match log {
-                PopsicleLog::Message(_) => (),
-                PopsicleLog::Finished => (),
-                PopsicleLog::Progress(value) => progress.store(value as usize, Ordering::SeqCst)
+        let progress = self.progress;
+        let finished = self.finished;
+        let mut destinations = self.destinations;
+        let mut source = self.source;
+
+        let mut errors = (0..destinations.len())
+            .map(|_| Ok(()))
+            .collect::<Vec<_>>();
+
+        let mut bucket = vec![0u8; 16 * 1024 * 1024];
+
+        let result = BusWriter::new(
+            &mut source,
+            &mut destinations,
+            |event| match event {
+                BusWriterMessage::Written { id, bytes_written } => {
+                    progress[id].store(bytes_written as usize, Ordering::SeqCst);
+                }
+                BusWriterMessage::Completed { id } => {
+                    finished[id].store(1, Ordering::SeqCst);
+                }
+                BusWriterMessage::Errored { id, why } => {
+                    errors[id] = Err(why);
+                }
             },
             // Write will exit early when this is true
-            || 4 == status.load(Ordering::SeqCst),
-            disk,
-            &disk_path,
-            image_len,
-            &image_data,
-            false,
-        );
+            || KILL == status.load(Ordering::SeqCst),
+        ).with_bucket(&mut bucket).write().map(|_| errors);
 
-        self.finished.store(1, Ordering::SeqCst);
+        if status.load(Ordering::SeqCst) == KILL {
+            status.store(CANCELLED, Ordering::SeqCst);
+        }
+
         result
     }
 }

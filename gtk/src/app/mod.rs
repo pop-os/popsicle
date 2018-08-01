@@ -8,14 +8,20 @@ use self::content::{Content, DeviceList};
 pub use self::dialogs::OpenDialog;
 use self::header::Header;
 pub use self::misc::*;
-pub use self::state::{Connect, FlashTask, State};
+pub use self::state::{Connect, FlashTask, State, FLASHING, KILL, CANCELLED};
 
 // TODO: Use AtomicU64 / Bool when https://github.com/rust-lang/rust/issues/32976 is stable.
 
-use std::mem;
-use std::ops::{Deref, DerefMut};
+use block::BlockDevice;
+use flash::FlashRequest;
+use gtk;
+use gtk::*;
+use hash::HashState;
+use popsicle::mnt::{self, MountEntry};
+use popsicle::{self, DiskError};
 use std::path::{Path, PathBuf};
 use std::process;
+use std::io;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -25,14 +31,6 @@ use std::time::{Duration, Instant};
 use std::fs::File;
 use std::thread::JoinHandle;
 
-use block::BlockDevice;
-use flash::FlashRequest;
-use popsicle::mnt::{self, MountEntry};
-use popsicle::{self, DiskError};
-
-use gtk;
-use gtk::*;
-
 const CSS: &str = include_str!("ui.css");
 
 pub struct App {
@@ -41,12 +39,13 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(
-        sender: Sender<PathBuf>,
+    pub(crate) fn new(
+        hash: Arc<HashState>,
+        hash_request: Sender<(PathBuf, &'static str)>,
         devices_request: Sender<(Vec<String>, Vec<MountEntry>)>,
         devices_response: Receiver<Result<Vec<(String, File)>, DiskError>>,
         flash_request: Sender<FlashRequest>,
-        flash_response: Receiver<JoinHandle<Result<(), DiskError>>>,
+        flash_response: Receiver<JoinHandle<io::Result<Vec<io::Result<()>>>>>,
     ) -> App {
         // Initialize GTK before proceeding.
         if gtk::init().is_err() {
@@ -89,7 +88,7 @@ impl App {
         // Return the application structure.
         App {
             widgets: Rc::new(AppWidgets { window, header, content }),
-            state: Arc::new(State::new(sender, devices_request, devices_response, flash_request, flash_response)),
+            state: Arc::new(State::new(hash, hash_request, devices_request, devices_response, flash_request, flash_response)),
         }
     }
 }
@@ -107,8 +106,8 @@ impl AppWidgets {
         let next = &self.header.next;
 
         // If tasks are running, signify that tasks should be considered as completed.
-        if 1 == state.flash_state.load(Ordering::SeqCst) {
-            state.flash_state.store(2, Ordering::SeqCst);
+        if FLASHING == state.flash_state.load(Ordering::SeqCst) {
+            state.flash_state.store(KILL, Ordering::SeqCst);
         }
 
         self.content.devices_view.list.select_all.set_active(false);
@@ -151,7 +150,11 @@ impl AppWidgets {
         });
         stack.set_visible_child_name("devices");
 
-        let image_sectors = (state.image_length.get() / 512 + 1) as u64;
+        let image_sectors = {
+            let read_guard = state.image.read().unwrap();
+            (*read_guard).as_ref().map_or(0, |ref d| d.1 / 512 + 1) as u64
+        };
+
         let mut devices = vec![];
         if let Err(why) = popsicle::get_disk_args(&mut devices) {
             eprintln!("popsicle: unable to get devices: {}", why);
@@ -172,6 +175,11 @@ impl AppWidgets {
             let list = &widgets.content.devices_view.list;
             let next = &widgets.header.next;
 
+            let image_length: usize = {
+                let read_guard = state.image.read().unwrap();
+                (*read_guard).as_ref().map_or(0, |ref d| d.1)
+            };
+
             if state.view.get() != 1 {
                 return gtk::Continue(false);
             }
@@ -182,7 +190,7 @@ impl AppWidgets {
                 let mut check_refresh = || -> Result<(), String> {
                     match DeviceList::requires_refresh(&device_list) {
                         Some(devices) => {
-                            let image_sectors = (state.image_length.get() / 512 + 1) as u64;
+                            let image_sectors = (image_length / 512 + 1) as u64;
                             list.refresh(device_list, &devices, image_sectors)?;
                             disable_select_all = true;
                             next.set_sensitive(false);
@@ -235,13 +243,20 @@ impl AppWidgets {
             thread::sleep(Duration::from_millis(16));
         }
 
-        let mut data = Vec::new();
-        let image_data: Arc<Vec<u8>>;
-
         {
-            let mut image_buffer_lock = try_or_error!(
-                state.buffer.data.lock(),
-                "failed to lock buffer.data mutex"
+            let path = {
+                let image_lock = try_or_error!(
+                    state.image.read(),
+                    "failed to lock buffer.data mutex"
+                );
+
+                let &(ref path, _) = image_lock.as_ref().unwrap();
+                path.clone()
+            };
+
+            let image = try_or_error!(
+                 File::open(path),
+                 "unable to open source for reading"
             );
 
             let device_list = try_or_error!(
@@ -301,24 +316,12 @@ impl AppWidgets {
                 "task handles mutex lock failure"
             );
 
-            state.flash_state.store(1, Ordering::SeqCst);
+            state.flash_state.store(FLASHING, Ordering::SeqCst);
 
-            // Take ownership of the data, so that we may wrap it within an `Arc`
-            // and redistribute it across threads.
-            //
-            // Note: Possible optimization could be done to avoid the wrap.
-            //       Avoiding the wrap could eliminate two allocations.
-            image_data = {
-                let (_, ref mut image_data) = *image_buffer_lock;
-                mem::swap(&mut data, image_data);
-                Arc::new(data)
-            };
+            let mut destinations = Vec::new();
 
             for (id, (disk_path, mut disk)) in disks.into_iter().enumerate() {
                 let id = id as i32;
-                let image_data = image_data.clone();
-                let progress = Arc::new(AtomicUsize::new(0));
-                let finished = Arc::new(AtomicUsize::new(0));
                 let pbar = ProgressBar::new();
                 pbar.set_hexpand(true);
 
@@ -349,33 +352,36 @@ impl AppWidgets {
                 summary_grid.attach(&bar_container, 1, id, 1, 1);
                 bars.push((pbar, bar_label));
 
-                // Spawn a thread that will update the progress value over time.
-                //
-                // The value will be stored within an intermediary atomic integer,
-                // because it is unsafe to send GTK widgets across threads.
-                task_handles.push({
-                    let _ = state.flash_request.send(FlashRequest::new(
-                        disk,
-                        disk_path,
-                        image_data.len() as u64,
-                        image_data,
-                        state.flash_state.clone(),
-                        progress.clone(),
-                        finished.clone()
-                    ));
-
-                    state.flash_response.recv().expect("expected join handle to be returned")
-                });
-
-                tasks.push(FlashTask {
-                    previous: Arc::new(Mutex::new([0; 7])),
-                    progress,
-                    finished,
-                });
+                destinations.push(disk);
             }
+
+            let ndestinations = destinations.len();
+            let progress = Arc::new((0..ndestinations).map(|_| AtomicUsize::new(0)).collect::<Vec<_>>());
+            let finished = Arc::new((0..ndestinations).map(|_| AtomicUsize::new(0)).collect::<Vec<_>>());
+
+            // Spawn a thread that will update the progress value over time.
+            //
+            // The value will be stored within an intermediary atomic integer,
+            // because it is unsafe to send GTK widgets across threads.
+            *task_handles = {
+                let _ = state.flash_request.send(FlashRequest::new(
+                    image,
+                    destinations,
+                    state.flash_state.clone(),
+                    progress.clone(),
+                    finished.clone()
+                ));
+
+                Some(state.flash_response.recv().expect("expected join handle to be returned"))
+            };
+
+            *tasks = Some(FlashTask {
+                previous: Arc::new(Mutex::new(vec![[0; 7]; ndestinations])),
+                progress,
+                finished,
+            });
         }
 
-        state.async_reattain_image_data(image_data);
         summary_grid.show_all();
     }
 
@@ -409,53 +415,57 @@ impl AppWidgets {
             }}
         }
 
-        let mut errored: Vec<(String, DiskError)> = Vec::new();
-        let mut task_handles = try_or_error!(
-            task_handles.lock(),
-            "task handles mutex lock failure"
-        );
+        {
+            let mut errored: Vec<(String, io::Error)> = Vec::new();
 
-        let devices = try_or_error!(
-            devices.lock(),
-            "devices mutex lock failure"
-        );
+            let mut handle = try_or_error!(
+                task_handles.lock(),
+                "task handles mutex lock failure"
+            );
 
-        let handle_iter = task_handles.deref_mut().drain(..);
-        let mut device_iter = devices.deref().iter();
-        for handle in handle_iter {
-            if let Some(&(ref device, _)) = device_iter.next() {
-                let result = try_or_error!(
-                    handle.join(),
-                    "thread handle join failure"
-                );
+            let results = try_or_error!(
+                handle.take().unwrap().join(),
+                "failed to join flashing thread"
+            );
 
+            let device_results = try_or_error!(
+                results,
+                "main flashing process failed"
+            );
+
+            let mut devices = try_or_error!(
+                devices.lock(),
+                "devices mutex lock failure"
+            );
+
+            for ((device, _), result) in devices.drain(..).zip(device_results.into_iter()) {
                 if let Err(why) = result {
                     errored.push((device.clone(), why));
                 }
             }
-        }
 
-        if errored.is_empty() {
-            description.set_text(&format!("{} devices successfully flashed", ntasks));
-            list.set_visible(false);
-        } else {
-            description.set_text(&format!(
-                "{} of {} devices successfully flashed",
-                ntasks - errored.len(),
-                ntasks
-            ));
-            list.set_visible(true);
-            for (device, why) in errored {
-                let container = Box::new(Orientation::Horizontal, 0);
-                let device = Label::new(device.as_str());
-                let why = Label::new(format!("{}", why).as_str());
-                container.pack_start(&device, false, false, 0);
-                container.pack_start(&why, true, true, 0);
-                list.insert(&container, -1);
+            if errored.is_empty() {
+                description.set_text(&format!("{} devices successfully flashed", ntasks));
+                list.set_visible(false);
+            } else {
+                description.set_text(&format!(
+                    "{} of {} devices successfully flashed",
+                    ntasks - errored.len(),
+                    ntasks
+                ));
+                list.set_visible(true);
+                for (device, why) in errored {
+                    let container = Box::new(Orientation::Horizontal, 0);
+                    let device = Label::new(device.as_str());
+                    let why = Label::new(format!("{}", why).as_str());
+                    container.pack_start(&device, false, false, 0);
+                    container.pack_start(&why, true, true, 0);
+                    list.insert(&container, -1);
+                }
             }
         }
 
-        state.set_as_complete();
+        state.reset();
 
         Ok(())
     }
@@ -477,7 +487,6 @@ impl AppWidgets {
         state.view.set(2);
         stack.set_visible_child_name("error");
 
-        state.set_as_complete();
-        state.reset_after_reacquiring_image();
+        state.reset();
     }
 }

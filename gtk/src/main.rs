@@ -1,9 +1,11 @@
 #![allow(unknown_lints)]
 #![allow(option_map_unit_fn)]
 
+extern crate bus_writer;
 extern crate digest;
 extern crate gdk;
 extern crate gtk;
+extern crate hex_view;
 extern crate libc;
 extern crate md5;
 extern crate pango;
@@ -15,16 +17,17 @@ mod app;
 mod block;
 mod flash;
 mod hash;
-mod image;
 
 use app::{App, Connect};
+use hash::HashState;
 use std::env;
 use std::path::PathBuf;
-use std::sync::mpsc::channel;
 use std::thread;
+use std::io;
 use std::time::Duration;
 use std::fs::File;
-use std::sync::mpsc::{Sender, Receiver, TryRecvError};
+use std::sync::mpsc::{channel, Sender, Receiver, TryRecvError};
+use std::sync::Arc;
 use std::thread::JoinHandle;
 
 pub use block::BlockDevice;
@@ -59,20 +62,24 @@ fn main() {
         }
     }
 
-    let (sender, receiver) = channel::<PathBuf>();
-    let app = App::new(sender, devices_request, devices_response, flash_request, flash_response);
+    let (hash_tx, hash_rx) = channel::<(PathBuf, &'static str)>();
+    let hash_state = Arc::new(HashState::new());
 
     {
-        let buffer = app.state.buffer.clone();
-        thread::spawn(move || image::event_loop(&receiver, &buffer));
-
-        let buffer = app.state.buffer.clone();
-        let hash = app.state.hash.clone();
-        thread::spawn(move || hash::event_loop(&buffer, &hash));
+        let hash_state = hash_state.clone();
+        thread::spawn(move || hash::event_loop(&hash_rx, &hash_state));
     }
 
+    let app = App::new(hash_state, hash_tx, devices_request, devices_response, flash_request, flash_response);
+
     if let Some(iso_argument) = env::args().nth(1) {
-        let _ = app.state.image_sender.send(PathBuf::from(iso_argument));
+        let path = PathBuf::from(iso_argument);
+        // TODO: Write an error message on failure.
+        if let Ok(file) = File::open(&path) {
+            if let Ok(size) = file.metadata().map(|m| m.len() as usize) {
+                *app.state.image.write().unwrap() = Some((path, size));
+            }
+        }
     }
 
     app.connect_events().then_execute()
@@ -85,7 +92,7 @@ fn authenticated_threads(
     devices_request: Receiver<(Vec<String>, Vec<MountEntry>)>,
     devices_response: Sender<Result<Vec<(String, File)>, DiskError>>,
     flash_request: Receiver<FlashRequest>,
-    flash_response: Sender<JoinHandle<Result<(), DiskError>>>,
+    flash_response: Sender<JoinHandle<io::Result<Vec<io::Result<()>>>>>,
 ) {
     thread::spawn(move || {
         loop {
