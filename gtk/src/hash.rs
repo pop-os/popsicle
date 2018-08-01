@@ -38,18 +38,21 @@ impl HashState {
 
     /// Attempt to receive the hash for the given path.
     pub(crate) fn try_obtain(&self, requested: &Path, hash: &'static str) -> Option<String> {
-        let data = self.data.lock().unwrap();
-        if self.is_busy() {
-            None
-        } else {
-            let value: String = match data.store.get(&hash_id(requested, hash)) {
-                Some(ref hash) => hash.as_ref()
-                    .map(|x| x.clone())
-                    .unwrap_or_else(|why| format!("ERROR: {}", why)),
-                None => return None,
-            };
+        if let Ok(data) = self.data.try_lock() {
+            if self.is_busy() {
+                None
+            } else {
+                let value: String = match data.store.get(&hash_id(requested, hash)) {
+                    Some(ref hash) => hash.as_ref()
+                        .map(|x| x.clone())
+                        .unwrap_or_else(|why| format!("ERROR: {}", why)),
+                    None => return None,
+                };
 
-            Some(value)
+                Some(value)
+            }
+        } else {
+            None
         }
     }
 }
@@ -73,14 +76,12 @@ pub(crate) fn event_loop(
     let mut set = false;
     loop {
         while let Ok((image, type_of)) = images.try_recv() {
-            eprintln!("received image to flash");
             set = true;
             let identifying_hash = hash_id(&image, type_of);
 
             hash.state.store(PROCESSING, Ordering::SeqCst);
             let mut hash_data = hash.data.lock().unwrap();
             if hash_data.store.get(&identifying_hash).map_or(true, |e| !e.is_ok()) {
-                eprintln!("storing hash");
                 hash_data.store.insert(
                     identifying_hash,
                     match type_of {
@@ -92,7 +93,6 @@ pub(crate) fn event_loop(
                         )),
                     },
                 );
-                eprintln!("stored new image checksum");
             }
         }
 
@@ -113,7 +113,6 @@ fn hash_id(image: &Path, kind: &'static str) -> u64 {
 }
 
 pub(crate) fn hasher<H: Digest>(image: &Path) -> io::Result<String> {
-    eprintln!("hashing image");
     File::open(image).and_then(move |mut file| {
         let mut buffer = [0u8; 8 * 1024];
         let mut hasher = H::new();

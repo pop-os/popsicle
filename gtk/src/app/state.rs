@@ -150,6 +150,7 @@ impl Connect for App {
         let state = self.state.clone();
         let next = self.widgets.header.next.clone();
         let image_label = self.widgets.content.image_view.image_path.clone();
+        let hash_button = self.widgets.content.image_view.hash.clone();
         self.widgets.content.image_view.chooser.connect_clicked(move |_| {
             if let Some(path) = OpenDialog::new(None).run() {
                 // TODO: Write an error message on failure.
@@ -160,6 +161,7 @@ impl Connect for App {
                             .to_string_lossy());
                         *state.image.write().unwrap() = Some((path, size));
                         next.set_sensitive(true);
+                        hash_button.set_sensitive(true);
                     }
                 }
             }
@@ -184,7 +186,7 @@ impl Connect for App {
 
                     if let Some(hash_kind) = hash_kind {
                         let hash = state.hash.clone();
-                        chooser.set_visible_child_name("checksum");
+
                         let _ = state.hash_request.send((path.clone(), hash_kind));
 
                         let hash_label = hash_label.clone();
@@ -197,7 +199,10 @@ impl Connect for App {
                                     chooser.set_visible_child_name("chooser");
                                     Continue(false)
                                 }
-                                None => Continue(true)
+                                None => {
+                                    chooser.set_visible_child_name("checksum");
+                                    Continue(true)
+                                }
                             }
                         });
                     }
