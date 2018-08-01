@@ -41,7 +41,7 @@ impl FlashRequest {
             .map(|_| Ok(()))
             .collect::<Vec<_>>();
 
-        let mut bucket = vec![0u8; 16 * 1024 * 1024];
+        let mut bucket = [0u8; 8 * 1024 * 1024];
 
         let result = BusWriter::new(
             &mut source,
@@ -59,7 +59,7 @@ impl FlashRequest {
             },
             // Write will exit early when this is true
             || KILL == status.load(Ordering::SeqCst),
-        ).with_bucket(&mut bucket).write().map(|_| errors);
+        ).with_bucket(&mut bucket[..]).write().map(|_| errors);
 
         if status.load(Ordering::SeqCst) == KILL {
             status.store(CANCELLED, Ordering::SeqCst);

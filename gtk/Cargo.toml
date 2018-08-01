@@ -11,7 +11,7 @@ name = "popsicle-gtk"
 path = "src/main.rs"
 
 [dependencies]
-bus_writer = "0.1.1"
+bus_writer = "0.1"
 failure = "0.1.1"
 failure_derive = "0.1.1"
 gdk = "0.7.0"

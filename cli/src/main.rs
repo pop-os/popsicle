@@ -141,8 +141,8 @@ fn popsicle() -> Result<(), String> {
 
     let pbs = Arc::new(Mutex::new(pbs));
     let errored_ = errored.clone();
-    let handle: JoinHandle<io::Result<()>> = thread::spawn(move || {
-        let mut bucket = vec![0u8; 8 * 1024 * 1024];
+    let handle: JoinHandle<io::Result<()>> = thread::Builder::new().stack_size(10 * 1024 * 1024).spawn(move || {
+        let mut bucket = [0u8; 8 * 1024 * 1024];
         BusWriter::new(
             &mut image,
             &mut destinations,
@@ -216,7 +216,7 @@ fn popsicle() -> Result<(), String> {
         } else {
             Ok(())
         }
-    });
+    }).unwrap();
 
     mb.listen();
 

@@ -109,7 +109,12 @@ fn authenticated_threads(
 
             match flash_request.try_recv() {
                 Ok(flash_request) => {
-                    let _ = flash_response.send(thread::spawn(move || flash_request.write()));
+                    let _ = flash_response.send(
+                        thread::Builder::new()
+                            .stack_size(10 * 1024 * 1024)
+                            .spawn(move || flash_request.write())
+                            .unwrap()
+                    );
                 }
                 Err(TryRecvError::Empty) => (),
                 Err(TryRecvError::Disconnected) => disconnected += 1,
