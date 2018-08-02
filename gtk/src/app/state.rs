@@ -7,14 +7,15 @@ use std::io;
 use std::fs::File;
 use std::cell::{Cell, RefCell};
 use std::mem;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::{Sender, Receiver};
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread::JoinHandle;
 use std::time::Instant;
 
-use gtk;
+use gdk::{self, DragContextExt, DragContextExtManual};
+use gtk::{self, WidgetExt, WidgetExtManual};
 use gtk::*;
 use popsicle::mnt::MountEntry;
 use popsicle::DiskError;
@@ -116,6 +117,9 @@ pub trait Connect {
     /// Programs the button for selecting an image.
     fn connect_image_chooser(&self);
 
+    /// Sets the image via a drag and drop.
+    fn connect_image_drag_and_drop(&self);
+
     /// Programs the combo box which generates the hash sum for initial image selection view.
     fn connect_hash_generator(&self);
 
@@ -137,6 +141,7 @@ pub trait Connect {
 impl Connect for App {
     fn connect_events(self) -> Connected {
         self.connect_image_chooser();
+        self.connect_image_drag_and_drop();
         self.connect_hash_generator();
         self.connect_back_button();
         self.connect_next_button();
@@ -148,20 +153,43 @@ impl Connect for App {
 
     fn connect_image_chooser(&self) {
         let state = self.state.clone();
-        let next = self.widgets.header.next.clone();
-        let image_label = self.widgets.content.image_view.image_path.clone();
-        let hash_button = self.widgets.content.image_view.hash.clone();
+        let widgets = self.widgets.clone();
         self.widgets.content.image_view.chooser.connect_clicked(move |_| {
             if let Some(path) = OpenDialog::new(None).run() {
-                // TODO: Write an error message on failure.
-                if let Ok(file) = File::open(&path) {
-                    if let Ok(size) = file.metadata().map(|m| m.len() as usize) {
-                        image_label.set_text(&path.file_name()
-                            .expect("file chooser can't select directories")
-                            .to_string_lossy());
-                        *state.image.write().unwrap() = Some((path, size));
-                        next.set_sensitive(true);
-                        hash_button.set_sensitive(true);
+                widgets.set_image(&state, &path);
+            }
+        });
+    }
+
+    fn connect_image_drag_and_drop(&self) {
+        let state = self.state.clone();
+        let widgets = self.widgets.clone();
+        let image_view = widgets.content.image_view.view.container.clone();
+
+        // Configure the view as a possible drop destination.
+        image_view.drag_dest_set(gtk::DestDefaults::empty(), &[], gdk::DragAction::empty());
+
+        // Then actually handle drags that are inside the view.
+        image_view.connect_drag_motion(|_view, ctx, _x, _y, time| {
+            ctx.drag_status(gdk::DragAction::COPY, time);
+            Inhibit(true)
+        });
+
+        // Get the dropped data, if possible, when the active drag is valid.
+        image_view.connect_drag_drop(|view, ctx, _x, _y, time| {
+            Inhibit(ctx.list_targets().last().map_or(false, |ref target| {
+                view.drag_get_data(ctx, target, time);
+                true
+            }))
+        });
+
+        // Then handle the dropped data, setting the image if the dropped data is valid.
+        image_view.connect_drag_data_received(move |_view, _ctx, _x, _y, data, _info, _time| {
+            if let Some(uri) = data.get_text() {
+                if uri.starts_with("file://") {
+                    let path = Path::new(&uri[7..uri.len() - 1]);
+                    if path.extension().map_or(false, |ext| ext == "iso" || ext == "img") && path.exists() {
+                        widgets.set_image(&state, path);
                     }
                 }
             }
