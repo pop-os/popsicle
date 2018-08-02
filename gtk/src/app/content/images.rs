@@ -28,7 +28,7 @@ impl ImageView {
 
         let spinner = Spinner::new();
         spinner.start();
-        let spinner_label = Label::new("Loading Image");
+        let spinner_label = Label::new("Generating Checksum");
         spinner_label
             .get_style_context()
             .map(|c| c.add_class("bold"));
@@ -42,13 +42,14 @@ impl ImageView {
         hash.append_text("SHA256");
         hash.append_text("MD5");
         hash.set_active(0);
+        hash.set_sensitive(false);
 
         let hash_label = Entry::new();
         hash_label.set_editable(false);
 
         let hash_container = Box::new(Orientation::Horizontal, 0);
         set_margins(&hash_container, 6);
-    
+
         {
             let label = Label::new("Hash:");
             label.set_margin_right(6);
@@ -64,7 +65,7 @@ impl ImageView {
 
         let chooser_container = Stack::new();
         chooser_container.add_named(&button_box, "chooser");
-        chooser_container.add_named(&spinner_box, "loader");
+        chooser_container.add_named(&spinner_box, "checksum");
         chooser_container.set_visible_child_name("chooser");
         chooser_container.set_margin_top(12);
         chooser_container.set_margin_bottom(24);

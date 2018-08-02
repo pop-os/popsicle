@@ -6,15 +6,12 @@ pub extern crate mnt;
 
 use mnt::MountEntry;
 
-use std::cmp;
 use std::fs::{canonicalize, read_dir, File, OpenOptions};
-use std::io::{self, Read, Seek, SeekFrom, Write};
+use std::io;
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::fs::{FileTypeExt, OpenOptionsExt};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::{Command, ExitStatus};
-
-const BUFFER_SIZE: usize = 4 * 1024 * 1024;
 
 #[derive(Debug, Fail)]
 #[cfg_attr(rustfmt, rustfmt_skip)]
@@ -29,76 +26,6 @@ pub enum ImageError {
     ReadError { why: io::Error },
     #[fail(display = "reached EOF prematurely")]
     Eof,
-}
-
-/// A simple wrapper around a `File` that ensures that the file is a file, and
-/// obtains the file's size ahead of time.
-pub struct Image {
-    path: PathBuf,
-    file: File,
-    size: u64,
-}
-
-impl Image {
-    /// Opens the file and obtains the size from the metadata, then returns an
-    /// `Image` structure that contains the opened file and its file size.
-    pub fn new<P: AsRef<Path>>(path: P) -> Result<Image, ImageError> {
-        let path = path.as_ref();
-        File::open(path)
-            .map_err(|why| ImageError::Open { why })
-            .and_then(|file| {
-                file.metadata()
-                    .map_err(|why| ImageError::Metadata { why })
-                    .and_then(|metadata| {
-                        if metadata.file_type().is_file() {
-                            Ok(Image {
-                                path: path.to_path_buf(),
-                                file,
-                                size: metadata.len(),
-                            })
-                        } else {
-                            Err(ImageError::NotAFile)
-                        }
-                    })
-            })
-    }
-
-    pub fn get_path(&self) -> &Path { &self.path }
-
-    /// Returns the size of the file, in bytes.
-    pub fn get_size(&self) -> u64 { self.size }
-
-    /// Reads the image into a vector, and reports progress to a callback.
-    pub fn read<P: FnMut(u64)>(
-        &mut self,
-        data: &mut Vec<u8>,
-        mut progress_callback: P,
-    ) -> Result<(), ImageError> {
-        if data.capacity() < self.size as usize {
-            let capacity = self.size as usize - data.capacity();
-            data.reserve_exact(capacity);
-            data.append(&mut vec![0; capacity])
-        } else if data.capacity() > self.size as usize {
-            data.truncate(self.size as usize);
-            data.shrink_to_fit();
-        }
-
-        let mut total = 0;
-        while total < data.len() {
-            let end = cmp::min(data.len(), total + BUFFER_SIZE);
-            let count = self.file
-                .read(&mut data[total..end])
-                .map_err(|why| ImageError::ReadError { why })?;
-
-            if count == 0 {
-                return Err(ImageError::Eof);
-            }
-            total += count;
-            progress_callback(total as u64);
-        }
-
-        Ok(())
-    }
 }
 
 #[derive(Debug, Fail)]
@@ -248,134 +175,4 @@ pub fn disks_from_args<D: Iterator<Item = String>>(
     }
 
     Ok(disks)
-}
-
-pub enum PopsicleLog<'a> {
-    Message(&'a str),
-    Finished,
-    Progress(u64)
-}
-
-/// Writes an image to the specified disk.
-pub fn write_to_disk<F: FnMut(PopsicleLog), K: FnMut() -> bool>(
-    mut callback: F,
-    mut kill: K,
-    mut disk: File,
-    disk_path: &str,
-    image_size: u64,
-    image_data: &[u8],
-    check: bool,
-) -> Result<(), DiskError> {
-    let mut total = 0;
-    while total < image_data.len() {
-        if kill() {
-            return Err(DiskError::Killed);
-        }
-
-        let end = cmp::min(image_size as usize, total + BUFFER_SIZE);
-        let count = disk.write(&image_data[total..end]).map_err(|why| {
-            callback(PopsicleLog::Message(&format!("! {}: ", disk_path)));
-            callback(PopsicleLog::Finished);
-            DiskError::Write {
-                disk: disk_path.to_string(),
-                why,
-            }
-        })?;
-
-        if count == 0 {
-            callback(PopsicleLog::Message(&format!("! {}: ", disk_path)));
-            callback(PopsicleLog::Finished);
-
-            return Err(DiskError::WriteEOF {
-                disk: disk_path.to_string(),
-            });
-        }
-        total += count;
-        callback(PopsicleLog::Progress(total as u64));
-    }
-
-    disk.flush().map_err(|why| {
-        callback(PopsicleLog::Message(&format!("! {}: ", disk_path)));
-        callback(PopsicleLog::Finished);
-
-        DiskError::Flush {
-            disk: disk_path.to_string(),
-            why,
-        }
-    })?;
-
-    if check {
-        match disk.seek(SeekFrom::Start(0)) {
-            Ok(0) => (),
-            Ok(invalid) => {
-                callback(PopsicleLog::Message(&format!("! {}: ", disk_path)));
-                callback(PopsicleLog::Finished);
-
-                return Err(DiskError::SeekInvalid {
-                    disk: disk_path.to_string(),
-                    invalid,
-                });
-            }
-            Err(why) => {
-                callback(PopsicleLog::Message(&format!("! {}: ", disk_path)));
-                callback(PopsicleLog::Finished);
-
-                return Err(DiskError::Seek {
-                    disk: disk_path.to_string(),
-                    why,
-                });
-            }
-        }
-
-        callback(PopsicleLog::Message(&format!("V {}: ", disk_path)));
-        callback(PopsicleLog::Progress(0));
-        total = 0;
-
-        let mut buf = vec![0; BUFFER_SIZE];
-        while total < image_data.len() {
-            if kill() {
-                return Err(DiskError::Killed);
-            }
-            let end = cmp::min(image_size as usize, total + BUFFER_SIZE);
-            let count = match disk.read(&mut buf[..end - total]) {
-                Ok(count) => count,
-                Err(why) => {
-                    callback(PopsicleLog::Message(&format!("! {}: ", disk_path)));
-                    callback(PopsicleLog::Finished);
-
-                    return Err(DiskError::Verify {
-                        disk: disk_path.to_string(),
-                        why,
-                    });
-                }
-            };
-
-            if count == 0 {
-                callback(PopsicleLog::Message(&format!("! {}: ", disk_path)));
-                callback(PopsicleLog::Finished);
-
-                return Err(DiskError::VerifyEOF {
-                    disk: disk_path.to_string(),
-                });
-            }
-
-            if buf[..count] != image_data[total..total + count] {
-                callback(PopsicleLog::Message(&format!("! {}: ", disk_path)));
-                callback(PopsicleLog::Finished);
-
-                return Err(DiskError::VerifyMismatch {
-                    disk: disk_path.to_string(),
-                    x:    total,
-                    y:    total + count,
-                });
-            }
-
-            total += count;
-            callback(PopsicleLog::Progress(total as u64));
-        }
-    }
-
-    callback(PopsicleLog::Finished);
-
-    Ok(())
 }
