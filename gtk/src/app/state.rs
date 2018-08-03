@@ -1,7 +1,7 @@
 use flash::FlashRequest;
 
 use super::{App, OpenDialog};
-use app::AppWidgets;
+use app::{misc, AppWidgets};
 use hash::HashState;
 use std::io;
 use std::fs::File;
@@ -14,8 +14,7 @@ use std::sync::{Arc, Mutex, RwLock};
 use std::thread::JoinHandle;
 use std::time::Instant;
 
-use gdk::{self, DragContextExt, DragContextExtManual};
-use gtk::{self, WidgetExt, WidgetExtManual};
+use gtk;
 use gtk::*;
 use popsicle::mnt::MountEntry;
 use popsicle::DiskError;
@@ -166,25 +165,7 @@ impl Connect for App {
         let widgets = self.widgets.clone();
         let image_view = widgets.content.image_view.view.container.clone();
 
-        // Configure the view as a possible drop destination.
-        image_view.drag_dest_set(gtk::DestDefaults::empty(), &[], gdk::DragAction::empty());
-
-        // Then actually handle drags that are inside the view.
-        image_view.connect_drag_motion(|_view, ctx, _x, _y, time| {
-            ctx.drag_status(gdk::DragAction::COPY, time);
-            Inhibit(true)
-        });
-
-        // Get the dropped data, if possible, when the active drag is valid.
-        image_view.connect_drag_drop(|view, ctx, _x, _y, time| {
-            Inhibit(ctx.list_targets().last().map_or(false, |ref target| {
-                view.drag_get_data(ctx, target, time);
-                true
-            }))
-        });
-
-        // Then handle the dropped data, setting the image if the dropped data is valid.
-        image_view.connect_drag_data_received(move |_view, _ctx, _x, _y, data, _info, _time| {
+        misc::drag_and_drop(&image_view, move |data| {
             if let Some(uri) = data.get_text() {
                 if uri.starts_with("file://") {
                     let path = Path::new(&uri[7..uri.len() - 1]);
