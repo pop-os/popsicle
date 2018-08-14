@@ -8,26 +8,25 @@ pub struct Header {
 
 impl Header {
     pub fn new() -> Header {
-        // Creates the main header bar container widget.
-        let container = HeaderBar::new();
+        let back = cascade! {
+            Button::new_with_label("Cancel");
+            ..get_style_context().map(|c| c.add_class("back"));
+        };
 
-        // Sets the text to display in the title section of the header bar.
-        container.set_title("USB Flasher");
-
-        let back = Button::new_with_label("Cancel");
-        back.get_style_context().map(|c| c.add_class("back"));
-
-        let next = Button::new_with_label("Next");
-        next.get_style_context()
-            .map(|c| c.add_class("suggested-action"));
-        next.set_sensitive(false);
-
-        container.pack_start(&back);
-        container.pack_end(&next);
+        let next = cascade! {
+            Button::new_with_label("Next");
+            ..set_sensitive(false);
+            ..get_style_context().map(|c| c.add_class(&STYLE_CLASS_SUGGESTED_ACTION));
+        };
 
         // Returns the header and all of it's state
         Header {
-            container,
+            container: cascade! {
+                HeaderBar::new();
+                ..set_title("USB Flasher");
+                ..pack_start(&back);
+                ..pack_end(&next);
+            },
             back,
             next,
         }

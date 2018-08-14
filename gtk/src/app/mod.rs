@@ -53,12 +53,26 @@ impl App {
             process::exit(1);
         }
 
-        // Create a new top level window.
-        let window = Window::new(WindowType::Toplevel);
+
         // Create a the headerbar and it's associated content.
         let header = Header::new();
         // Create the content container and all of it's widgets.
         let content = Content::new();
+
+        // Create a new top level window.
+        let window = cascade! {
+            Window::new(WindowType::Toplevel);
+            // Set the headerbar as the title bar widget.
+            ..set_titlebar(&header.container);
+            // Set the title of the window.
+            ..set_title("Popsicle");
+            // Set the window manager class.
+            ..set_wmclass("popsicle", "Popsicle");
+            // The default size of the window to create.
+            ..set_default_size(500, 250);
+            // Add the content to the window.
+            ..add(&content.container);
+        };
 
         // Add a custom CSS style
         let screen = window.get_screen().unwrap();
@@ -66,18 +80,8 @@ impl App {
         let _ = CssProviderExt::load_from_data(&style, CSS.as_bytes());
         StyleContext::add_provider_for_screen(&screen, &style, STYLE_PROVIDER_PRIORITY_USER);
 
-        // Set the headerbar as the title bar widget.
-        window.set_titlebar(&header.container);
-        // Set the title of the window.
-        window.set_title("Popsicle");
-        // Set the window manager class.
-        window.set_wmclass("popsicle", "Popsicle");
-        // The default size of the window to create.
-        window.set_default_size(500, 250);
         // The icon the app will display.
         Window::set_default_icon_name("iconname");
-        // Add the content to the window.
-        window.add(&content.container);
 
         // Programs what to do when the exit button is used.
         window.connect_delete_event(move |_, _| {
@@ -101,10 +105,6 @@ pub struct AppWidgets {
 
 impl AppWidgets {
     pub fn switch_to_main(&self, state: &State) {
-        let stack = &self.content.container;
-        let back = &self.header.back;
-        let next = &self.header.next;
-
         // If tasks are running, signify that tasks should be considered as completed.
         if FLASHING == state.flash_state.load(Ordering::SeqCst) {
             state.flash_state.store(KILL, Ordering::SeqCst);
@@ -112,23 +112,32 @@ impl AppWidgets {
 
         self.content.devices_view.list.select_all.set_active(false);
 
-        stack.set_transition_type(StackTransitionType::SlideRight);
-        stack.set_visible_child_name("image");
+        cascade! {
+            &self.content.container;
+            ..set_transition_type(StackTransitionType::SlideRight);
+            ..set_visible_child_name("image");
+        };
 
-        back.set_visible(true);
-        back.set_label("Cancel");
-        back.get_style_context().map(|c| {
-            c.remove_class("back-button");
-            c.remove_class("destructive-action");
-        });
+        cascade! {
+            &self.header.back;
+            ..set_visible(true);
+            ..set_label("Cancel");
+            ..get_style_context().map(|c| {
+                c.remove_class("back-button");
+                c.remove_class(&gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
+            });
+        };
 
-        next.set_visible(true);
-        next.set_label("Next");
-        next.set_sensitive(true);
-        next.get_style_context().map(|c| {
-            c.remove_class("destructive-action");
-            c.add_class("suggested-action");
-        });
+        cascade! {
+            &self.header.next;
+            ..set_visible(true);
+            ..set_label("Next");
+            ..set_sensitive(true);
+            ..get_style_context().map(|c| {
+                c.remove_class(&gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
+                c.add_class(&gtk::STYLE_CLASS_SUGGESTED_ACTION);
+            });
+        };
 
         state.view.set(0)
     }
@@ -145,8 +154,8 @@ impl AppWidgets {
         });
         next.set_label("Flash");
         next.get_style_context().map(|c| {
-            c.remove_class("suggested-action");
-            c.add_class("destructive-action");
+            c.remove_class(&gtk::STYLE_CLASS_SUGGESTED_ACTION);
+            c.add_class(&gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
         });
         stack.set_visible_child_name("devices");
 
@@ -292,7 +301,7 @@ impl AppWidgets {
 
             back.get_style_context().map(|c| {
                 c.remove_class("back-button");
-                c.add_class("destructive-action");
+                c.add_class(&gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
             });
 
             back.set_label("Cancel");
@@ -345,9 +354,13 @@ impl AppWidgets {
                 label.get_style_context().map(|c| c.add_class("bold"));
                 let bar_label = gtk::Label::new("");
                 bar_label.set_halign(gtk::Align::Center);
-                let bar_container = gtk::Box::new(Orientation::Vertical, 0);
-                bar_container.pack_start(&pbar, false, false, 0);
-                bar_container.pack_start(&bar_label, false, false, 0);
+
+                let bar_container = cascade! {
+                    gtk::Box::new(Orientation::Vertical, 0);
+                    ..pack_start(&pbar, false, false, 0);
+                    ..pack_start(&bar_label, false, false, 0);
+                };
+
                 summary_grid.attach(&label, 0, id, 1, 1);
                 summary_grid.attach(&bar_container, 1, id, 1, 1);
                 bars.push((pbar, bar_label));
@@ -396,11 +409,13 @@ impl AppWidgets {
 
         back.set_label("Flash Again");
         back.get_style_context()
-            .map(|c| c.remove_class("destructive-action"));
+            .map(|c| c.remove_class(&gtk::STYLE_CLASS_DESTRUCTIVE_ACTION));
+
         next.set_label("Done");
-        next.get_style_context()
-            .map(|c| c.remove_class("destructive-action"));
         next.set_visible(true);
+        next.get_style_context()
+            .map(|c| c.remove_class(&gtk::STYLE_CLASS_DESTRUCTIVE_ACTION));
+
         stack.set_visible_child_name("summary");
 
         macro_rules! try_or_error {
@@ -455,11 +470,13 @@ impl AppWidgets {
                 ));
                 list.set_visible(true);
                 for (device, why) in errored {
-                    let container = Box::new(Orientation::Horizontal, 0);
                     let device = Label::new(device.as_str());
                     let why = Label::new(format!("{}", why).as_str());
-                    container.pack_start(&device, false, false, 0);
-                    container.pack_start(&why, true, true, 0);
+                    let container = cascade! {
+                        Box::new(Orientation::Horizontal, 0);
+                        ..pack_start(&device, false, false, 0);
+                        ..pack_start(&why, true, true, 0);
+                    };
                     list.insert(&container, -1);
                 }
             }
@@ -473,20 +490,21 @@ impl AppWidgets {
     pub fn set_error(&self, state: &State, msg: &str) {
         let stack = &self.content.container;
         let back = &self.header.back;
-        let next = &self.header.next;
         let error = &self.content.error_view.view.description;
 
         back.set_visible(false);
-        next.set_visible(true);
-        next.set_label("Close");
-        next.get_style_context().map(|c| {
-            c.remove_class("destructive-action");
-            c.remove_class("suggested-action");
-        });
+        cascade! {
+            &self.header.next;
+            ..set_visible(true);
+            ..set_label("Close");
+            ..get_style_context().map(|c| {
+                c.remove_class(&gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
+                c.remove_class(&gtk::STYLE_CLASS_SUGGESTED_ACTION);
+            });
+        };
         error.set_text(&msg);
-        state.view.set(2);
         stack.set_visible_child_name("error");
-
+        state.view.set(2);
         state.reset();
     }
 }

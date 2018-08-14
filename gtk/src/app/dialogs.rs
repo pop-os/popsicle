@@ -6,26 +6,21 @@ pub struct OpenDialog(FileChooserDialog);
 
 impl OpenDialog {
     pub fn new(path: Option<PathBuf>) -> OpenDialog {
-        // Create a new file chooser dialog for opening a file.
-        let open_dialog = FileChooserDialog::new(
-            Some("Open"),
-            Some(&Window::new(WindowType::Popup)),
-            FileChooserAction::Open,
-        );
-
-        let filter = FileFilter::new();
-        filter.add_pattern("*.iso");
-        filter.add_pattern("*.img");
-
-        // Add the cancel and open buttons to that dialog.
-        open_dialog.add_button("Cancel", ResponseType::Cancel.into());
-        open_dialog.add_button("Open", ResponseType::Ok.into());
-        open_dialog.set_filter(&filter);
-
-        // Set the default path to open this with.
-        path.map(|p| open_dialog.set_current_folder(p));
-
-        OpenDialog(open_dialog)
+        OpenDialog(cascade! {
+            dialog: FileChooserDialog::new(
+                Some("Open"),
+                Some(&Window::new(WindowType::Popup)),
+                FileChooserAction::Open,
+            );
+            ..add_button("Cancel", ResponseType::Cancel.into());
+            ..add_button("Open", ResponseType::Ok.into());
+            ..set_filter(&cascade! {
+                FileFilter::new();
+                ..add_pattern("*.iso");
+                ..add_pattern("*.img");
+            });
+            | path.map(|p| dialog.set_current_folder(p));
+        })
     }
 
     pub fn run(&self) -> Option<PathBuf> {

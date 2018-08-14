@@ -27,21 +27,22 @@ pub struct Content {
 
 impl Content {
     pub fn new() -> Content {
-        let container = Stack::new();
-        set_margins(&container, 12);
-
         let image_view = ImageView::new();
         let devices_view = DevicesView::new();
         let flash_view = FlashView::new();
         let summary_view = SummaryView::new();
         let error_view = ErrorView::new();
 
-        container.add_named(&image_view.view.container, "image");
-        container.add_named(&devices_view.view.container, "devices");
-        container.add_named(&flash_view.view.container, "flash");
-        container.add_named(&summary_view.view.container, "summary");
-        container.add_named(&error_view.view.container, "error");
-        container.set_visible_child_name("image");
+        let container = cascade! {
+            container: Stack::new();
+            ..add_named(&image_view.view.container, "image");
+            ..add_named(&devices_view.view.container, "devices");
+            ..add_named(&flash_view.view.container, "flash");
+            ..add_named(&summary_view.view.container, "summary");
+            ..add_named(&error_view.view.container, "error");
+            ..set_visible_child_name("image");
+            | set_margins(&container, 12);
+        };
 
         Content {
             container,

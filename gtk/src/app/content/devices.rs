@@ -18,13 +18,17 @@ impl DevicesView {
         let list = gtk::ListBox::new();
         list.get_style_context().map(|c| c.add_class("devices"));
 
-        let list_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        list_box.pack_start(&select_all, false, false, 0);
-        list_box.pack_start(&gtk::Separator::new(gtk::Orientation::Horizontal), false, false, 0);
-        list_box.pack_start(&list, true, true, 0);
+        let list_box = cascade! {
+            gtk::Box::new(gtk::Orientation::Vertical, 0);
+            ..pack_start(&select_all, false, false, 0);
+            ..pack_start(&gtk::Separator::new(gtk::Orientation::Horizontal), false, false, 0);
+            ..pack_start(&list, true, true, 0);
+        };
 
-        let select_scroller = gtk::ScrolledWindow::new(None, None);
-        select_scroller.add(&list_box);
+        let select_scroller = cascade! {
+            gtk::ScrolledWindow::new(None, None);
+            ..add(&list_box);
+        };
 
         let view = View::new(
             "drive-removable-media-usb",

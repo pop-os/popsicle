@@ -14,61 +14,77 @@ pub struct ImageView {
 
 impl ImageView {
     pub fn new() -> ImageView {
-        let chooser = Button::new_with_label("Choose Image");
-        chooser.set_halign(Align::Center);
-        chooser.set_margin_bottom(6);
+        let chooser = cascade! {
+            Button::new_with_label("Choose Image");
+            ..set_halign(Align::Center);
+            ..set_margin_bottom(6);
+        };
 
-        let image_path = Label::new("No image selected");
-        image_path.set_ellipsize(EllipsizeMode::End);
-        image_path.get_style_context().map(|c| c.add_class("bold"));
+        let image_path = cascade! {
+            Label::new("No image selected");
+            ..set_ellipsize(EllipsizeMode::End);
+            ..get_style_context().map(|c| c.add_class("bold"));
+        };
 
-        let button_box = Box::new(Orientation::Vertical, 0);
-        button_box.pack_start(&chooser, false, false, 0);
-        button_box.pack_start(&image_path, false, false, 0);
+        let button_box = cascade! {
+            Box::new(Orientation::Vertical, 0);
+            ..pack_start(&chooser, false, false, 0);
+            ..pack_start(&image_path, false, false, 0);
+        };
 
         let spinner = Spinner::new();
         spinner.start();
-        let spinner_label = Label::new("Generating Checksum");
-        spinner_label
-            .get_style_context()
-            .map(|c| c.add_class("bold"));
 
-        let spinner_box = Box::new(Orientation::Vertical, 0);
-        spinner_box.pack_start(&spinner, false, false, 0);
-        spinner_box.pack_start(&spinner_label, false, false, 0);
+        let spinner_label = cascade! {
+            Label::new("Generating Checksum");
+            ..get_style_context().map(|c| c.add_class("bold"));
+        };
 
-        let hash = ComboBoxText::new();
-        hash.append_text("Type");
-        hash.append_text("SHA256");
-        hash.append_text("MD5");
-        hash.set_active(0);
-        hash.set_sensitive(false);
+        let spinner_box = cascade! {
+            Box::new(Orientation::Vertical, 0);
+            ..pack_start(&spinner, false, false, 0);
+            ..pack_start(&spinner_label, false, false, 0);
+        };
+
+        let hash = cascade! {
+            ComboBoxText::new();
+            ..append_text("Type");
+            ..append_text("SHA256");
+            ..append_text("MD5");
+            ..set_active(0);
+            ..set_sensitive(false);
+        };
 
         let hash_label = Entry::new();
         hash_label.set_editable(false);
 
-        let hash_container = Box::new(Orientation::Horizontal, 0);
-        set_margins(&hash_container, 6);
+        let label = cascade! {
+            Label::new("Hash:");
+            ..set_margin_end(6);
+        };
 
-        {
-            let label = Label::new("Hash:");
-            label.set_margin_right(6);
+        let combo_container = cascade! {
+            Box::new(Orientation::Horizontal, 0);
+            ..add(&hash);
+            ..pack_start(&hash_label, true, true, 0);
+            ..get_style_context().map(|c| c.add_class("linked"));
+        };
 
-            let combo_container = Box::new(Orientation::Horizontal, 0);
-            combo_container.get_style_context().map(|c| c.add_class("linked"));
-            combo_container.add(&hash);
-            combo_container.pack_start(&hash_label, true, true, 0);
+        let hash_container = cascade! {
+            tmp: Box::new(Orientation::Horizontal, 0);
+            ..pack_start(&label, false, false, 0);
+            ..pack_start(&combo_container, true, true, 0);
+            | set_margins(&tmp, 6);
+        };
 
-            hash_container.pack_start(&label, false, false, 0);
-            hash_container.pack_start(&combo_container, true, true, 0);
-        }
-
-        let chooser_container = Stack::new();
-        chooser_container.add_named(&button_box, "chooser");
-        chooser_container.add_named(&spinner_box, "checksum");
-        chooser_container.set_visible_child_name("chooser");
-        chooser_container.set_margin_top(12);
-        chooser_container.set_margin_bottom(24);
+        let chooser_container = cascade! {
+            Stack::new();
+            ..add_named(&button_box, "chooser");
+            ..add_named(&spinner_box, "checksum");
+            ..set_visible_child_name("chooser");
+            ..set_margin_top(12);
+            ..set_margin_bottom(24);
+        };
 
         let view = View::new(
             "application-x-cd-image",

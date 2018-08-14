@@ -2,6 +2,8 @@
 #![allow(option_map_unit_fn)]
 
 extern crate bus_writer;
+#[macro_use]
+extern crate cascade;
 extern crate digest;
 extern crate gdk;
 extern crate gtk;
