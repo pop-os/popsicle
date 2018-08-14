@@ -104,6 +104,24 @@ pub struct AppWidgets {
 }
 
 impl AppWidgets {
+    pub fn set_image(&self, state: &State, image: &Path) {
+        let next = self.header.next.clone();
+        let image_label = self.content.image_view.image_path.clone();
+        let hash_button = self.content.image_view.hash.clone();
+
+        // TODO: Write an error message on failure.
+        if let Ok(file) = File::open(image) {
+            if let Ok(size) = file.metadata().map(|m| m.len() as usize) {
+                image_label.set_text(&image.file_name()
+                    .expect("file chooser can't select directories")
+                    .to_string_lossy());
+                *state.image.write().unwrap() = Some((image.to_path_buf(), size));
+                next.set_sensitive(true);
+                hash_button.set_sensitive(true);
+            }
+        }
+    }
+
     pub fn switch_to_main(&self, state: &State) {
         // If tasks are running, signify that tasks should be considered as completed.
         if FLASHING == state.flash_state.load(Ordering::SeqCst) {

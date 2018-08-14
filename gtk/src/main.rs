@@ -23,7 +23,7 @@ mod hash;
 use app::{App, Connect};
 use hash::HashState;
 use std::env;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::thread;
 use std::io;
 use std::time::Duration;
@@ -75,12 +75,9 @@ fn main() {
     let app = App::new(hash_state, hash_tx, devices_request, devices_response, flash_request, flash_response);
 
     if let Some(iso_argument) = env::args().nth(1) {
-        let path = PathBuf::from(iso_argument);
-        // TODO: Write an error message on failure.
-        if let Ok(file) = File::open(&path) {
-            if let Ok(size) = file.metadata().map(|m| m.len() as usize) {
-                *app.state.image.write().unwrap() = Some((path, size));
-            }
+        let path: &Path = &PathBuf::from(iso_argument);
+        if path.extension().map_or(false, |ext| ext == "iso" || ext == "img") && path.exists() {
+            app.widgets.set_image(&app.state, path);
         }
     }
 
