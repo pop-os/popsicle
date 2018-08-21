@@ -62,17 +62,14 @@ impl DeviceList {
     pub fn connect_select_all<F>(&self, state: Arc<State>, result: F )
         where F: 'static + Fn(Result<(), String>)
     {
-        self.select_all.connect_clicked(move |all| result(
-            state.devices.lock()
-                .map_err(|why| format!("devices mutex lock failed: {}", why))
-                .map(|ref devices| {
-                    devices.iter()
-                        .for_each(|&(_, ref device)| device.set_active(
-                            all.get_active() && device.is_sensitive()
-                        ))
-                }
-            )
-        ));
+        self.select_all.connect_clicked(move |all| result({
+            let devices = state.devices.lock();
+            devices.iter()
+                .for_each(|&(_, ref device)| device.set_active(
+                    all.get_active() && device.is_sensitive()
+                ));
+            Ok(())
+        }));
     }
 
     fn devices_differ(devices: &[String], device_list: &[(String, gtk::CheckButton)]) -> bool {

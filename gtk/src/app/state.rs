@@ -9,8 +9,9 @@ use std::cell::{Cell, RefCell};
 use std::mem;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::mpsc::{Sender, Receiver};
-use std::sync::{Arc, Mutex, RwLock};
+use crossbeam_channel::{Sender, Receiver};
+use std::sync::Arc;
+use parking_lot::{Mutex, RwLock};
 use std::thread::JoinHandle;
 use std::time::Instant;
 
@@ -89,8 +90,8 @@ impl State {
 
     pub fn reset(&self) {
         self.bars.borrow_mut().clear();
-        self.devices.lock().unwrap().clear();
-        *self.tasks.lock().unwrap() = None;
+        self.devices.lock().clear();
+        *self.tasks.lock() = None;
         self.flash_state.store(0, Ordering::SeqCst);
     }
 }
@@ -189,7 +190,7 @@ impl Connect for App {
             .image_view
             .hash
             .connect_changed(move |hash_kind| {
-                if let Some(ref path) = *state.image.read().unwrap() {
+                if let Some(ref path) = *state.image.read() {
                     let hash_kind = match hash_kind.get_active() {
                         1 => Some("SHA256"),
                         2 => Some("MD5"),
@@ -282,18 +283,6 @@ impl Connect for App {
             let tasks = &state.tasks;
             let bars = &state.bars;
 
-            macro_rules! try_or_error {
-                ($action:expr, $msg:expr, $val:expr) => {{
-                    match $action {
-                        Ok(value) => value,
-                        Err(why) => {
-                            widgets.set_error(&state, &format!("{}: {:?}", $msg, why));
-                            return $val;
-                        }
-                    }
-                }}
-            }
-
             let mut all_tasks_finished = true;
             let ntasks;
 
@@ -304,11 +293,7 @@ impl Connect for App {
                     return Continue(true);
                 }
 
-                let tasks = try_or_error!(
-                    tasks.lock(),
-                    "tasks mutex lock failure",
-                    Continue(false)
-                );
+                let tasks = tasks.lock();
 
                 let tasks = match tasks.as_ref() {
                     Some(tasks) => tasks,
@@ -317,11 +302,7 @@ impl Connect for App {
 
                 ntasks = tasks.progress.len();
 
-                let mut previous = try_or_error!(
-                    tasks.previous.lock(),
-                    "tasks.previous mutex lock failure",
-                    Continue(false)
-                );
+                let mut previous = tasks.previous.lock();
 
                 for (id, &(ref pbar, ref label)) in bars.borrow().iter().enumerate() {
                     let prev_values = &mut previous[id];

@@ -4,6 +4,7 @@
 extern crate bus_writer;
 #[macro_use]
 extern crate cascade;
+extern crate crossbeam_channel;
 extern crate digest;
 extern crate gdk;
 extern crate gtk;
@@ -12,6 +13,7 @@ extern crate libc;
 extern crate md5;
 extern crate pango;
 extern crate popsicle;
+extern crate parking_lot;
 extern crate pwd;
 extern crate sha2;
 
@@ -28,7 +30,7 @@ use std::thread;
 use std::io;
 use std::time::Duration;
 use std::fs::File;
-use std::sync::mpsc::{channel, Sender, Receiver, TryRecvError};
+use crossbeam_channel::{unbounded, Sender, Receiver, TryRecvError};
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
@@ -40,11 +42,11 @@ use popsicle::DiskError;
 
 fn main() {
     let (devices_request, devices_request_receiver) =
-        channel::<(Vec<String>, Vec<MountEntry>)>();
+        unbounded::<(Vec<String>, Vec<MountEntry>)>();
     let (devices_response_sender, devices_response) =
-        channel::<Result<Vec<(String, File)>, DiskError>>();
-    let (flash_request, flash_request_receiver) = channel::<FlashRequest>();
-    let (flash_response_sender, flash_response) = channel();
+        unbounded::<Result<Vec<(String, File)>, DiskError>>();
+    let (flash_request, flash_request_receiver) = unbounded::<FlashRequest>();
+    let (flash_response_sender, flash_response) = unbounded();
 
     authenticated_threads(
         devices_request_receiver,
@@ -64,7 +66,7 @@ fn main() {
         }
     }
 
-    let (hash_tx, hash_rx) = channel::<(PathBuf, &'static str)>();
+    let (hash_tx, hash_rx) = unbounded::<(PathBuf, &'static str)>();
     let hash_state = Arc::new(HashState::new());
 
     {

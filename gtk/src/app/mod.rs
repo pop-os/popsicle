@@ -23,9 +23,10 @@ use std::path::{Path, PathBuf};
 use std::process;
 use std::io;
 use std::rc::Rc;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use parking_lot::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::mpsc::{Sender, Receiver};
+use crossbeam_channel::{Sender, Receiver};
 use std::thread;
 use std::time::{Duration, Instant};
 use std::fs::File;
@@ -115,7 +116,7 @@ impl AppWidgets {
                 image_label.set_text(&image.file_name()
                     .expect("file chooser can't select directories")
                     .to_string_lossy());
-                *state.image.write().unwrap() = Some(image.to_path_buf());
+                *state.image.write() = Some(image.to_path_buf());
                 state.image_length.set(size);
                 next.set_sensitive(true);
                 hash_button.set_sensitive(true);
@@ -186,12 +187,7 @@ impl AppWidgets {
             eprintln!("popsicle: unable to get devices: {}", why);
         }
 
-        if let Err(why) = state.devices.lock()
-            .map_err(|why| format!("mutex lock failed: {}", why))
-            .and_then(|ref mut device_list| {
-                list.refresh(device_list, &devices, image_sectors)
-            })
-        {
+        if let Err(why) = list.refresh(&mut state.devices.lock(), &devices, image_sectors) {
             self.set_error(state, &why);
         }
     }
@@ -211,7 +207,7 @@ impl AppWidgets {
 
             let mut disable_select_all = false;
 
-            if let Ok(ref mut device_list) = state.devices.try_lock() {
+            if let Some(ref mut device_list) = state.devices.try_lock() {
                 let mut check_refresh = || -> Result<(), String> {
                     match DeviceList::requires_refresh(&device_list) {
                         Some(devices) => {
@@ -269,25 +265,14 @@ impl AppWidgets {
         }
 
         {
-            let path = {
-                let image_lock = try_or_error!(
-                    state.image.read(),
-                    "failed to lock buffer.data mutex"
-                );
-
-                let path = image_lock.as_ref().unwrap();
-                path.clone()
-            };
+            let path: PathBuf = state.image.read().as_ref().unwrap().clone();
 
             let image = try_or_error!(
                  File::open(path),
                  "unable to open source for reading"
             );
 
-            let device_list = try_or_error!(
-                state.devices.lock(),
-                "device list mutex lock failure"
-            );
+            let device_list = state.devices.lock();
 
             let devs = device_list
                 .iter()
@@ -331,15 +316,8 @@ impl AppWidgets {
             summary_grid.get_children().iter().for_each(|c| c.destroy());
 
             *start.borrow_mut() = Instant::now();
-            let mut tasks = try_or_error!(
-                tasks.lock(),
-                "tasks mutex lock failure"
-            );
-
-            let mut task_handles = try_or_error!(
-                task_handles.lock(),
-                "task handles mutex lock failure"
-            );
+            let mut tasks = tasks.lock();
+            let mut task_handles = task_handles.lock();
 
             state.flash_state.store(FLASHING, Ordering::SeqCst);
 
@@ -449,10 +427,7 @@ impl AppWidgets {
         {
             let mut errored: Vec<(String, io::Error)> = Vec::new();
 
-            let mut handle = try_or_error!(
-                task_handles.lock(),
-                "task handles mutex lock failure"
-            );
+            let mut handle = task_handles.lock();
 
             let results = try_or_error!(
                 handle.take().unwrap().join(),
@@ -464,10 +439,7 @@ impl AppWidgets {
                 "main flashing process failed"
             );
 
-            let mut devices = try_or_error!(
-                devices.lock(),
-                "devices mutex lock failure"
-            );
+            let mut devices = devices.lock();
 
             for ((device, _), result) in devices.drain(..).zip(device_results.into_iter()) {
                 if let Err(why) = result {

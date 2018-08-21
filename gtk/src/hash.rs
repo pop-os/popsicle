@@ -8,9 +8,9 @@ use std::collections::hash_map::DefaultHasher;
 use std::io::{self, Read};
 use std::fs::File;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use parking_lot::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::mpsc::Receiver;
+use crossbeam_channel::Receiver;
 use std::thread;
 use std::time::Duration;
 use std::os::unix::ffi::OsStrExt;
@@ -38,7 +38,7 @@ impl HashState {
 
     /// Attempt to receive the hash for the given path.
     pub(crate) fn try_obtain(&self, requested: &Path, hash: &'static str) -> Option<String> {
-        if let Ok(data) = self.data.try_lock() {
+        if let Some(data) = self.data.try_lock() {
             if self.is_busy() {
                 None
             } else {
@@ -80,7 +80,7 @@ pub(crate) fn event_loop(
             let identifying_hash = hash_id(&image, type_of);
 
             hash.state.store(PROCESSING, Ordering::SeqCst);
-            let mut hash_data = hash.data.lock().unwrap();
+            let mut hash_data = hash.data.lock();
             if hash_data.store.get(&identifying_hash).map_or(true, |e| !e.is_ok()) {
                 hash_data.store.insert(
                     identifying_hash,
