@@ -34,7 +34,9 @@ pub struct State {
     /// Requests the background thread to generate a new hash.
     pub(crate) hash_request: Sender<(PathBuf, &'static str)>,
     /// Points to the location of the image to be flashed.
-    pub image: RwLock<Option<(PathBuf, usize)>>,
+    pub image: RwLock<Option<PathBuf>>,
+    /// The size of the image that was loaded.
+    pub image_length: Cell<usize>,
     /// Stores the time when the flashing process began.
     pub start: RefCell<Instant>,
     /// Holds the task threads that write the image to each device.
@@ -77,6 +79,7 @@ impl State {
             hash,
             hash_request,
             image: RwLock::new(None),
+            image_length: Cell::new(0),
             devices_request,
             devices_response,
             flash_request,
@@ -186,7 +189,7 @@ impl Connect for App {
             .image_view
             .hash
             .connect_changed(move |hash_kind| {
-                if let Some((ref path, _)) = *state.image.read().unwrap() {
+                if let Some(ref path) = *state.image.read().unwrap() {
                     let hash_kind = match hash_kind.get_active() {
                         1 => Some("SHA256"),
                         2 => Some("MD5"),
@@ -296,12 +299,10 @@ impl Connect for App {
 
             {
                 // Ensure that an image has been selected before continuing
-                let length = match *state.image.read().unwrap() {
-                    Some(ref image) => image.1,
-                    None => {
-                        return Continue(true);
-                    }
-                };
+                let length = state.image_length.get();
+                if length == 0 || state.view.get() != 2 {
+                    return Continue(true);
+                }
 
                 let tasks = try_or_error!(
                     tasks.lock(),

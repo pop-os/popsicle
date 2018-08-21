@@ -115,7 +115,8 @@ impl AppWidgets {
                 image_label.set_text(&image.file_name()
                     .expect("file chooser can't select directories")
                     .to_string_lossy());
-                *state.image.write().unwrap() = Some((image.to_path_buf(), size));
+                *state.image.write().unwrap() = Some(image.to_path_buf());
+                state.image_length.set(size);
                 next.set_sensitive(true);
                 hash_button.set_sensitive(true);
             }
@@ -161,6 +162,7 @@ impl AppWidgets {
     }
 
     pub fn switch_to_device_selection(&self, state: &State) {
+        eprintln!("switching to device selection");
         let stack = &self.content.container;
         let back = &self.header.back;
         let next = &self.header.next;
@@ -177,10 +179,7 @@ impl AppWidgets {
         });
         stack.set_visible_child_name("devices");
 
-        let image_sectors = {
-            let read_guard = state.image.read().unwrap();
-            (*read_guard).as_ref().map_or(0, |ref d| d.1 / 512 + 1) as u64
-        };
+        let image_sectors = (state.image_length.get() / 512 + 1) as u64;
 
         let mut devices = vec![];
         if let Err(why) = popsicle::get_disk_args(&mut devices) {
@@ -198,16 +197,15 @@ impl AppWidgets {
     }
 
     pub fn watch_device_selection(widgets: Rc<AppWidgets>, state: Arc<State>) {
+        eprintln!("watching devices");
         gtk::timeout_add(16, move || {
             let list = &widgets.content.devices_view.list;
             let next = &widgets.header.next;
 
-            let image_length: usize = {
-                let read_guard = state.image.read().unwrap();
-                (*read_guard).as_ref().map_or(0, |ref d| d.1)
-            };
+            let image_length = state.image_length.get();
 
             if state.view.get() != 1 {
+                eprintln!("stopping device watching");
                 return gtk::Continue(false);
             }
 
@@ -277,7 +275,7 @@ impl AppWidgets {
                     "failed to lock buffer.data mutex"
                 );
 
-                let &(ref path, _) = image_lock.as_ref().unwrap();
+                let path = image_lock.as_ref().unwrap();
                 path.clone()
             };
 
