@@ -162,7 +162,7 @@ impl AppWidgets {
         state.view.set(0)
     }
 
-    pub fn switch_to_device_selection(&self, state: &State) {
+    pub fn switch_to_device_selection(&self, state: Arc<State>) {
         eprintln!("switching to device selection");
         let stack = &self.content.container;
         let back = &self.header.back;
@@ -187,14 +187,18 @@ impl AppWidgets {
             eprintln!("popsicle: unable to get devices: {}", why);
         }
 
-        if let Err(why) = list.refresh(&mut state.devices.lock(), &devices, image_sectors) {
-            self.set_error(state, &why);
+        if let Err(why) = list.refresh(state.clone(), devices, image_sectors) {
+            self.set_error(&state, &why);
         }
     }
 
     pub fn watch_device_selection(widgets: Rc<AppWidgets>, state: Arc<State>) {
         eprintln!("watching devices");
         gtk::timeout_add(16, move || {
+            if state.refreshing_devices.get() {
+                return gtk::Continue(true);
+            }
+
             let list = &widgets.content.devices_view.list;
             let next = &widgets.header.next;
 
@@ -206,27 +210,29 @@ impl AppWidgets {
             }
 
             let mut disable_select_all = false;
+            let mut error = None;
+            let mut devs = None;
 
             if let Some(ref mut device_list) = state.devices.try_lock() {
-                let mut check_refresh = || -> Result<(), String> {
-                    match DeviceList::requires_refresh(&device_list) {
-                        Some(devices) => {
-                            let image_sectors = (image_length / 512 + 1) as u64;
-                            list.refresh(device_list, &devices, image_sectors)?;
-                            disable_select_all = true;
-                            next.set_sensitive(false);
-                        }
-                        None => {
-                            next.set_sensitive(device_list.iter().any(|x| x.1.get_active()));
-                        }
+                match DeviceList::requires_refresh(&device_list) {
+                    Some(devices) => devs = Some(devices),
+                    None => {
+                        next.set_sensitive(device_list.iter().any(|x| x.1.get_active()));
                     }
-
-                    Ok(())
-                };
-
-                if let Err(why) = check_refresh() {
-                    widgets.set_error(&state, &why);
                 }
+            }
+
+            if let Some(devices) = devs {
+                let image_sectors = (image_length / 512 + 1) as u64;
+                if let Err(why) = list.refresh(state.clone(), devices, image_sectors) {
+                    error = Some(why);
+                }
+                disable_select_all = true;
+                next.set_sensitive(false);
+            }
+
+            if let Some(why) = error {
+                widgets.set_error(&state, &why);
             }
 
             if disable_select_all {

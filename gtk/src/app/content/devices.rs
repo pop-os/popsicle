@@ -6,6 +6,10 @@ use block::BlockDevice;
 use std::path::Path;
 use app::state::State;
 use std::sync::Arc;
+use std::thread;
+use std::path::PathBuf;
+use std::cell::Cell;
+use crossbeam_channel::{unbounded, Receiver, TryRecvError};
 
 pub struct DevicesView {
     pub view: View,
@@ -78,51 +82,96 @@ impl DeviceList {
             .any(|(ref x, &(ref y, _))| x.as_str() != y.as_str())
     }
 
+    fn create_device_button(
+        name: PathBuf,
+        block: Option<BlockDevice>,
+        image_sectors: u64,
+        select_all: &gtk::CheckButton
+    ) -> gtk::CheckButton {
+        if let Some(block) = block {
+            let too_small = block.sectors() < image_sectors;
+
+            let button = gtk::CheckButton::new_with_label(&{
+                if too_small {
+                    [ &block.label(), " (", &name.to_string_lossy(), "): Device is too small" ].concat()
+                } else {
+                    [ &block.label(), " (", &name.to_string_lossy(), ")" ].concat()
+                }
+            });
+
+            if too_small {
+                button.set_tooltip_text("Device is too small");
+                button.set_has_tooltip(true);
+                button.set_sensitive(false);
+            } else {
+                select_all.set_sensitive(true);
+            }
+            button
+        } else {
+            gtk::CheckButton::new_with_label(&name.to_string_lossy())
+        }
+    }
+
+    fn scan_block_devices(devices: Arc<Vec<String>>) -> Receiver<(PathBuf, Option<BlockDevice>)> {
+        let (tx, rx) = unbounded();
+        thread::spawn(move || {
+            for device in &*devices {
+                match Path::new(device).canonicalize() {
+                    Ok(name) => {
+                        let _ = tx.send((name.clone(), BlockDevice::new(&name)));
+                    },
+                    Err(why) => {
+                        eprintln!("unable to get canonical path of '{}': {}", device, why);
+                    }
+                }
+            }
+        });
+        rx
+    }
+
     pub fn refresh(
         &self,
-        device_list: &mut Vec<(String, gtk::CheckButton)>,
-        devices: &[String],
+        state: Arc<State>,
+        devices: Vec<String>,
         image_sectors: u64,
     ) -> Result<(), String> {
-        device_list.clear();
+        state.refreshing_devices.set(true);
+        self.select_all.set_sensitive(false);
+        (&mut state.devices.lock()).clear();
         self.clear();
 
-        let mut all_is_sensitive = false;
-        for device in devices {
-            // Attempt to get the canonical path of the device.
-            // Display the error view if this fails.
-            let name = Path::new(&device).canonicalize()
-                .map_err(|why| format!("unable to get canonical path of '{}': {}", device, why))?;
+        let devices = Arc::new(devices);
+        let rx = Self::scan_block_devices(devices.clone());
 
-            let button = if let Some(block) = BlockDevice::new(&name) {
-                let too_small = block.sectors() < image_sectors;
+        // Asynchronously add new devices as they're discovered when refreshing.
+        eprintln!("refreshing device selection");
+        let select_all = self.select_all.clone();
+        let list = self.list.clone();
+        let nth_device = Cell::new(0);
+        gtk::timeout_add(16, move || {
+            loop {
+                match rx.try_recv() {
+                    Ok((name, block)) => {
+                        let button = Self::create_device_button(name, block, image_sectors, &select_all);
 
-                let button = gtk::CheckButton::new_with_label(&{
-                    if too_small {
-                        [ &block.label(), " (", &name.to_string_lossy(), "): Device is too small" ].concat()
-                    } else {
-                        [ &block.label(), " (", &name.to_string_lossy(), ")" ].concat()
+                        list.insert(&button, -1);
+                        list.show_all();
+
+                        let device_list = &mut state.devices.lock();
+                        let nth = nth_device.get();
+                        device_list.push((devices[nth].clone(), button));
+                        nth_device.set(nth + 1);
                     }
-                });
-
-                if too_small {
-                    button.set_tooltip_text("Device is too small");
-                    button.set_has_tooltip(true);
-                    button.set_sensitive(false);
-                } else {
-                    all_is_sensitive = true;
+                    Err(TryRecvError::Empty) => return gtk::Continue(true),
+                    Err(TryRecvError::Disconnected) => {
+                        eprintln!("finished refreshing device selection");
+                        state.refreshing_devices.set(false);
+                        return gtk::Continue(false);
+                    },
                 }
-                button
-            } else {
-                gtk::CheckButton::new_with_label(&name.to_string_lossy())
-            };
+            }
+        });
 
-            self.list.insert(&button, -1);
-            device_list.push((device.clone(), button));
-        }
-
-        self.list.show_all();
-        self.select_all.set_sensitive(all_is_sensitive);
         Ok(())
     }
 

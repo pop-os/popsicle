@@ -47,6 +47,8 @@ pub struct State {
     pub tasks: Mutex<Option<FlashTask>>,
     /// Stores an integer which defines the currently-active view.
     pub view: Cell<u8>,
+    /// Specifies if the UI is refreshing devices or not.
+    pub refreshing_devices: Cell<bool>,
     /// Requests for a list of devices to be returned by an authenticated user (ie: root).
     pub devices_request: Sender<(Vec<String>, Vec<MountEntry>)>,
     /// The accompanying response that follows a device request.
@@ -75,6 +77,7 @@ impl State {
             task_handles: Mutex::new(None),
             tasks: Mutex::new(None),
             view: Cell::new(0),
+            refreshing_devices: Cell::new(false),
             start: RefCell::new(unsafe { mem::uninitialized() }),
             flash_state: Arc::new(AtomicUsize::new(0)),
             hash,
@@ -250,17 +253,16 @@ impl Connect for App {
             stack.set_transition_type(StackTransitionType::SlideLeft);
 
             match view_value {
-                0 => widgets.switch_to_device_selection(&state),
+                0 => {
+                    widgets.switch_to_device_selection(state.clone());
+                    AppWidgets::watch_device_selection(widgets.clone(), state.clone());
+                },
                 1 => widgets.switch_to_device_flashing(&state),
                 2 => gtk::main_quit(),
                 _ => unreachable!(),
             }
 
             view.set(view_value + 1);
-
-            if view.get() == 1 {
-                AppWidgets::watch_device_selection(widgets.clone(), state.clone());
-            }
         });
     }
 
