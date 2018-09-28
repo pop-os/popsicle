@@ -6,6 +6,7 @@ pub struct OpenDialog(FileChooserDialog);
 
 impl OpenDialog {
     pub fn new(path: Option<PathBuf>) -> OpenDialog {
+        #[allow(unused_mut)]
         OpenDialog(cascade! {
             dialog: FileChooserDialog::new(
                 Some("Open"),
