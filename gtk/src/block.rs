@@ -9,7 +9,6 @@ const SLEEP_AFTER_FAIL: u64 = 500;
 const ATTEMPTS: u64 = 5_000 / SLEEP_AFTER_FAIL;
 
 fn read_file(path: &Path) -> String {
-    eprintln!("opening {:?}", path);
     let output = File::open(path)
         .and_then(|mut file| {
             let mut string = String::new();
@@ -17,7 +16,6 @@ fn read_file(path: &Path) -> String {
                 .map(|_| string.trim().to_owned())
         })
         .unwrap_or_else(|_| String::default());
-    eprintln!("read '{}' from {:?}", output, path);
     output
 }
 
@@ -43,7 +41,6 @@ impl BlockDevice {
 
         while result == 0 {
             result = get_sectors();
-            eprintln!("get_sectors ({}) attempt {} out of {}", result, attempts, ATTEMPTS);
             sleep(Duration::from_millis(SLEEP_AFTER_FAIL));
             if attempts == ATTEMPTS {
                 break
