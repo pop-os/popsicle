@@ -7,6 +7,7 @@ extern crate cascade;
 extern crate digest;
 extern crate gdk;
 extern crate gtk;
+extern crate humansize;
 extern crate hex_view;
 extern crate libc;
 extern crate md5;
