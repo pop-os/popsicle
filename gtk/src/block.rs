@@ -21,6 +21,7 @@ fn read_file(path: &Path) -> String {
 
 pub struct BlockDevice {
     path: PathBuf,
+    pub sectors: u64
 }
 
 impl BlockDevice {
@@ -28,15 +29,16 @@ impl BlockDevice {
         path.file_name().and_then(|file_name| {
             let path = PathBuf::from("/sys/class/block/").join(file_name);
             if path.exists() {
-                Some(BlockDevice { path })
+                let sectors = Self::sectors(&path);
+                Some(BlockDevice { path, sectors })
             } else {
                 None
             }
         })
     }
 
-    pub fn sectors(&self) -> u64 {
-        let get_sectors = || read_file(&self.path.join("size")).parse::<u64>().unwrap_or(0);
+    fn sectors(path: &Path) -> u64 {
+        let get_sectors = || read_file(&path.join("size")).parse::<u64>().unwrap_or(0);
         let (mut result, mut attempts) = (get_sectors(), 0);
 
         while result == 0 {

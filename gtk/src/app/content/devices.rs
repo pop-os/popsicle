@@ -89,7 +89,7 @@ impl DeviceList {
         select_all: &gtk::CheckButton
     ) -> gtk::CheckButton {
         if let Some(block) = block {
-            let too_small = block.sectors() < image_sectors;
+            let too_small = block.sectors < image_sectors;
 
             let button = gtk::CheckButton::new_with_label(&{
                 if too_small {
