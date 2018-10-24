@@ -153,9 +153,8 @@ fn popsicle() -> Result<(), String> {
                         pbs[id].set(bytes_written);
                     },
                     BusWriterMessage::Completed { id } => {
-                        if check {
-                            pbs[id].set(image_size);
-                        } else {
+                        pbs[id].set(image_size);
+                        if ! check {
                             pbs[id].finish();
                         }
                     }
@@ -201,6 +200,7 @@ fn popsicle() -> Result<(), String> {
                             errored_[unerrored_ids[id]].store(true, Ordering::SeqCst);
                         }
                         BusVerifierMessage::Valid { id } => {
+                            pbs[unerrored_ids[id]].set(image_size);
                             pbs[unerrored_ids[id]].finish();
                         }
                         BusVerifierMessage::Errored { id, why } => {
