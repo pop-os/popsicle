@@ -6,7 +6,7 @@ use std::thread::sleep;
 use std::time::Duration;
 
 const SLEEP_AFTER_FAIL: u64 = 500;
-const ATTEMPTS: u64 = 5_000 / SLEEP_AFTER_FAIL;
+const ATTEMPTS: u64 = 4_000 / SLEEP_AFTER_FAIL;
 
 fn read_file(path: &Path) -> String {
     let output = File::open(path)

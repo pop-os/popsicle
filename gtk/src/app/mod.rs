@@ -173,6 +173,7 @@ impl AppWidgets {
         back.get_style_context().map(|c| {
             c.add_class("back-button");
         });
+        next.set_sensitive(false);
         next.set_label("Flash");
         next.get_style_context().map(|c| {
             c.remove_class(&gtk::STYLE_CLASS_SUGGESTED_ACTION);
