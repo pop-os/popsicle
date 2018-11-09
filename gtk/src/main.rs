@@ -7,7 +7,9 @@ extern crate cascade;
 extern crate crossbeam_channel;
 extern crate digest;
 extern crate gdk;
+extern crate glib;
 extern crate gtk;
+extern crate humansize;
 extern crate hex_view;
 extern crate libc;
 extern crate md5;
@@ -41,6 +43,9 @@ use popsicle::mnt::MountEntry;
 use popsicle::DiskError;
 
 fn main() {
+    glib::set_program_name("Popsicle".into());
+    glib::set_application_name("Popsicle");
+
     let (devices_request, devices_request_receiver) =
         unbounded::<(Vec<String>, Vec<MountEntry>)>();
     let (devices_response_sender, devices_response) =

@@ -1,15 +1,16 @@
-use super::View;
-use gtk::prelude::*;
-use gtk;
-use popsicle;
-use block::BlockDevice;
-use std::path::Path;
 use app::state::State;
+use block::BlockDevice;
+use gtk;
+use gtk::prelude::*;
+use humansize::{FileSize, file_size_opts as options};
+use popsicle;
+use std::path::Path;
 use std::sync::Arc;
 use std::thread;
 use std::path::PathBuf;
 use std::cell::Cell;
 use crossbeam_channel::{unbounded, Receiver, TryRecvError};
+use super::View;
 
 pub struct DevicesView {
     pub view: View,
@@ -92,10 +93,13 @@ impl DeviceList {
             let too_small = block.sectors < image_sectors;
 
             let button = gtk::CheckButton::new_with_label(&{
+                let label = block.label();
+                let name = name.to_string_lossy();
+                let size = (block.sectors * 512).file_size(options::BINARY).unwrap();
                 if too_small {
-                    [ &block.label(), " (", &name.to_string_lossy(), "): Device is too small" ].concat()
+                    format!("{} ({}, {}): Device is too small", &label, &name, size)
                 } else {
-                    [ &block.label(), " (", &name.to_string_lossy(), ")" ].concat()
+                    format!("{} ({}, {})", &label, &name, size)
                 }
             });
 

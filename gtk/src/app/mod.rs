@@ -54,7 +54,6 @@ impl App {
             process::exit(1);
         }
 
-
         // Create a the headerbar and it's associated content.
         let header = Header::new();
         // Create the content container and all of it's widgets.
@@ -67,8 +66,6 @@ impl App {
             ..set_titlebar(&header.container);
             // Set the title of the window.
             ..set_title("Popsicle");
-            // Set the window manager class.
-            ..set_wmclass("popsicle", "Popsicle");
             // The default size of the window to create.
             ..set_default_size(500, 250);
             // Add the content to the window.
