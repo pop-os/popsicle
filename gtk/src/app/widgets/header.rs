@@ -31,4 +31,12 @@ impl Header {
             next,
         }
     }
+
+    pub fn connect_back<F: Fn() + 'static>(&self, signal: F) {
+        self.back.connect_clicked(move |_| signal());
+    }
+
+    pub fn connect_next<F: Fn() + 'static>(&self, signal: F) {
+        self.next.connect_clicked(move |_| signal());
+    }
 }

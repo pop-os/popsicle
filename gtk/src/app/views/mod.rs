@@ -5,7 +5,7 @@ mod images;
 mod summary;
 mod view;
 
-pub use self::devices::{DeviceList, DevicesView};
+pub use self::devices::DevicesView;
 pub use self::error::ErrorView;
 pub use self::flashing::FlashView;
 pub use self::images::ImageView;
@@ -13,8 +13,6 @@ pub use self::summary::SummaryView;
 pub use self::view::View;
 
 use gtk::*;
-
-use super::set_margins;
 
 pub struct Content {
     pub container:    Stack,
@@ -34,14 +32,14 @@ impl Content {
         let error_view = ErrorView::new();
 
         let container = cascade! {
-            container: Stack::new();
-            ..add_named(&image_view.view.container, "image");
-            ..add_named(&devices_view.view.container, "devices");
-            ..add_named(&flash_view.view.container, "flash");
-            ..add_named(&summary_view.view.container, "summary");
-            ..add_named(&error_view.view.container, "error");
-            ..set_visible_child_name("image");
-            | set_margins(&container, 12);
+            Stack::new();
+            ..add(&image_view.view.container);
+            ..add(&devices_view.view.container);
+            ..add(&flash_view.view.container);
+            ..add(&summary_view.view.container);
+            ..add(&error_view.view.container);
+            ..set_visible_child(&image_view.view.container);
+            ..set_border_width(12);
         };
 
         Content {

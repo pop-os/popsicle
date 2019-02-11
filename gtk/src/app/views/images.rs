@@ -1,7 +1,7 @@
 use super::View;
 use gtk::*;
 use pango::EllipsizeMode;
-use super::set_margins;
+use std::path::Path;
 
 pub struct ImageView {
     pub view:              View,
@@ -74,7 +74,7 @@ impl ImageView {
             tmp: Box::new(Orientation::Horizontal, 0);
             ..pack_start(&label, false, false, 0);
             ..pack_start(&combo_container, true, true, 0);
-            | set_margins(&tmp, 6);
+            ..set_border_width(6);
         };
 
         let chooser_container = cascade! {
@@ -105,5 +105,15 @@ impl ImageView {
             hash,
             hash_label,
         }
+    }
+
+    pub fn set_hash(&self, hash: &str) {
+        self.hash_label.set_text(hash);
+    }
+
+    pub fn set_image_path(&self, path: &Path) {
+        self.image_path.set_label(&path.file_name()
+            .expect("file chooser can't select directories")
+            .to_string_lossy());
     }
 }

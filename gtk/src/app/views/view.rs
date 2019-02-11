@@ -29,7 +29,7 @@ impl View {
         let description = cascade! {
             Label::new(description);
             ..set_line_wrap(true);
-            ..set_halign(Align::Start);
+            ..set_xalign(0.0);
             ..get_style_context().map(|c| c.add_class("desc"));
             ..set_margin_bottom(6);
         };

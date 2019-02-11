@@ -1,69 +1,62 @@
-use std::default::Default;
-use std::fs::File;
-use std::io::Read;
+use sysfs_class::{Block, SysClass};
+use std::io;
 use std::path::{Path, PathBuf};
-use std::thread::sleep;
-use std::time::Duration;
 
-const SLEEP_AFTER_FAIL: u64 = 500;
-const ATTEMPTS: u64 = 4_000 / SLEEP_AFTER_FAIL;
-
-fn read_file(path: &Path) -> String {
-    let output = File::open(path)
-        .and_then(|mut file| {
-            let mut string = String::new();
-            file.read_to_string(&mut string)
-                .map(|_| string.trim().to_owned())
-        })
-        .unwrap_or_else(|_| String::default());
-    output
-}
-
+#[derive(Clone)]
 pub struct BlockDevice {
-    path: PathBuf,
-    pub sectors: u64
+    block: Block,
+    pub path: PathBuf,
+    pub vendor: String,
+    pub model: String,
+    pub sectors: u64,
+    pub sector_size: u64
 }
 
 impl BlockDevice {
-    pub fn new(path: &Path) -> Option<BlockDevice> {
-        path.file_name().and_then(|file_name| {
-            let path = PathBuf::from("/sys/class/block/").join(file_name);
-            if path.exists() {
-                let sectors = Self::sectors(&path);
-                Some(BlockDevice { path, sectors })
-            } else {
-                None
-            }
-        })
+    pub fn new_from<P: AsRef<Path>>(path: P) -> io::Result<BlockDevice> {
+        let path = path.as_ref();
+
+        let file_name = path.file_name().ok_or_else(|| io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "BlockDevice::new_from path does not have a file name"
+        ))?;
+
+        let file_name = file_name.to_str().ok_or_else(|| io::Error::new(
+            io::ErrorKind::InvalidData,
+            "BlockDevice::new_from path is not UTF-8"
+        ))?;
+
+        let block = Block::new(file_name)?;
+
+        let device = BlockDevice {
+            path: path.to_path_buf(),
+            vendor: block.device_vendor()?.trim().to_owned(),
+            model: block.device_model()?.trim().to_owned(),
+            sectors: block.size()?,
+            sector_size: block.queue_hw_sector_size()?,
+            block,
+        };
+
+        Ok(device)
     }
 
-    fn sectors(path: &Path) -> u64 {
-        let get_sectors = || read_file(&path.join("size")).parse::<u64>().unwrap_or(0);
-        let (mut result, mut attempts) = (get_sectors(), 0);
-
-        while result == 0 {
-            result = get_sectors();
-            sleep(Duration::from_millis(SLEEP_AFTER_FAIL));
-            if attempts == ATTEMPTS {
-                break
+    pub fn recheck_size(&mut self) {
+        if self.sector_size == 0 {
+            if let Ok(size) = self.block.queue_hw_sector_size() {
+                self.sector_size = size;
             }
-            attempts += 1;
         }
 
-        result
+        if let Ok(size) = self.block.size() {
+            self.sectors = size;
+        }
     }
 
-    pub fn vendor(&self) -> String { read_file(&self.path.join("device/vendor")) }
-
-    pub fn model(&self) -> String { read_file(&self.path.join("device/model")) }
+    pub fn size_in_bytes(&self) -> u64 {
+        self.sectors * self.sector_size
+    }
 
     pub fn label(&self) -> String {
-        let model = self.model();
-        let vendor = self.vendor();
-        if vendor.is_empty() {
-            model.replace("_", " ")
-        } else {
-            [&vendor, " ", &model].concat().replace("_", " ")
-        }
+        format!("{} {} ({})", self.vendor, self.model, self.path.display())
     }
 }
