@@ -94,15 +94,35 @@ impl GtkUi {
         GtkUi { header, window, content }
     }
 
-    pub fn errorck<T, E, F>(&self, state: &State, func: F, context: &'static str) -> Result<T, ()>
-    where E: ::std::fmt::Display,
-          F: Fn() -> Result<T, E>
-    {
-        match func() {
+    pub fn errorck<T, E: ::std::fmt::Display>(
+        &self,
+        state: &State,
+        result: Result<T, E>,
+        context: &'static str
+    ) -> Result<T, ()> {
+        match result {
             Ok(value) => Ok(value),
             Err(why) => {
                 self.content.error_view.view.description
                     .set_text(&format!("{}: {}", context, why));
+                self.switch_to(state, ActiveView::Error);
+
+                Err(())
+            }
+        }
+    }
+
+    pub fn errorck_option<T>(
+        &self,
+        state: &State,
+        result: Option<T>,
+        context: &'static str
+    ) -> Result<T, ()> {
+        match result {
+            Some(value) => Ok(value),
+            None => {
+                self.content.error_view.view.description
+                    .set_text(&format!("{}: no value found", context));
                 self.switch_to(state, ActiveView::Error);
 
                 Err(())
@@ -137,7 +157,7 @@ impl GtkUi {
                 &self.content.devices_view.view.container
             }
             ActiveView::Flashing => {
-                match self.errorck(&state, || File::open(&*state.image_path.borrow()), "Failed to open ISO") {
+                match self.errorck(&state, File::open(&*state.image_path.borrow()), "Failed to open ISO") {
                     Ok(file) => *state.image.borrow_mut() = Some(file),
                     Err(()) => return
                 };

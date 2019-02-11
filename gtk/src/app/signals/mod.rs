@@ -233,12 +233,21 @@ impl App {
 
                             if all_tasks_finished {
                                 eprintln!("all tasks finished");
-                                let results = flash_handles
-                                    .take()
-                                    .expect("flash handles did not exist")
-                                    .join()
-                                    .expect("failed to join flash thread")
-                                    .expect("flashing process failed");
+
+                                let taken_handles = match ui.errorck_option(&state, flash_handles.take(), "Taking flash handles failed") {
+                                    Ok(results) => results.join().map_err(|why| format!("{:?}", why)),
+                                    Err(()) => return gtk::Continue(true)
+                                };
+
+                                let handle = match ui.errorck(&state, taken_handles, "Failed to join flash thread") {
+                                    Ok(results) => results,
+                                    Err(()) => return gtk::Continue(true)
+                                };
+
+                                let results = match ui.errorck(&state, handle, "Errored starting flashing process") {
+                                    Ok(results) => results,
+                                    Err(()) => return gtk::Continue(true)
+                                };
 
                                 let mut errors = Vec::new();
                                 let mut selected_devices = state.selected_devices.borrow_mut();
