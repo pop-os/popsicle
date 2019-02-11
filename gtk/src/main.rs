@@ -26,6 +26,7 @@ mod app;
 mod block;
 mod flash;
 mod hash;
+mod misc;
 
 use app::App;
 use app::events::UiEvent;

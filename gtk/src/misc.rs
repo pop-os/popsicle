@@ -1,0 +1,46 @@
+use gtk::{self, prelude::*, SelectionData};
+use gdk::{self, prelude::*, DragContextExtManual};
+
+// Implements drag and drop support for a GTK widget.
+pub fn drag_and_drop<W, F>(widget: &W, action: F)
+where W: WidgetExt + WidgetExtManual,
+      F: 'static + Fn(&SelectionData)
+{
+    // Configure the view as a possible drop destination.
+    widget.drag_dest_set(gtk::DestDefaults::empty(), &[], gdk::DragAction::empty());
+
+    // Then actually handle drags that are inside the view.
+    widget.connect_drag_motion(|_view, ctx, _x, _y, time| {
+        ctx.drag_status(gdk::DragAction::COPY, time);
+        Inhibit(true)
+    });
+
+    // Get the dropped data, if possible, when the active drag is valid.
+    widget.connect_drag_drop(|view, ctx, _x, _y, time| {
+        Inhibit(ctx.list_targets().last().map_or(false, |ref target| {
+            view.drag_get_data(ctx, target, time);
+            true
+        }))
+    });
+
+    // Then handle the dropped data, setting the image if the dropped data is valid.
+    widget.connect_drag_data_received(move |_view, _ctx, _x, _y, data, _info, _time| {
+        action(data)
+    });
+}
+
+pub trait GtkWidgetExt: gtk::WidgetExt {
+    fn add_class(&self, class_name: &str) {
+        if let Some(ctx) = self.get_style_context() {
+            ctx.add_class(class_name);
+        }
+    }
+
+    fn remove_class(&self, class_name: &str) {
+        if let Some(ctx) = self.get_style_context() {
+            ctx.remove_class(class_name);
+        }
+    }
+}
+
+impl<T: gtk::WidgetExt> GtkWidgetExt for T {}

@@ -10,6 +10,7 @@ use self::views::*;
 use self::widgets::*;
 
 use gtk::{self, prelude::*};
+use misc::GtkWidgetExt;
 use std::{fs::File, process, rc::Rc, sync::Arc};
 
 const CSS: &str = include_str!("ui.css");
@@ -37,6 +38,7 @@ impl App {
         self.connect_next();
         self.connect_ui_events();
         self.connect_image_chooser();
+        self.connect_image_drag_and_drop();
         self.connect_hash();
         self.connect_view_ready();
 
@@ -92,6 +94,22 @@ impl GtkUi {
         GtkUi { header, window, content }
     }
 
+    pub fn errorck<T, E, F>(&self, state: &State, func: F, context: &'static str) -> Result<T, ()>
+    where E: ::std::fmt::Display,
+          F: Fn() -> Result<T, E>
+    {
+        match func() {
+            Ok(value) => Ok(value),
+            Err(why) => {
+                self.content.error_view.view.description
+                    .set_text(&format!("{}: {}", context, why));
+                self.switch_to(state, ActiveView::Error);
+
+                Err(())
+            }
+        }
+    }
+
     pub fn switch_to(&self, state: &State, view: ActiveView) {
         let back = &self.header.back;
         let next = &self.header.next;
@@ -100,19 +118,28 @@ impl GtkUi {
         let widget = match view {
             ActiveView::Images => {
                 back.set_label("Cancel");
+                back.remove_class("back-button");
+                back.remove_class(&gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
+
                 next.set_visible(true);
                 next.set_sensitive(true);
+                next.remove_class(&gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
+                next.add_class(&gtk::STYLE_CLASS_SUGGESTED_ACTION);
+
                 &self.content.image_view.view.container
             }
             ActiveView::Devices => {
+                next.remove_class(&gtk::STYLE_CLASS_SUGGESTED_ACTION);
+                next.add_class(&gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
                 next.set_sensitive(false);
+
                 let _ = state.back_event_tx.send(BackgroundEvent::RefreshDevices);
                 &self.content.devices_view.view.container
             }
             ActiveView::Flashing => {
-                match File::open(&*state.image_path.borrow()) {
+                match self.errorck(&state, || File::open(&*state.image_path.borrow()), "Failed to open ISO") {
                     Ok(file) => *state.image.borrow_mut() = Some(file),
-                    Err(why) => unimplemented!()
+                    Err(()) => return
                 };
 
                 let mut all_devices = state.available_devices.borrow();
@@ -124,19 +151,30 @@ impl GtkUi {
                     devices.push(all_devices[active_id].clone());
                 }
 
+                back.remove_class("back-button");
+                back.add_class(&gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
+
                 next.set_visible(false);
                 &self.content.flash_view.view.container
             }
             ActiveView::Summary => {
+                back.remove_class(&gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
                 back.set_label("Flash Again");
+
+                next.remove_class(&gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
                 next.set_visible(true);
                 next.set_label("Done");
                 &self.content.summary_view.view.container
             }
             ActiveView::Error => {
                 back.set_label("Flash Again");
+                back.remove_class(&gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
+
                 next.set_visible(true);
-                next.set_label("Exit");
+                next.set_label("Close");
+                next.remove_class(&gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
+                next.remove_class(&gtk::STYLE_CLASS_SUGGESTED_ACTION);
+
                 &self.content.error_view.view.container
             }
         };

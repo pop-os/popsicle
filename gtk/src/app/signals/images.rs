@@ -3,7 +3,8 @@ use app::events::{BackgroundEvent, UiEvent};
 use app::state::State;
 use app::widgets::OpenDialog;
 use gtk::prelude::*;
-use std::path::PathBuf;
+use misc;
+use std::path::{Path, PathBuf};
 
 impl App {
     pub fn connect_image_chooser(&self) {
@@ -22,6 +23,24 @@ impl App {
         let ui = self.ui.clone();
         self.ui.content.image_view.hash.connect_changed(move |_| {
             set_hash_widget(&state, &ui);
+        });
+    }
+
+    pub fn connect_image_drag_and_drop(&self) {
+        let state = self.state.clone();
+        let ui = self.ui.clone();
+        let image_view = ui.content.image_view.view.container.clone();
+
+        misc::drag_and_drop(&image_view, move |data| {
+            if let Some(uri) = data.get_text() {
+                if uri.starts_with("file://") {
+                    let path = Path::new(&uri[7..uri.len() - 1]);
+                    if path.extension().map_or(false, |ext| ext == "iso" || ext == "img") && path.exists() {
+                        let _ = state.ui_event_tx.send(UiEvent::SetImageLabel(path.to_path_buf()));
+                        set_hash_widget(&state, &ui);
+                    }
+                }
+            }
         });
     }
 }
