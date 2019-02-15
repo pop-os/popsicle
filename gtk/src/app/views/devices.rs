@@ -35,7 +35,7 @@ impl DevicesView {
                     if let Ok(row) = row.downcast::<gtk::ListBoxRow>() {
                         if let Some(widget) = row.get_children().get(0) {
                             if let Some(button) = widget.downcast_ref::<gtk::CheckButton>() {
-                                button.set_active(state);
+                                button.set_active(button.get_sensitive() && state);
                             }
                         }
                     }
