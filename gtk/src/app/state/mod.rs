@@ -1,6 +1,6 @@
-use app::events::{self, BackgroundEvent, PrivilegedEvent, UiEvent};
+use crate::app::events::{self, BackgroundEvent, PrivilegedEvent, UiEvent};
 use atomic::Atomic;
-use block::BlockDevice;
+use crate::block::BlockDevice;
 use crossbeam_channel::{unbounded, Sender, Receiver};
 use libc;
 use std::cell::{Cell, RefCell};

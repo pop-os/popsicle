@@ -164,7 +164,7 @@ impl GtkUi {
                     Err(()) => return
                 };
 
-                let mut all_devices = state.available_devices.borrow();
+                let all_devices = state.available_devices.borrow();
                 let mut devices = state.selected_devices.borrow_mut();
 
                 devices.clear();

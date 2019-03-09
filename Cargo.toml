@@ -8,6 +8,7 @@ authors = [
 ]
 license = "MIT"
 readme = "README.md"
+edition = "2018"
 
 [lib]
 name = "popsicle"

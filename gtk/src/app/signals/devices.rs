@@ -1,4 +1,4 @@
-use app::App;
+use crate::app::App;
 use gtk::prelude::*;
 
 impl App {

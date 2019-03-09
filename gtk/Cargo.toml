@@ -5,6 +5,7 @@ version = "0.2.0"
 authors = [ "Michael Aaron Murphy <michael@system76.com>" ]
 license = "MIT"
 readme = "README.md"
+edition = "2018"
 
 [[bin]]
 name = "popsicle-gtk"

@@ -1,12 +1,12 @@
 mod devices;
 mod images;
 
-use app::App;
-use app::events::{BackgroundEvent, UiEvent, PrivilegedEvent};
-use app::state::ActiveView;
+use crate::app::App;
+use crate::app::events::{BackgroundEvent, UiEvent, PrivilegedEvent};
+use crate::app::state::ActiveView;
 use atomic::Atomic;
 use crossbeam_channel::TryRecvError;
-use flash::{FlashRequest, FlashTask, FlashStatus};
+use crate::flash::{FlashRequest, FlashTask, FlashStatus};
 use gtk::{self, prelude::*};
 use std::fs::File;
 use std::sync::{Arc, Mutex};
@@ -124,7 +124,7 @@ impl App {
                         summary_grid.foreach(WidgetExt::destroy);
                         let mut destinations = Vec::new();
 
-                        let mut selected_devices = state.selected_devices.borrow_mut();
+                        let selected_devices = state.selected_devices.borrow_mut();
                         for (id, device) in selected_devices.iter().enumerate() {
                             let id = id as i32;
 

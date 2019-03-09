@@ -1,6 +1,6 @@
 use gtk;
 use gtk::prelude::*;
-use block::BlockDevice;
+use crate::block::BlockDevice;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use super::View;

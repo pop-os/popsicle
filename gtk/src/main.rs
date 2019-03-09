@@ -1,26 +1,7 @@
 #![allow(unknown_lints)]
 
-extern crate atomic;
-extern crate bus_writer;
 #[macro_use]
 extern crate cascade;
-extern crate crossbeam_channel;
-extern crate digest;
-extern crate gdk;
-extern crate glib;
-extern crate gtk;
-extern crate humansize;
-extern crate hex_view;
-extern crate libc;
-extern crate md5;
-extern crate pango;
-extern crate popsicle;
-extern crate parking_lot;
-extern crate proc_mounts;
-extern crate pwd;
-extern crate sha2;
-extern crate sysfs_class;
-extern crate sys_mount;
 
 mod app;
 mod block;
@@ -28,9 +9,9 @@ mod flash;
 mod hash;
 mod misc;
 
-use app::App;
-use app::events::UiEvent;
-use app::state::State;
+use crate::app::App;
+use crate::app::events::UiEvent;
+use crate::app::state::State;
 use std::env;
 use std::path::PathBuf;
 

@@ -1,7 +1,7 @@
-use block::BlockDevice;
+use crate::block::BlockDevice;
 use crossbeam_channel::{Sender, Receiver};
-use flash::FlashRequest;
-use hash::hasher;
+use crate::flash::FlashRequest;
+use crate::hash::hasher;
 use md5::Md5;
 use popsicle;
 use sha2::Sha256;

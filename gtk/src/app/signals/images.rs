@@ -1,9 +1,9 @@
-use app::{App, GtkUi};
-use app::events::{BackgroundEvent, UiEvent};
-use app::state::State;
-use app::widgets::OpenDialog;
+use crate::app::{App, GtkUi};
+use crate::app::events::{BackgroundEvent, UiEvent};
+use crate::app::state::State;
+use crate::app::widgets::OpenDialog;
 use gtk::prelude::*;
-use misc;
+use crate::misc;
 use std::path::{Path, PathBuf};
 
 impl App {

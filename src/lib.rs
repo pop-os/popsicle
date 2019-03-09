@@ -1,7 +1,5 @@
-extern crate failure;
 #[macro_use]
 extern crate failure_derive;
-extern crate libc;
 pub extern crate mnt;
 
 use mnt::MountEntry;
