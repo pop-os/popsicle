@@ -1,5 +1,5 @@
 #[macro_use]
-extern crate failure_derive;
+extern crate err_derive;
 pub extern crate mnt;
 
 use mnt::MountEntry;
@@ -11,59 +11,59 @@ use std::os::unix::fs::{FileTypeExt, OpenOptionsExt};
 use std::path::PathBuf;
 use std::process::{Command, ExitStatus};
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 #[cfg_attr(rustfmt, rustfmt_skip)]
 pub enum ImageError {
-    #[fail(display = "image could not be opened: {}", why)]
+    #[error(display = "image could not be opened: {}", why)]
     Open { why: io::Error },
-    #[fail(display = "unable to get image metadata: {}", why)]
+    #[error(display = "unable to get image metadata: {}", why)]
     Metadata { why: io::Error },
-    #[fail(display = "image was not a file")]
+    #[error(display = "image was not a file")]
     NotAFile,
-    #[fail(display = "unable to read image: {}", why)]
+    #[error(display = "unable to read image: {}", why)]
     ReadError { why: io::Error },
-    #[fail(display = "reached EOF prematurely")]
+    #[error(display = "reached EOF prematurely")]
     Eof,
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 #[cfg_attr(rustfmt, rustfmt_skip)]
 pub enum DiskError {
-    #[fail(display = "unable to open directory at '{}': {}", dir, why)]
+    #[error(display = "unable to open directory at '{}': {}", dir, why)]
     Directory { dir: &'static str, why: io::Error },
-    #[fail(display = "writing to the device was killed")]
+    #[error(display = "writing to the device was killed")]
     Killed,
-    #[fail(display = "unable to read directory entry at '{:?}': invalid UTF-8", dir)]
+    #[error(display = "unable to read directory entry at '{:?}': invalid UTF-8", dir)]
     UTF8 { dir: PathBuf },
-    #[fail(display = "unable to find disk '{}': {}", disk, why)]
+    #[error(display = "unable to find disk '{}': {}", disk, why)]
     NoDisk { disk: String, why: io::Error },
-    #[fail(display = "failed to unmount {:?}: exit status {}", path, status)]
+    #[error(display = "failed to unmount {:?}: exit status {}", path, status)]
     UnmountStatus { path: String, status: ExitStatus },
-    #[fail(display = "failed to unmount {:?}: {}", path, why)]
+    #[error(display = "failed to unmount {:?}: {}", path, why)]
     UnmountCommand { path: String, why: io::Error },
-    #[fail(display = "error using disk '{}': {:?} already mounted at {:?}", arg, source, dest)]
+    #[error(display = "error using disk '{}': {:?} already mounted at {:?}", arg, source, dest)]
     AlreadyMounted { arg: String, source: String, dest: PathBuf },
-    #[fail(display = "'{}' is not a block device", arg)]
+    #[error(display = "'{}' is not a block device", arg)]
     NotABlock { arg: String },
-    #[fail(display = "unable to get metadata of disk '{}': {}", arg, why)]
+    #[error(display = "unable to get metadata of disk '{}': {}", arg, why)]
     Metadata { arg: String, why: io::Error },
-    #[fail(display = "unable to open disk '{}': {}", disk, why)]
+    #[error(display = "unable to open disk '{}': {}", disk, why)]
     Open { disk: String, why: io::Error },
-    #[fail(display = "error writing disk '{}': {}", disk, why)]
+    #[error(display = "error writing disk '{}': {}", disk, why)]
     Write { disk: String, why: io::Error },
-    #[fail(display = "error writing disk '{}': reached EOF", disk)]
+    #[error(display = "error writing disk '{}': reached EOF", disk)]
     WriteEOF { disk: String },
-    #[fail(display = "unable to flush disk '{}': {}", disk, why)]
+    #[error(display = "unable to flush disk '{}': {}", disk, why)]
     Flush { disk: String, why: io::Error },
-    #[fail(display = "error seeking disk '{}': seeked to {} instead of 0", disk, invalid)]
+    #[error(display = "error seeking disk '{}': seeked to {} instead of 0", disk, invalid)]
     SeekInvalid { disk: String, invalid: u64 },
-    #[fail(display = "error seeking disk '{}': {}", disk, why)]
+    #[error(display = "error seeking disk '{}': {}", disk, why)]
     Seek { disk: String, why: io::Error },
-    #[fail(display = "error verifying disk '{}': {}", disk, why)]
+    #[error(display = "error verifying disk '{}': {}", disk, why)]
     Verify { disk: String, why: io::Error },
-    #[fail(display = "error verifying disk '{}': reached EOF", disk)]
+    #[error(display = "error verifying disk '{}': reached EOF", disk)]
     VerifyEOF { disk: String },
-    #[fail(display = "error verifying disk '{}': mismatch at {}:{}", disk, x, y)]
+    #[error(display = "error verifying disk '{}': mismatch at {}:{}", disk, x, y)]
     VerifyMismatch { disk: String, x: usize, y: usize },
 }
 

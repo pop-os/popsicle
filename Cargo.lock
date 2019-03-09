@@ -697,8 +697,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "popsicle"
 version = "0.1.5"
 dependencies = [
- "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure_derive 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "err-derive 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.50 (registry+https://github.com/rust-lang/crates.io-index)",
  "mnt 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -725,8 +724,6 @@ dependencies = [
  "cascade 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "crossbeam-channel 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "digest 0.7.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure_derive 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "gdk 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "glib 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "gtk 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
