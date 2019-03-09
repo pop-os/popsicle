@@ -2,8 +2,8 @@ use gtk::*;
 
 pub struct Header {
     pub container: HeaderBar,
-    pub back:      Button,
-    pub next:      Button,
+    pub back: Button,
+    pub next: Button,
 }
 
 impl Header {

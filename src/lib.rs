@@ -83,9 +83,7 @@ pub fn get_disk_args(disks: &mut Vec<String>) -> Result<(), DiskError> {
         if let Some(filename_os) = path.file_name() {
             if is_usb(filename_os.to_str().unwrap()) {
                 disks.push(
-                    path.to_str()
-                        .ok_or_else(|| DiskError::UTF8 { dir: path.clone() })?
-                        .into(),
+                    path.to_str().ok_or_else(|| DiskError::UTF8 { dir: path.clone() })?.into(),
                 );
             }
         }
@@ -102,17 +100,11 @@ pub fn disks_from_args<D: Iterator<Item = String>>(
     let mut disks = Vec::new();
 
     for disk_arg in disk_args {
-        let canonical_path = canonicalize(&disk_arg).map_err(|why| DiskError::NoDisk {
-            disk: disk_arg.clone(),
-            why,
-        })?;
+        let canonical_path = canonicalize(&disk_arg)
+            .map_err(|why| DiskError::NoDisk { disk: disk_arg.clone(), why })?;
 
         for mount in mounts.iter() {
-            if mount
-                .spec
-                .as_bytes()
-                .starts_with(canonical_path.as_os_str().as_bytes())
-            {
+            if mount.spec.as_bytes().starts_with(canonical_path.as_os_str().as_bytes()) {
                 if unmount {
                     eprintln!(
                         "unmounting '{}': {:?} is mounted at {:?}",
@@ -122,25 +114,19 @@ pub fn disks_from_args<D: Iterator<Item = String>>(
                     Command::new("umount")
                         .arg(&mount.spec)
                         .status()
-                        .map_err(|why| DiskError::UnmountCommand {
-                            path: mount.spec.clone(),
-                            why,
-                        })
+                        .map_err(|why| DiskError::UnmountCommand { path: mount.spec.clone(), why })
                         .and_then(|status| {
                             if !status.success() {
-                                Err(DiskError::UnmountStatus {
-                                    path: mount.spec.clone(),
-                                    status,
-                                })
+                                Err(DiskError::UnmountStatus { path: mount.spec.clone(), status })
                             } else {
                                 Ok(())
                             }
                         })?;
                 } else {
                     return Err(DiskError::AlreadyMounted {
-                        arg:    disk_arg.clone(),
+                        arg: disk_arg.clone(),
                         source: mount.spec.clone(),
-                        dest:   mount.file.clone(),
+                        dest: mount.file.clone(),
                     });
                 }
             }
@@ -148,15 +134,10 @@ pub fn disks_from_args<D: Iterator<Item = String>>(
 
         let metadata = canonical_path
             .metadata()
-            .map_err(|why| DiskError::Metadata {
-                arg: disk_arg.clone(),
-                why,
-            })?;
+            .map_err(|why| DiskError::Metadata { arg: disk_arg.clone(), why })?;
 
         if !metadata.file_type().is_block_device() {
-            return Err(DiskError::NotABlock {
-                arg: disk_arg.clone(),
-            });
+            return Err(DiskError::NotABlock { arg: disk_arg.clone() });
         }
 
         let disk = OpenOptions::new()
@@ -164,10 +145,7 @@ pub fn disks_from_args<D: Iterator<Item = String>>(
             .write(true)
             .custom_flags(libc::O_SYNC)
             .open(&canonical_path)
-            .map_err(|why| DiskError::Open {
-                disk: disk_arg.clone(),
-                why,
-            })?;
+            .map_err(|why| DiskError::Open { disk: disk_arg.clone(), why })?;
 
         disks.push((disk_arg, disk));
     }

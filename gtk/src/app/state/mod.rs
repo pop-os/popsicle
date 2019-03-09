@@ -1,7 +1,7 @@
 use crate::app::events::{self, BackgroundEvent, PrivilegedEvent, UiEvent};
-use atomic::Atomic;
 use crate::block::BlockDevice;
-use crossbeam_channel::{unbounded, Sender, Receiver};
+use atomic::Atomic;
+use crossbeam_channel::{unbounded, Receiver, Sender};
 use libc;
 use std::cell::{Cell, RefCell};
 use std::env;
@@ -15,7 +15,7 @@ pub enum ActiveView {
     Devices,
     Flashing,
     Summary,
-    Error
+    Error,
 }
 
 pub struct State {

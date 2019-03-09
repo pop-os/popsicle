@@ -11,7 +11,9 @@ pub(crate) fn hasher<H: Digest>(image: &Path) -> io::Result<String> {
 
         loop {
             let read = file.read(&mut buffer)?;
-            if read == 0 { break }
+            if read == 0 {
+                break;
+            }
             hasher.input(&buffer[..read]);
         }
 

@@ -9,9 +9,9 @@ mod flash;
 mod hash;
 mod misc;
 
-use crate::app::App;
 use crate::app::events::UiEvent;
 use crate::app::state::State;
+use crate::app::App;
 use std::env;
 use std::path::PathBuf;
 

@@ -2,11 +2,11 @@ use gtk::prelude::*;
 use gtk::{self, Align, Image, Label, Orientation};
 
 pub struct View {
-    pub container:   gtk::Box,
-    pub icon:        Image,
-    pub topic:       Label,
+    pub container: gtk::Box,
+    pub icon: Image,
+    pub topic: Label,
     pub description: Label,
-    pub panel:       gtk::Box,
+    pub panel: gtk::Box,
 }
 
 impl View {

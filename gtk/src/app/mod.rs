@@ -26,10 +26,7 @@ impl App {
             process::exit(1);
         }
 
-        App {
-            ui: Rc::new(GtkUi::new()),
-            state: Arc::new(state)
-        }
+        App { ui: Rc::new(GtkUi::new()), state: Arc::new(state) }
     }
 
     pub fn connect_events(self) -> Self {
@@ -49,7 +46,6 @@ impl App {
         gtk::main();
     }
 }
-
 
 pub struct GtkUi {
     window: gtk::Window,
@@ -79,7 +75,11 @@ impl GtkUi {
         let screen = window.get_screen().unwrap();
         let style = gtk::CssProvider::new();
         let _ = gtk::CssProviderExt::load_from_data(&style, CSS.as_bytes());
-        gtk::StyleContext::add_provider_for_screen(&screen, &style, gtk::STYLE_PROVIDER_PRIORITY_USER);
+        gtk::StyleContext::add_provider_for_screen(
+            &screen,
+            &style,
+            gtk::STYLE_PROVIDER_PRIORITY_USER,
+        );
 
         // The icon the app will display.
         gtk::Window::set_default_icon_name("iconname");
@@ -97,13 +97,12 @@ impl GtkUi {
         &self,
         state: &State,
         result: Result<T, E>,
-        context: &'static str
+        context: &'static str,
     ) -> Result<T, ()> {
         match result {
             Ok(value) => Ok(value),
             Err(why) => {
-                self.content.error_view.view.description
-                    .set_text(&format!("{}: {}", context, why));
+                self.content.error_view.view.description.set_text(&format!("{}: {}", context, why));
                 self.switch_to(state, ActiveView::Error);
 
                 Err(())
@@ -115,12 +114,15 @@ impl GtkUi {
         &self,
         state: &State,
         result: Option<T>,
-        context: &'static str
+        context: &'static str,
     ) -> Result<T, ()> {
         match result {
             Some(value) => Ok(value),
             None => {
-                self.content.error_view.view.description
+                self.content
+                    .error_view
+                    .view
+                    .description
                     .set_text(&format!("{}: no value found", context));
                 self.switch_to(state, ActiveView::Error);
 
@@ -159,9 +161,13 @@ impl GtkUi {
                 &self.content.devices_view.view.container
             }
             ActiveView::Flashing => {
-                match self.errorck(&state, File::open(&*state.image_path.borrow()), "Failed to open ISO") {
+                match self.errorck(
+                    &state,
+                    File::open(&*state.image_path.borrow()),
+                    "Failed to open ISO",
+                ) {
                     Ok(file) => *state.image.borrow_mut() = Some(file),
-                    Err(()) => return
+                    Err(()) => return,
                 };
 
                 let all_devices = state.available_devices.borrow();

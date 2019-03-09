@@ -1,16 +1,16 @@
 mod devices;
 mod images;
 
-use crate::app::App;
-use crate::app::events::{BackgroundEvent, UiEvent, PrivilegedEvent};
+use crate::app::events::{BackgroundEvent, PrivilegedEvent, UiEvent};
 use crate::app::state::ActiveView;
+use crate::app::App;
+use crate::flash::{FlashRequest, FlashStatus, FlashTask};
 use atomic::Atomic;
 use crossbeam_channel::TryRecvError;
-use crate::flash::{FlashRequest, FlashTask, FlashStatus};
 use gtk::{self, prelude::*};
 use std::fs::File;
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::Ordering;
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 impl App {
@@ -23,7 +23,7 @@ impl App {
                 ActiveView::Images => {
                     gtk::main_quit();
                     return;
-                },
+                }
                 _ => ActiveView::Images,
             };
 
@@ -69,12 +69,11 @@ impl App {
                 Ok(UiEvent::SetHash(hash)) => {
                     ui.content.image_view.set_hash(&match hash {
                         Ok(hash) => hash,
-                        Err(why) => format!("error: {}", why)
+                        Err(why) => format!("error: {}", why),
                     });
 
-                    ui.content.image_view.chooser_container
-                        .set_visible_child_name("chooser");
-                },
+                    ui.content.image_view.chooser_container.set_visible_child_name("chooser");
+                }
                 Ok(UiEvent::SetImageLabel(path)) => {
                     if let Ok(file) = File::open(&path) {
                         let image_size = file.metadata().ok().map_or(0, |m| m.len());
@@ -96,9 +95,10 @@ impl App {
                 Ok(UiEvent::Flash(handle)) => flash_handles = Some(handle),
                 Ok(UiEvent::Reset) => {
                     match flash_status.load(Ordering::SeqCst) {
-                        FlashStatus::Active => flash_status.store(FlashStatus::Killing, Ordering::SeqCst),
-                        FlashStatus::Inactive
-                        | FlashStatus::Killing => (),
+                        FlashStatus::Active => {
+                            flash_status.store(FlashStatus::Killing, Ordering::SeqCst)
+                        }
+                        FlashStatus::Inactive | FlashStatus::Killing => (),
                     }
 
                     flash_handles = None;
@@ -116,7 +116,7 @@ impl App {
                         last_device_refresh = now;
                         let _ = state.back_event_tx.send(BackgroundEvent::RefreshDevices);
                     }
-                },
+                }
                 ActiveView::Flashing => match state.image.borrow_mut().take() {
                     // When the flashing view is active, and an image has not started flashing.
                     Some(image) => {
@@ -159,23 +159,26 @@ impl App {
 
                         summary_grid.show_all();
                         let ndestinations = destinations.len();
-                        let progress = Arc::new((0..ndestinations).map(|_| Atomic::new(0u64)).collect::<Vec<_>>());
-                        let finished = Arc::new((0..ndestinations).map(|_| Atomic::new(false)).collect::<Vec<_>>());
+                        let progress = Arc::new(
+                            (0..ndestinations).map(|_| Atomic::new(0u64)).collect::<Vec<_>>(),
+                        );
+                        let finished = Arc::new(
+                            (0..ndestinations).map(|_| Atomic::new(false)).collect::<Vec<_>>(),
+                        );
 
-                        let _ = state.priv_event_tx.send(PrivilegedEvent::Flash(
-                            FlashRequest::new(
+                        let _ =
+                            state.priv_event_tx.send(PrivilegedEvent::Flash(FlashRequest::new(
                                 image,
                                 destinations,
                                 flash_status.clone(),
                                 progress.clone(),
-                                finished.clone()
-                            )
-                        ));
+                                finished.clone(),
+                            )));
 
                         tasks = Some(FlashTask {
                             previous: Arc::new(Mutex::new(vec![[0; 7]; ndestinations])),
                             progress,
-                            finished
+                            finished,
                         });
                     }
                     // When the flashing view is active, and thus an image is flashing.
@@ -192,7 +195,8 @@ impl App {
                             let tasks = tasks.as_mut().expect("no flash task");
                             let mut previous = tasks.previous.lock().expect("mutex lock");
 
-                            for (id, &(ref pbar, ref label)) in flashing_devices.iter().enumerate() {
+                            for (id, &(ref pbar, ref label)) in flashing_devices.iter().enumerate()
+                            {
                                 let prev_values = &mut previous[id];
                                 let progress = &tasks.progress[id];
                                 let finished = &tasks.finished[id];
@@ -234,26 +238,42 @@ impl App {
                             if all_tasks_finished {
                                 eprintln!("all tasks finished");
 
-                                let taken_handles = match ui.errorck_option(&state, flash_handles.take(), "Taking flash handles failed") {
-                                    Ok(results) => results.join().map_err(|why| format!("{:?}", why)),
-                                    Err(()) => return gtk::Continue(true)
+                                let taken_handles = match ui.errorck_option(
+                                    &state,
+                                    flash_handles.take(),
+                                    "Taking flash handles failed",
+                                ) {
+                                    Ok(results) => {
+                                        results.join().map_err(|why| format!("{:?}", why))
+                                    }
+                                    Err(()) => return gtk::Continue(true),
                                 };
 
-                                let handle = match ui.errorck(&state, taken_handles, "Failed to join flash thread") {
+                                let handle = match ui.errorck(
+                                    &state,
+                                    taken_handles,
+                                    "Failed to join flash thread",
+                                ) {
                                     Ok(results) => results,
-                                    Err(()) => return gtk::Continue(true)
+                                    Err(()) => return gtk::Continue(true),
                                 };
 
-                                let results = match ui.errorck(&state, handle, "Errored starting flashing process") {
+                                let results = match ui.errorck(
+                                    &state,
+                                    handle,
+                                    "Errored starting flashing process",
+                                ) {
                                     Ok(results) => results,
-                                    Err(()) => return gtk::Continue(true)
+                                    Err(()) => return gtk::Continue(true),
                                 };
 
                                 let mut errors = Vec::new();
                                 let mut selected_devices = state.selected_devices.borrow_mut();
                                 let ntasks = selected_devices.len();
 
-                                for (device, result) in selected_devices.drain(..).zip(results.into_iter()) {
+                                for (device, result) in
+                                    selected_devices.drain(..).zip(results.into_iter())
+                                {
                                     if let Err(why) = result {
                                         errors.push((device, why));
                                     }
@@ -293,8 +313,8 @@ impl App {
                             }
                         }
                     }
-                }
-                _ => ()
+                },
+                _ => (),
             }
 
             gtk::Continue(true)

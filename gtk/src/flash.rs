@@ -1,14 +1,14 @@
 use atomic::Atomic;
 use bus_writer::{BusWriter, BusWriterMessage};
+use libc;
+use proc_mounts::MountList;
 use std::fs::{self, File};
 use std::io;
-use std::sync::{Arc, Mutex};
-use std::sync::atomic::Ordering;
-use std::path::PathBuf;
-use proc_mounts::MountList;
-use sys_mount::{unmount, UnmountFlags};
 use std::os::unix::fs::OpenOptionsExt;
-use libc;
+use std::path::PathBuf;
+use std::sync::atomic::Ordering;
+use std::sync::{Arc, Mutex};
+use sys_mount::{unmount, UnmountFlags};
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum FlashStatus {
@@ -18,11 +18,11 @@ pub enum FlashStatus {
 }
 
 pub struct FlashRequest {
-    source:       File,
+    source: File,
     destinations: Vec<PathBuf>,
-    status:       Arc<Atomic<FlashStatus>>,
-    progress:     Arc<Vec<Atomic<u64>>>,
-    finished:     Arc<Vec<Atomic<bool>>>,
+    status: Arc<Atomic<FlashStatus>>,
+    progress: Arc<Vec<Atomic<u64>>>,
+    finished: Arc<Vec<Atomic<bool>>>,
 }
 
 pub struct FlashTask {
@@ -35,17 +35,11 @@ impl FlashRequest {
     pub fn new(
         source: File,
         destinations: Vec<PathBuf>,
-        status:       Arc<Atomic<FlashStatus>>,
-        progress:     Arc<Vec<Atomic<u64>>>,
-        finished:     Arc<Vec<Atomic<bool>>>,
+        status: Arc<Atomic<FlashStatus>>,
+        progress: Arc<Vec<Atomic<u64>>>,
+        finished: Arc<Vec<Atomic<bool>>>,
     ) -> FlashRequest {
-        FlashRequest {
-            source,
-            destinations,
-            status,
-            progress,
-            finished,
-        }
+        FlashRequest { source, destinations, status, progress, finished }
     }
 
     pub fn write(self) -> io::Result<Vec<io::Result<()>>> {
@@ -77,9 +71,7 @@ impl FlashRequest {
             files.push(file);
         }
 
-        let mut errors = (0..files.len())
-            .map(|_| Ok(()))
-            .collect::<Vec<_>>();
+        let mut errors = (0..files.len()).map(|_| Ok(())).collect::<Vec<_>>();
 
         // How many bytes to write at a given time.
         let mut bucket = [0u8; 8 * 1024 * 1024];
@@ -100,7 +92,10 @@ impl FlashRequest {
             },
             // Write will exit early when this is true
             || FlashStatus::Killing == status.load(Ordering::SeqCst),
-        ).with_bucket(&mut bucket[..]).write().map(|_| errors);
+        )
+        .with_bucket(&mut bucket[..])
+        .write()
+        .map(|_| errors);
 
         for atomic in finished.iter() {
             atomic.store(true, Ordering::SeqCst);

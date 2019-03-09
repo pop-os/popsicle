@@ -4,12 +4,12 @@ use pango::EllipsizeMode;
 use std::path::Path;
 
 pub struct ImageView {
-    pub view:              View,
+    pub view: View,
     pub chooser_container: Stack,
-    pub chooser:           Button,
-    pub image_path:        Label,
-    pub hash:              ComboBoxText,
-    pub hash_label:        Entry,
+    pub chooser: Button,
+    pub image_path: Label,
+    pub hash: ComboBoxText,
+    pub hash_label: Entry,
 }
 
 impl ImageView {
@@ -97,14 +97,7 @@ impl ImageView {
             },
         );
 
-        ImageView {
-            view,
-            chooser_container,
-            chooser,
-            image_path,
-            hash,
-            hash_label,
-        }
+        ImageView { view, chooser_container, chooser, image_path, hash, hash_label }
     }
 
     pub fn set_hash(&self, hash: &str) {
@@ -112,8 +105,8 @@ impl ImageView {
     }
 
     pub fn set_image_path(&self, path: &Path) {
-        self.image_path.set_label(&path.file_name()
-            .expect("file chooser can't select directories")
-            .to_string_lossy());
+        self.image_path.set_label(
+            &path.file_name().expect("file chooser can't select directories").to_string_lossy(),
+        );
     }
 }

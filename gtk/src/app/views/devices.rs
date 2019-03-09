@@ -1,15 +1,15 @@
+use super::View;
+use crate::block::BlockDevice;
 use gtk;
 use gtk::prelude::*;
-use crate::block::BlockDevice;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
-use super::View;
 
 type ViewReadySignal = Rc<RefCell<Box<dyn Fn(bool)>>>;
 
 pub struct DevicesView {
     pub view: View,
-    pub list:       gtk::ListBox,
+    pub list: gtk::ListBox,
     pub select_all: gtk::CheckButton,
     view_ready: ViewReadySignal,
 }
@@ -66,16 +66,12 @@ impl DevicesView {
 
         let view_ready: ViewReadySignal = Rc::new(RefCell::new(Box::new(|_| ())));
 
-        DevicesView {
-            view,
-            list,
-            select_all,
-            view_ready,
-        }
+        DevicesView { view, list, select_all, view_ready }
     }
 
     pub fn get_buttons(&self) -> impl Iterator<Item = gtk::CheckButton> {
-        self.list.get_children()
+        self.list
+            .get_children()
             .into_iter()
             .filter_map(|row| row.downcast::<gtk::ListBoxRow>().ok())
             .filter_map(|row| row.get_children().get(0).cloned())
@@ -85,11 +81,7 @@ impl DevicesView {
     pub fn get_active_ids(&self) -> impl Iterator<Item = usize> {
         self.get_buttons()
             .enumerate()
-            .filter_map(|(id, button)| if button.get_active() {
-                Some(id)
-            } else {
-                None
-            })
+            .filter_map(|(id, button)| if button.get_active() { Some(id) } else { None })
     }
 
     pub fn refresh(&self, devices: &[BlockDevice], image_size: u64) {

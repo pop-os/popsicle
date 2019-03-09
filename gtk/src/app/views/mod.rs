@@ -15,11 +15,11 @@ pub use self::view::View;
 use gtk::*;
 
 pub struct Content {
-    pub container:    Stack,
-    pub image_view:   ImageView,
+    pub container: Stack,
+    pub image_view: ImageView,
     pub devices_view: DevicesView,
-    pub error_view:   ErrorView,
-    pub flash_view:   FlashView,
+    pub error_view: ErrorView,
+    pub flash_view: FlashView,
     pub summary_view: SummaryView,
 }
 
@@ -42,13 +42,6 @@ impl Content {
             ..set_border_width(12);
         };
 
-        Content {
-            container,
-            image_view,
-            devices_view,
-            flash_view,
-            summary_view,
-            error_view,
-        }
+        Content { container, image_view, devices_view, flash_view, summary_view, error_view }
     }
 }

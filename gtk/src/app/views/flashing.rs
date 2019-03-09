@@ -2,7 +2,7 @@ use super::View;
 use gtk::*;
 
 pub struct FlashView {
-    pub view:          View,
+    pub view: View,
     pub progress_list: Grid,
 }
 
@@ -26,9 +26,6 @@ impl FlashView {
             |right_panel| right_panel.pack_start(&progress_scroller, true, true, 0),
         );
 
-        FlashView {
-            view,
-            progress_list,
-        }
+        FlashView { view, progress_list }
     }
 }
