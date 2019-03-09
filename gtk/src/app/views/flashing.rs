@@ -15,7 +15,7 @@ impl FlashView {
         };
 
         let progress_scroller = cascade! {
-            ScrolledWindow::new(None, None);
+            ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
             ..add(&progress_list);
         };
 

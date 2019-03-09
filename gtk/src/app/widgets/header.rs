@@ -10,13 +10,13 @@ impl Header {
     pub fn new() -> Header {
         let back = cascade! {
             Button::new_with_label("Cancel");
-            ..get_style_context().map(|c| c.add_class("back"));
+            ..get_style_context().add_class("back");
         };
 
         let next = cascade! {
             Button::new_with_label("Next");
             ..set_sensitive(false);
-            ..get_style_context().map(|c| c.add_class(&STYLE_CLASS_SUGGESTED_ACTION));
+            ..get_style_context().add_class(&STYLE_CLASS_SUGGESTED_ACTION);
         };
 
         // Returns the header and all of it's state

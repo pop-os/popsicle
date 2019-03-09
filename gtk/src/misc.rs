@@ -1,5 +1,5 @@
 use gtk::{self, prelude::*, SelectionData};
-use gdk::{self, prelude::*, DragContextExtManual};
+use gdk;
 
 // Implements drag and drop support for a GTK widget.
 pub fn drag_and_drop<W, F>(widget: &W, action: F)
@@ -28,19 +28,3 @@ where W: WidgetExt + WidgetExtManual,
         action(data)
     });
 }
-
-pub trait GtkWidgetExt: gtk::WidgetExt {
-    fn add_class(&self, class_name: &str) {
-        if let Some(ctx) = self.get_style_context() {
-            ctx.add_class(class_name);
-        }
-    }
-
-    fn remove_class(&self, class_name: &str) {
-        if let Some(ctx) = self.get_style_context() {
-            ctx.remove_class(class_name);
-        }
-    }
-}
-
-impl<T: gtk::WidgetExt> GtkWidgetExt for T {}

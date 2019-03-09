@@ -121,7 +121,7 @@ impl App {
                     // When the flashing view is active, and an image has not started flashing.
                     Some(image) => {
                         let summary_grid = &ui.content.flash_view.progress_list;
-                        summary_grid.get_children().iter().for_each(|c| c.destroy());
+                        summary_grid.foreach(WidgetExt::destroy);
                         let mut destinations = Vec::new();
 
                         let mut selected_devices = state.selected_devices.borrow_mut();
@@ -136,7 +136,7 @@ impl App {
                             let label = cascade! {
                                 gtk::Label::new(device.label().as_str());
                                 ..set_justify(gtk::Justification::Right);
-                                ..get_style_context().map(|c| c.add_class("bold"));
+                                ..get_style_context().add_class("bold");
                             };
 
                             let bar_label = cascade! {

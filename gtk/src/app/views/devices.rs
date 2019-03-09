@@ -18,7 +18,7 @@ impl DevicesView {
     pub fn new() -> DevicesView {
         let list = cascade! {
             gtk::ListBox::new();
-            ..get_style_context().map(|c| c.add_class("devices"));
+            ..get_style_context().add_class("devices");
             ..set_hexpand(true);
             ..set_vexpand(true);
         };
@@ -51,7 +51,7 @@ impl DevicesView {
         };
 
         let select_scroller = cascade! {
-            gtk::ScrolledWindow::new(None, None);
+            gtk::ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
             ..set_hexpand(true);
             ..set_vexpand(true);
             ..add(&list_box);
@@ -93,9 +93,7 @@ impl DevicesView {
     }
 
     pub fn refresh(&self, devices: &[BlockDevice], image_size: u64) {
-        self.list.get_children()
-            .into_iter()
-            .for_each(|widget| widget.destroy());
+        self.list.foreach(WidgetExt::destroy);
 
         let nselected = Rc::new(Cell::new(0));
 

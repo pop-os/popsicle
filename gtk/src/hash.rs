@@ -1,12 +1,8 @@
 use digest::Digest;
 use hex_view::HexView;
-
-use std::hash::Hasher;
-use std::collections::hash_map::DefaultHasher;
-use std::io::{self, Read};
 use std::fs::File;
+use std::io::{self, Read};
 use std::path::Path;
-use std::os::unix::ffi::OsStrExt;
 
 pub(crate) fn hasher<H: Digest>(image: &Path) -> io::Result<String> {
     File::open(image).and_then(move |mut file| {

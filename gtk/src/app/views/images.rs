@@ -23,7 +23,7 @@ impl ImageView {
         let image_path = cascade! {
             Label::new("No image selected");
             ..set_ellipsize(EllipsizeMode::End);
-            ..get_style_context().map(|c| c.add_class("bold"));
+            ..get_style_context().add_class("bold");
         };
 
         let button_box = cascade! {
@@ -37,7 +37,7 @@ impl ImageView {
 
         let spinner_label = cascade! {
             Label::new("Generating Checksum");
-            ..get_style_context().map(|c| c.add_class("bold"));
+            ..get_style_context().add_class("bold");
         };
 
         let spinner_box = cascade! {
@@ -67,7 +67,7 @@ impl ImageView {
             Box::new(Orientation::Horizontal, 0);
             ..add(&hash);
             ..pack_start(&hash_label, true, true, 0);
-            ..get_style_context().map(|c| c.add_class("linked"));
+            ..get_style_context().add_class("linked");
         };
 
         let hash_container = cascade! {
