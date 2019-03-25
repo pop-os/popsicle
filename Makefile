@@ -6,6 +6,15 @@ libdir = $(exec_prefix)/lib
 includedir = $(prefix)/include
 datarootdir = $(prefix)/share
 datadir = $(datarootdir)
+DEBUG ?= 0
+RELEASE = debug
+
+ifeq (0,$(DEBUG))
+	ARGS = --release
+	RELEASE = release
+endif
+
+TARGET = target/$(RELEASE)
 
 .PHONY: all clean distclean install uninstall update
 
@@ -25,14 +34,11 @@ ICONS=\
 	24x24@2x/apps/$(BIN).png \
 	512x512@2x/apps/$(BIN).png
 
-BEFORE := $(shell echo $(default_prefix) | sed 's/\//\\\//g')
-AFTER := $(shell echo $(prefix) | sed 's/\//\\\//g')
-
 all: cli gtk
 
-cli: target/release/$(BIN) target/release/$(BIN).1.gz
+cli: $(TARGET)/$(BIN) $(TARGET)/$(BIN).1.gz
 
-gtk: target/release/$(GTK_BIN)
+gtk: $(TARGET)/$(GTK_BIN)
 
 clean:
 	cargo clean
@@ -41,11 +47,11 @@ distclean: clean
 	rm -rf .cargo vendor
 
 install-cli: cli
-	install -D -m 0755 "target/release/$(BIN)" "$(DESTDIR)$(bindir)/$(BIN)"
-	install -D -m 0755 "target/release/$(BIN).1.gz" "$(DESTDIR)$(datadir)/man/man1/$(BIN).1.gz"
+	install -D -m 0755 "$(TARGET)/$(BIN)" "$(DESTDIR)$(bindir)/$(BIN)"
+	install -D -m 0755 "$(TARGET)/$(BIN).1.gz" "$(DESTDIR)$(datadir)/man/man1/$(BIN).1.gz"
 
 install-gtk: gtk
-	install -D -m 0755 "target/release/$(GTK_BIN)" "$(DESTDIR)$(bindir)/$(GTK_BIN)"
+	install -D -m 0755 "$(TARGET)/$(GTK_BIN)" "$(DESTDIR)$(bindir)/$(GTK_BIN)"
 	install -D -m 0755 "gtk/assets/popsicle-pkexec" "$(DESTDIR)$(bindir)/$(PKEXEC_BIN)"
 	install -D -m 0644 "gtk/assets/popsicle.desktop" "$(DESTDIR)$(datadir)/applications/popsicle.desktop"
 	install -D -m 0644 "gtk/assets/$(POLICY)" "$(DESTDIR)$(datadir)/polkit-1/actions/$(POLICY)"
@@ -54,9 +60,9 @@ install-gtk: gtk
 	done
 
 	# Fix paths in assets
-	sed -i -e 's/$(BEFORE)/$(AFTER)/g' $(DESTDIR)$(datadir)/applications/popsicle.desktop \
-		&& sed -i -e 's/$(BEFORE)/$(AFTER)/g' $(DESTDIR)$(datadir)/polkit-1/actions/$(POLICY) \
-		&& sed -i -e 's/$(BEFORE)/$(AFTER)/g' $(DESTDIR)$(bindir)/$(PKEXEC_BIN)
+	sed -i -e 's#$(default_prefix)#$(prefix)#g' $(DESTDIR)$(datadir)/applications/popsicle.desktop \
+		&& sed -i -e 's#$(default_prefix)#$(prefix)#g' $(DESTDIR)$(datadir)/polkit-1/actions/$(POLICY) \
+		&& sed -i -e 's#$(default_prefix)#$(prefix)#g' $(DESTDIR)$(bindir)/$(PKEXEC_BIN)
 
 install: all install-cli install-gtk
 
@@ -86,22 +92,23 @@ vendor: .cargo/config
 	cargo vendor --explicit-version --locked
 	touch vendor
 
-target/release/$(BIN):
+$(TARGET)/$(BIN):
+	echo $(TARGET): $(DEBUG): $(ARGS)
 	if [ -d vendor ]; \
 	then \
-		cargo build --manifest-path cli/Cargo.toml --release --frozen; \
+		cargo build --manifest-path cli/Cargo.toml $(ARGS) --frozen; \
 	else \
-		cargo build --manifest-path cli/Cargo.toml --release; \
+		cargo build --manifest-path cli/Cargo.toml $(ARGS); \
 	fi
 
-target/release/$(GTK_BIN):
+$(TARGET)/$(GTK_BIN):
 	if [ -d vendor ]; \
 	then \
-		cargo build --manifest-path gtk/Cargo.toml --release --frozen; \
+		cargo build --manifest-path gtk/Cargo.toml $(ARGS) --frozen; \
 	else \
-		cargo build --manifest-path gtk/Cargo.toml --release; \
+		cargo build --manifest-path gtk/Cargo.toml $(ARGS); \
 	fi
 
-target/release/$(BIN).1.gz: target/release/$(BIN)
+$(TARGET)/$(BIN).1.gz: $(TARGET)/$(BIN)
 	help2man --no-info $< | gzip -c > $@.partial
 	mv $@.partial $@

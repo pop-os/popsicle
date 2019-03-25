@@ -1,18 +1,11 @@
-// use gdk::{self, DragContextExt, DragContextExtManual};
-use gdk::{self, DragContextExt, DragContextExtManual};
-use gtk::{self, Inhibit, SelectionData, WidgetExt, WidgetExtManual};
-
-pub fn set_margins<W: WidgetExt>(widget: &W, value: i32) {
-    widget.set_margin_top(value);
-    widget.set_margin_bottom(value);
-    widget.set_margin_start(value);
-    widget.set_margin_end(value);
-}
+use gdk;
+use gtk::{self, prelude::*, SelectionData};
 
 // Implements drag and drop support for a GTK widget.
 pub fn drag_and_drop<W, F>(widget: &W, action: F)
-where W: WidgetExt + WidgetExtManual,
-      F: 'static + Fn(&SelectionData)
+where
+    W: WidgetExt + WidgetExtManual,
+    F: 'static + Fn(&SelectionData),
 {
     // Configure the view as a possible drop destination.
     widget.drag_dest_set(gtk::DestDefaults::empty(), &[], gdk::DragAction::empty());
@@ -32,7 +25,5 @@ where W: WidgetExt + WidgetExtManual,
     });
 
     // Then handle the dropped data, setting the image if the dropped data is valid.
-    widget.connect_drag_data_received(move |_view, _ctx, _x, _y, data, _info, _time| {
-        action(data)
-    });
+    widget.connect_drag_data_received(move |_view, _ctx, _x, _y, data, _info, _time| action(data));
 }

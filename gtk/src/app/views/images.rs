@@ -1,15 +1,15 @@
 use super::View;
 use gtk::*;
 use pango::EllipsizeMode;
-use super::set_margins;
+use std::path::Path;
 
 pub struct ImageView {
-    pub view:              View,
+    pub view: View,
     pub chooser_container: Stack,
-    pub chooser:           Button,
-    pub image_path:        Label,
-    pub hash:              ComboBoxText,
-    pub hash_label:        Entry,
+    pub chooser: Button,
+    pub image_path: Label,
+    pub hash: ComboBoxText,
+    pub hash_label: Entry,
 }
 
 impl ImageView {
@@ -23,7 +23,7 @@ impl ImageView {
         let image_path = cascade! {
             Label::new("No image selected");
             ..set_ellipsize(EllipsizeMode::End);
-            ..get_style_context().map(|c| c.add_class("bold"));
+            ..get_style_context().add_class("bold");
         };
 
         let button_box = cascade! {
@@ -37,7 +37,7 @@ impl ImageView {
 
         let spinner_label = cascade! {
             Label::new("Generating Checksum");
-            ..get_style_context().map(|c| c.add_class("bold"));
+            ..get_style_context().add_class("bold");
         };
 
         let spinner_box = cascade! {
@@ -67,14 +67,14 @@ impl ImageView {
             Box::new(Orientation::Horizontal, 0);
             ..add(&hash);
             ..pack_start(&hash_label, true, true, 0);
-            ..get_style_context().map(|c| c.add_class("linked"));
+            ..get_style_context().add_class("linked");
         };
 
         let hash_container = cascade! {
             tmp: Box::new(Orientation::Horizontal, 0);
             ..pack_start(&label, false, false, 0);
             ..pack_start(&combo_container, true, true, 0);
-            | set_margins(&tmp, 6);
+            ..set_border_width(6);
         };
 
         let chooser_container = cascade! {
@@ -97,13 +97,16 @@ impl ImageView {
             },
         );
 
-        ImageView {
-            view,
-            chooser_container,
-            chooser,
-            image_path,
-            hash,
-            hash_label,
-        }
+        ImageView { view, chooser_container, chooser, image_path, hash, hash_label }
+    }
+
+    pub fn set_hash(&self, hash: &str) {
+        self.hash_label.set_text(hash);
+    }
+
+    pub fn set_image_path(&self, path: &Path) {
+        self.image_path.set_label(
+            &path.file_name().expect("file chooser can't select directories").to_string_lossy(),
+        );
     }
 }
