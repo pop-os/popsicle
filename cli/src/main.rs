@@ -59,12 +59,8 @@ fn popsicle() -> Result<(), String> {
         return Err("no disks specified".to_owned());
     }
 
-    let mounts = match mnt::get_submounts(Path::new("/")) {
-        Ok(mounts) => mounts,
-        Err(err) => {
-            return Err(format!("error reading mounts: {}", err));
-        }
-    };
+    let mounts = mnt::get_submounts(Path::new("/"))
+        .map_err(|why| format!("error reading mounts: {}", why))?;
 
     let disks =
         popsicle::disks_from_args(disk_args.into_iter(), &mounts, matches.is_present("unmount"))

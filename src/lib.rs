@@ -75,17 +75,17 @@ const DISK_DIR: &str = "/dev/disk/by-path/";
 
 /// Stores all discovered USB disk paths into the supplied `disks` vector.
 pub fn get_disk_args(disks: &mut Vec<String>) -> Result<(), DiskError> {
-    let readdir = read_dir(DISK_DIR).map_err(|why| DiskError::Directory { dir: DISK_DIR, why })?;
+    let readdir = read_dir(DISK_DIR).map_err(|why| DiskError::Directory { dir: DISK_DIR, why })?
+        .map(|entry| entry.map_err(|why| DiskError::Directory { dir: DISK_DIR, why }));
 
-    for entry_res in readdir {
-        let entry = entry_res.map_err(|why| DiskError::Directory { dir: DISK_DIR, why })?;
-        let path = entry.path();
-        if let Some(filename_os) = path.file_name() {
-            if is_usb(filename_os.to_str().unwrap()) {
-                disks.push(
-                    path.to_str().ok_or_else(|| DiskError::UTF8 { dir: path.clone() })?.into(),
-                );
-            }
+    for entry in readdir {
+        let path = entry?.path();
+        let filename_os = path.file_name().ok_or_else(|| DiskError::UTF8 { dir: path.clone() })?;
+        let filename_str = filename_os.to_str().ok_or_else(|| DiskError::UTF8 { dir: path.clone() })?;
+        if is_usb(filename_str) {
+            disks.push(
+                path.to_str().ok_or_else(|| DiskError::UTF8 { dir: path.clone() })?.into(),
+            );
         }
     }
 
@@ -103,32 +103,30 @@ pub fn disks_from_args<D: Iterator<Item = String>>(
         let canonical_path = canonicalize(&disk_arg)
             .map_err(|why| DiskError::NoDisk { disk: disk_arg.clone(), why })?;
 
-        for mount in mounts.iter() {
-            if mount.spec.as_bytes().starts_with(canonical_path.as_os_str().as_bytes()) {
-                if unmount {
-                    eprintln!(
-                        "unmounting '{}': {:?} is mounted at {:?}",
-                        disk_arg, mount.spec, mount.file
-                    );
+        for mount in mounts {
+            if mount.spec.as_bytes().starts_with(canonical_path.as_os_str().as_bytes()) && unmount {
+                eprintln!(
+                    "unmounting '{}': {:?} is mounted at {:?}",
+                    disk_arg, mount.spec, mount.file
+                );
 
-                    Command::new("umount")
-                        .arg(&mount.spec)
-                        .status()
-                        .map_err(|why| DiskError::UnmountCommand { path: mount.spec.clone(), why })
-                        .and_then(|status| {
-                            if !status.success() {
-                                Err(DiskError::UnmountStatus { path: mount.spec.clone(), status })
-                            } else {
-                                Ok(())
-                            }
-                        })?;
-                } else {
-                    return Err(DiskError::AlreadyMounted {
-                        arg: disk_arg.clone(),
-                        source: mount.spec.clone(),
-                        dest: mount.file.clone(),
-                    });
-                }
+                Command::new("umount")
+                    .arg(&mount.spec)
+                    .status()
+                    .map_err(|why| DiskError::UnmountCommand { path: mount.spec.clone(), why })
+                    .and_then(|status| {
+                        if !status.success() {
+                            Err(DiskError::UnmountStatus { path: mount.spec.clone(), status })
+                        } else {
+                            Ok(())
+                        }
+                    })?;
+            } else {
+                return Err(DiskError::AlreadyMounted {
+                    arg: disk_arg.clone(),
+                    source: mount.spec.clone(),
+                    dest: mount.file.clone(),
+                });
             }
         }
 
