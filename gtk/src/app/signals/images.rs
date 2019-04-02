@@ -33,13 +33,14 @@ impl App {
 
         misc::drag_and_drop(&image_view, move |data| {
             if let Some(uri) = data.get_text() {
-                let path = Path::new(&uri[7..uri.len() - 1]);
-                if uri.starts_with("file://")
-                    && path.extension().map_or(false, |ext| ext == "iso" || ext == "img")
-                    && path.exists()
-                {
-                    let _ = state.ui_event_tx.send(UiEvent::SetImageLabel(path.to_path_buf()));
-                    set_hash_widget(&state, &ui);
+                if uri.starts_with("file://") {
+                    let path = Path::new(&uri[7..]);
+                    if path.extension().map_or(false, |ext| ext == "iso" || ext == "img")
+                        && path.exists()
+                    {
+                        let _ = state.ui_event_tx.send(UiEvent::SetImageLabel(path.to_path_buf()));
+                        set_hash_widget(&state, &ui);
+                    }
                 }
             }
         });
