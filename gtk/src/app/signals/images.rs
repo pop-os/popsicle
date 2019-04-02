@@ -34,7 +34,7 @@ impl App {
         misc::drag_and_drop(&image_view, move |data| {
             if let Some(uri) = data.get_text() {
                 if uri.starts_with("file://") {
-                    let path = Path::new(&uri[7..]);
+                    let path = Path::new(&uri[7..uri.len() - 1]);
                     if path.extension().map_or(false, |ext| ext == "iso" || ext == "img")
                         && path.exists()
                     {
