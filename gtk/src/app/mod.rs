@@ -99,15 +99,10 @@ impl GtkUi {
         result: Result<T, E>,
         context: &'static str,
     ) -> Result<T, ()> {
-        match result {
-            Ok(value) => Ok(value),
-            Err(why) => {
-                self.content.error_view.view.description.set_text(&format!("{}: {}", context, why));
-                self.switch_to(state, ActiveView::Error);
-
-                Err(())
-            }
-        }
+        result.map_err(|why| {
+            self.content.error_view.view.description.set_text(&format!("{}: {}", context, why));
+            self.switch_to(state, ActiveView::Error);
+        })
     }
 
     pub fn errorck_option<T>(
@@ -116,19 +111,14 @@ impl GtkUi {
         result: Option<T>,
         context: &'static str,
     ) -> Result<T, ()> {
-        match result {
-            Some(value) => Ok(value),
-            None => {
-                self.content
-                    .error_view
-                    .view
-                    .description
-                    .set_text(&format!("{}: no value found", context));
-                self.switch_to(state, ActiveView::Error);
-
-                Err(())
-            }
-        }
+        result.ok_or_else(|| {
+            self.content
+                .error_view
+                .view
+                .description
+                .set_text(&format!("{}: no value found", context));
+            self.switch_to(state, ActiveView::Error);
+        })
     }
 
     pub fn switch_to(&self, state: &State, view: ActiveView) {
