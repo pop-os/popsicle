@@ -104,29 +104,31 @@ pub fn disks_from_args<D: Iterator<Item = String>>(
             .map_err(|why| DiskError::NoDisk { disk: disk_arg.clone(), why })?;
 
         for mount in mounts {
-            if mount.spec.as_bytes().starts_with(canonical_path.as_os_str().as_bytes()) && unmount {
-                eprintln!(
-                    "unmounting '{}': {:?} is mounted at {:?}",
-                    disk_arg, mount.spec, mount.file
-                );
+            if mount.spec.as_bytes().starts_with(canonical_path.as_os_str().as_bytes()) {
+                if unmount {
+                    eprintln!(
+                        "unmounting '{}': {:?} is mounted at {:?}",
+                        disk_arg, mount.spec, mount.file
+                    );
 
-                Command::new("umount")
-                    .arg(&mount.spec)
-                    .status()
-                    .map_err(|why| DiskError::UnmountCommand { path: mount.spec.clone(), why })
-                    .and_then(|status| {
-                        if !status.success() {
-                            Err(DiskError::UnmountStatus { path: mount.spec.clone(), status })
-                        } else {
-                            Ok(())
-                        }
-                    })?;
-            } else {
-                return Err(DiskError::AlreadyMounted {
-                    arg: disk_arg.clone(),
-                    source: mount.spec.clone(),
-                    dest: mount.file.clone(),
-                });
+                    Command::new("umount")
+                        .arg(&mount.spec)
+                        .status()
+                        .map_err(|why| DiskError::UnmountCommand { path: mount.spec.clone(), why })
+                        .and_then(|status| {
+                            if !status.success() {
+                                Err(DiskError::UnmountStatus { path: mount.spec.clone(), status })
+                            } else {
+                                Ok(())
+                            }
+                        })?;
+                } else {
+                    return Err(DiskError::AlreadyMounted {
+                        arg: disk_arg.clone(),
+                        source: mount.spec.clone(),
+                        dest: mount.file.clone(),
+                    });
+                }
             }
         }
 
