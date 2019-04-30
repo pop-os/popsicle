@@ -135,6 +135,7 @@ impl GtkUi {
                 back_ctx.remove_class("back-button");
                 back_ctx.remove_class(&gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
 
+                next.set_label("Next");
                 next.set_visible(true);
                 next.set_sensitive(true);
                 next_ctx.remove_class(&gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
