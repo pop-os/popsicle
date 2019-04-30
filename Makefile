@@ -6,12 +6,21 @@ libdir = $(exec_prefix)/lib
 includedir = $(prefix)/include
 datarootdir = $(prefix)/share
 datadir = $(datarootdir)
-DEBUG ?= 0
-RELEASE = debug
 
+CLI_SOURCES = $(shell find cli -type f -wholename '*src/*.rs') cli/Cargo.toml
+GTK_SOURCES = $(shell find gtk -type f -wholename '*src/*.rs') gtk/Cargo.toml
+SHR_SOURCES = $(shell find src -type f -wholename '*src/*.rs') Cargo.toml Cargo.lock
+
+RELEASE = debug
+DEBUG ?= 0
 ifeq (0,$(DEBUG))
 	ARGS = --release
 	RELEASE = release
+endif
+
+VENDORED ?= 0
+ifeq (0,$(VENDORED))
+    ARGS += --frozen
 endif
 
 TARGET = target/$(RELEASE)
@@ -36,15 +45,22 @@ ICONS=\
 
 all: cli gtk
 
-cli: $(TARGET)/$(BIN) $(TARGET)/$(BIN).1.gz
+cli: $(TARGET)/$(BIN) $(TARGET)/$(BIN).1.gz $(CLI_SOURCES) $(SHR_SOURCES)
 
-gtk: $(TARGET)/$(GTK_BIN)
+gtk: $(TARGET)/$(GTK_BIN) $(GTK_SOURCES) $(SHR_SOURCES)
 
 clean:
 	cargo clean
 
 distclean: clean
-	rm -rf .cargo vendor
+	rm -rf .cargo vendor vendor.tar.xz
+
+vendor:
+	mkdir -p .cargo
+	cargo vendor | head -n -1 > .cargo/config
+	echo 'directory = "vendor"' >> .cargo/config
+	tar pcfJ vendor.tar.xz vendor
+	rm -rf vendor
 
 install-cli: cli
 	install -D -m 0755 "$(TARGET)/$(BIN)" "$(DESTDIR)$(bindir)/$(BIN)"
@@ -84,30 +100,16 @@ uninstall: uninstall-cli uninstall-gtk
 update:
 	cargo update
 
-.cargo/config: vendor_config
-	mkdir -p .cargo
-	cp $< $@
+extract:
+ifeq ($(VENDORED),1)
+	tar pxf vendor.tar.xz
+endif
 
-vendor: .cargo/config
-	cargo vendor --explicit-version --locked
-	touch vendor
+$(TARGET)/$(BIN): extract
+	cargo build --manifest-path cli/Cargo.toml $(ARGS)
 
-$(TARGET)/$(BIN):
-	echo $(TARGET): $(DEBUG): $(ARGS)
-	if [ -d vendor ]; \
-	then \
-		cargo build --manifest-path cli/Cargo.toml $(ARGS) --frozen; \
-	else \
-		cargo build --manifest-path cli/Cargo.toml $(ARGS); \
-	fi
-
-$(TARGET)/$(GTK_BIN):
-	if [ -d vendor ]; \
-	then \
-		cargo build --manifest-path gtk/Cargo.toml $(ARGS) --frozen; \
-	else \
-		cargo build --manifest-path gtk/Cargo.toml $(ARGS); \
-	fi
+$(TARGET)/$(GTK_BIN): extract
+	cargo build --manifest-path gtk/Cargo.toml $(ARGS)
 
 $(TARGET)/$(BIN).1.gz: $(TARGET)/$(BIN)
 	help2man --no-info $< | gzip -c > $@.partial

@@ -1,20 +1,20 @@
 #!/usr/bin/make -f
 
+export VENDORED = 1
+CLEAN = 1
+
 %:
 	dh $@
 
 override_dh_auto_clean:
+ifeq ($(CLEAN),1)
 	make clean
-	make vendor
-
-override_dh_update_autotools_config:
-	true
-
-override_dh_auto_configure:
-	true
-
-override_dh_auto_build:
-	make
+endif
+ifeq ($(VENDORED),1)
+	if ! ischroot; then \
+		make vendor; \
+	fi
+endif
 
 override_dh_auto_install:
 	dh_auto_install -- prefix=/usr
