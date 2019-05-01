@@ -21,7 +21,7 @@ impl App {
     pub fn connect_hash(&self) {
         let state = self.state.clone();
         let ui = self.ui.clone();
-        self.ui.content.image_view.hash.connect_changed(move |_| {
+        self.ui.content.image_view.check.connect_clicked(move |_| {
             set_hash_widget(&state, &ui);
         });
     }
@@ -58,6 +58,7 @@ fn set_hash_widget(state: &State, ui: &GtkUi) {
     };
 
     ui.content.image_view.chooser_container.set_visible_child_name("checksum");
+    ui.content.image_view.set_hash_sensitive(false);
 
     let _ = state.back_event_tx.send(BackgroundEvent::GenerateHash(PathBuf::from(&*path), kind));
 }

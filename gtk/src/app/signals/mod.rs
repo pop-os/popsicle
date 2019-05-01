@@ -71,6 +71,7 @@ impl App {
                         Ok(hash) => hash,
                         Err(why) => format!("error: {}", why),
                     });
+                    ui.content.image_view.set_hash_sensitive(true);
 
                     ui.content.image_view.chooser_container.set_visible_child_name("chooser");
                 }
@@ -79,8 +80,7 @@ impl App {
                         let image_size = file.metadata().ok().map_or(0, |m| m.len());
 
                         ui.content.image_view.set_image_path(&path);
-                        ui.content.image_view.hash.set_sensitive(true);
-                        ui.content.image_view.hash_label.set_sensitive(true);
+                        ui.content.image_view.set_hash_sensitive(true);
                         ui.header.next.set_sensitive(true);
 
                         state.image_size.store(image_size, Ordering::SeqCst);
