@@ -26,6 +26,7 @@ pub struct Content {
 impl Content {
     pub fn new() -> Content {
         let image_view = ImageView::new();
+        image_view.set_hash_sensitive(false);
         let devices_view = DevicesView::new();
         let flash_view = FlashView::new();
         let summary_view = SummaryView::new();

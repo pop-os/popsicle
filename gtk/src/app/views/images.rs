@@ -1,10 +1,11 @@
 use super::View;
 use gtk::*;
-use pango::EllipsizeMode;
+use pango::{AttrList, Attribute, EllipsizeMode};
 use std::path::Path;
 
 pub struct ImageView {
     pub view: View,
+    pub check: Button,
     pub chooser_container: Stack,
     pub chooser: Button,
     pub image_path: Label,
@@ -52,15 +53,18 @@ impl ImageView {
             ..append_text("SHA256");
             ..append_text("MD5");
             ..set_active(0);
-            ..set_sensitive(false);
         };
 
         let hash_label = Entry::new();
-        hash_label.set_editable(false);
 
         let label = cascade! {
             Label::new("Hash:");
             ..set_margin_end(6);
+        };
+
+        let check = cascade! {
+            Button::new_with_label("Check");
+            ..get_style_context().add_class(&STYLE_CLASS_SUGGESTED_ACTION);
         };
 
         let combo_container = cascade! {
@@ -74,6 +78,7 @@ impl ImageView {
             tmp: Box::new(Orientation::Horizontal, 0);
             ..pack_start(&label, false, false, 0);
             ..pack_start(&combo_container, true, true, 0);
+            ..pack_start(&check, false, false, 0);
             ..set_border_width(6);
         };
 
@@ -97,11 +102,29 @@ impl ImageView {
             },
         );
 
-        ImageView { view, chooser_container, chooser, image_path, hash, hash_label }
+        ImageView { view, check, chooser_container, chooser, image_path, hash, hash_label }
+    }
+
+    pub fn set_hash_sensitive(&self, sensitive: bool) {
+        self.hash.set_sensitive(sensitive);
+        self.check.set_sensitive(sensitive);
+        self.hash_label.set_sensitive(sensitive);
     }
 
     pub fn set_hash(&self, hash: &str) {
-        self.hash_label.set_text(hash);
+        if let Some(text) = self.hash_label.get_text().filter(|text| !text.is_empty()) {
+            if let Some(fg) = if text == hash {
+                Attribute::new_foreground(0, std::u16::MAX, 0)
+            } else {
+                Attribute::new_foreground(std::u16::MAX, 0, 0)
+            } {
+                let attrs = AttrList::new();
+                attrs.insert(fg);
+                self.hash_label.set_attributes(&attrs);
+            }
+        } else {
+            self.hash_label.set_text(hash);
+        }
     }
 
     pub fn set_image_path(&self, path: &Path) {
