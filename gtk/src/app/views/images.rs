@@ -53,9 +53,13 @@ impl ImageView {
             ..append_text("SHA256");
             ..append_text("MD5");
             ..set_active(0);
+            ..set_sensitive(false);
         };
 
-        let hash_label = Entry::new();
+        let hash_label = cascade! {
+            Entry::new();
+            ..set_sensitive(false);
+        };
 
         let label = cascade! {
             Label::new("Hash:");
@@ -65,6 +69,7 @@ impl ImageView {
         let check = cascade! {
             Button::new_with_label("Check");
             ..get_style_context().add_class(&STYLE_CLASS_SUGGESTED_ACTION);
+            ..set_sensitive(false);
         };
 
         let combo_container = cascade! {
