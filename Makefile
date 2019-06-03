@@ -67,7 +67,7 @@ vendor:
 
 install-cli: cli
 	install -Dm 0755 "$(TARGET)/$(BIN)" "$(DESTDIR)$(bindir)/$(BIN)"
-	install -Dm 0755 "$(TARGET)/$(BIN).1.gz" "$(DESTDIR)$(datadir)/man/man1/$(BIN).1.gz"
+	install -Dm 0644 "$(TARGET)/$(BIN).1.gz" "$(DESTDIR)$(datadir)/man/man1/$(BIN).1.gz"
 
 install-gtk: gtk
 	install -Dm 0755 "$(TARGET)/$(GTK_BIN)" "$(DESTDIR)$(bindir)/$(GTK_BIN)"
