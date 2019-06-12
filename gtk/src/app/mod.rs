@@ -82,7 +82,7 @@ impl GtkUi {
         );
 
         // The icon the app will display.
-        gtk::Window::set_default_icon_name("iconname");
+        gtk::Window::set_default_icon_name("com.system76.Popsicle");
 
         // Programs what to do when the exit button is used.
         window.connect_delete_event(move |_, _| {
