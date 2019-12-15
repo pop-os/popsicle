@@ -20,7 +20,9 @@ impl OpenDialog {
                 ..add_pattern("*.iso");
                 ..add_pattern("*.img");
             });
-            | path.map(|p| dialog.set_current_folder(p));
+            | if let Some(p) = path {
+                dialog.set_current_folder(p);
+            };
         })
     }
 

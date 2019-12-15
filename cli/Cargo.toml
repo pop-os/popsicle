@@ -5,16 +5,19 @@ version = "0.1.5"
 authors = ["Jeremy Soller <jeremy@system76.com>"]
 license = "MIT"
 readme = "README.md"
+edition = "2018"
 
 [[bin]]
 name = "popsicle"
 path = "src/main.rs"
 
 [dependencies]
-bus_writer = "0.1"
-clap = "2.27.0"
-failure = "0.1.1"
-failure_derive = "0.1.1"
-libc = "0.2"
+anyhow = "1"
+async-std = "1"
+better-panic = "0.2"
+cascade = "0.1"
+clap = "2"
+fomat-macros = "0.3"
+futures = "0.3"
+pbr = "1"
 popsicle = { path = ".." }
-pbr = "1.0.0"

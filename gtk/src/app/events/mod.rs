@@ -1,6 +1,8 @@
 use crate::block::BlockDevice;
 use crate::flash::FlashRequest;
 use crate::hash::hasher;
+
+use async_std::path::Path as AsyncPath;
 use crossbeam_channel::{Receiver, Sender};
 use md5::Md5;
 use popsicle;
@@ -108,12 +110,12 @@ pub fn unprivileged(events_tx: Sender<UiEvent>, events_rx: Receiver<BackgroundEv
     });
 }
 
-fn fetch_block_devices(devices: &[String]) -> io::Result<Box<[BlockDevice]>> {
+fn fetch_block_devices(devices: &[Box<AsyncPath>]) -> io::Result<Box<[BlockDevice]>> {
     let mut output = Vec::new();
     let start = Instant::now();
 
     for device in devices {
-        if let Ok(ref device) = Path::new(&device).canonicalize() {
+        if let Ok(ref device) = Path::new(device.as_os_str()).canonicalize() {
             let mut block = BlockDevice::new_from(device)?;
 
             // In the case of a device with a sector count of 0, it will be polled again.
