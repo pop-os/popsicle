@@ -4,7 +4,7 @@ use srmw::*;
 use std::{collections::HashMap, io::SeekFrom, time::Instant};
 
 pub trait Progress {
-    fn message(&mut self, message: &str);
+    fn message(&mut self, path: &Path, kind: &str, message: &str);
     fn finish(&mut self);
     fn set(&mut self, value: u64);
 }
@@ -12,10 +12,16 @@ pub trait Progress {
 #[derive(new)]
 pub struct Task<P> {
     image: File,
+
     #[new(default)]
     pub writer: MultiWriter<File>,
+
     #[new(default)]
     pub state: HashMap<usize, (Box<Path>, P)>,
+
+    #[new(value = "125")]
+    pub millis_between: u64,
+
     check: bool,
 }
 
@@ -23,7 +29,6 @@ impl<P: Progress> Task<P> {
     /// Performs the asynchronous USB device flashing.
     pub async fn process(mut self, buf: &mut [u8]) -> anyhow::Result<()> {
         self.copy(buf).await.context("failed to copy ISO")?;
-        self.flush().await.context("failed to flush devices")?;
 
         if self.check {
             self.seek().await.context("failed to seek devices to start")?;
@@ -52,7 +57,7 @@ impl<P: Progress> Task<P> {
                 CopyEvent::Progress(written) => {
                     total += written as u64;
                     let now = Instant::now();
-                    if now.duration_since(last).as_millis() > 125 {
+                    if now.duration_since(last).as_millis() > self.millis_between as u128 {
                         last = now;
                         for (_, pb) in self.state.values_mut() {
                             pb.set(total);
@@ -61,16 +66,12 @@ impl<P: Progress> Task<P> {
                 }
                 CopyEvent::Failure(entity, why) => {
                     let (path, mut pb) = self.state.remove(&entity).expect("missing entity");
-                    pb.message(&format!("E {}: {}", path.display(), why));
+                    pb.message(&path, "E", &format!("{}", why));
                     pb.finish();
                 }
                 CopyEvent::SourceFailure(why) => {
                     for (path, pb) in self.state.values_mut() {
-                        pb.message(&format!(
-                            "E {}: error reading from source: {}",
-                            path.display(),
-                            why
-                        ));
+                        pb.message(&path, "E", &format!("{}", why));
                         pb.finish();
                     }
 
@@ -83,32 +84,16 @@ impl<P: Progress> Task<P> {
         Ok(())
     }
 
-    async fn flush(&mut self) -> anyhow::Result<()> {
-        for (path, pb) in self.state.values_mut() {
-            pb.set(0);
-            pb.message(&format!("F {}", path.display()));
-        }
-
-        let mut stream = self.writer.flush();
-        while let Some((entity, why)) = stream.next().await {
-            let (path, mut pb) = self.state.remove(&entity).expect("missing entity");
-            pb.message(&format!("E {}: errored flushing to device: {}", path.display(), why));
-            pb.finish();
-        }
-
-        Ok(())
-    }
-
     async fn seek(&mut self) -> anyhow::Result<()> {
         for (path, pb) in self.state.values_mut() {
             pb.set(0);
-            pb.message(&format!("S {}", path.display()));
+            pb.message(&path, "S", "");
         }
 
         let mut stream = self.writer.seek(SeekFrom::Start(0));
         while let Some((entity, why)) = stream.next().await {
             let (path, mut pb) = self.state.remove(&entity).expect("missing entity");
-            pb.message(&format!("E {}: errored seeking to start: {}", path.display(), why));
+            pb.message(&path, "E", &format!("errored seeking to start: {}", why));
             pb.finish();
         }
 
@@ -118,7 +103,7 @@ impl<P: Progress> Task<P> {
     async fn validate(&mut self, buf: &mut [u8]) -> anyhow::Result<()> {
         for (path, pb) in self.state.values_mut() {
             pb.set(0);
-            pb.message(&format!("V {}: ", path.display()));
+            pb.message(&path, "V", "");
         }
 
         let copy_bufs = &mut Vec::new();
@@ -135,16 +120,12 @@ impl<P: Progress> Task<P> {
                 }
                 ValidationEvent::Failure(entity, why) => {
                     let (path, mut pb) = self.state.remove(&entity).expect("missing entity");
-                    pb.message(&format!("E {}: {}", path.display(), why));
+                    pb.message(&path, "E", &format!("{}", why));
                     pb.finish();
                 }
                 ValidationEvent::SourceFailure(why) => {
                     for (path, pb) in self.state.values_mut() {
-                        pb.message(&format!(
-                            "E {}: error reading from source: {}",
-                            path.display(),
-                            why
-                        ));
+                        pb.message(&path, "E", &format!("error reading from source: {}", why));
                         pb.finish();
                     }
 
