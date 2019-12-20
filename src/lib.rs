@@ -12,7 +12,7 @@ mod task;
 pub use self::task::{Progress, Task};
 
 use anyhow::Context;
-use as_result::IntoResult;
+use as_result::MapResult;
 use async_std::{
     fs::{self, File, OpenOptions},
     os::unix::fs::OpenOptionsExt,
@@ -130,7 +130,7 @@ pub async fn disks_from_args<D: Iterator<Item = Box<Path>>>(
                     Command::new("umount")
                         .arg(&mount.spec)
                         .status()
-                        .and_then(IntoResult::into_result)
+                        .map_result()
                         .map_err(|why| DiskError::UnmountCommand {
                             path: PathBuf::from(mount.spec.clone()).into_boxed_path(),
                             why,
