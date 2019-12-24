@@ -7,6 +7,8 @@ extern crate thiserror;
 
 pub extern crate mnt;
 
+pub mod codec;
+
 mod task;
 
 pub use self::task::{Progress, Task};
@@ -127,14 +129,12 @@ pub async fn disks_from_args<D: Iterator<Item = Box<Path>>>(
                         mount.file
                     );
 
-                    Command::new("umount")
-                        .arg(&mount.spec)
-                        .status()
-                        .map_result()
-                        .map_err(|why| DiskError::UnmountCommand {
+                    Command::new("umount").arg(&mount.spec).status().map_result().map_err(
+                        |why| DiskError::UnmountCommand {
                             path: PathBuf::from(mount.spec.clone()).into_boxed_path(),
                             why,
-                        })?;
+                        },
+                    )?;
                 } else {
                     return Err(DiskError::AlreadyMounted {
                         arg: disk_arg.clone(),
