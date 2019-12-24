@@ -14,7 +14,7 @@ pub enum Error {
 }
 
 /// Popsicle's IPC protocol
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, PartialEq, Serialize)]
 pub enum Message {
     Device(PathBuf),
     Finished(PathBuf),
