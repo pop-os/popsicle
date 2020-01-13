@@ -24,8 +24,8 @@ fn main() {
     if let Some(iso_argument) = env::args().nth(1) {
         let path = PathBuf::from(iso_argument);
         if path.extension().map_or(false, |ext| {
-            ext.to_str().expect("Could not convert CStr to Str").to_lowercase() == "iso"
-                || ext == "img"
+            let lower_ext = ext.to_str().expect("Could not convert CStr to Str").to_lowercase();
+            lower_ext == "iso" || lower_ext == "img"
         }) && path.exists()
         {
             let _ = app.state.ui_event_tx.send(UiEvent::SetImageLabel(path));
