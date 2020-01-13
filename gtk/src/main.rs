@@ -23,7 +23,11 @@ fn main() {
 
     if let Some(iso_argument) = env::args().nth(1) {
         let path = PathBuf::from(iso_argument);
-        if path.extension().map_or(false, |ext| ext == "iso" || ext == "img") && path.exists() {
+        if path.extension().map_or(false, |ext| {
+            ext.to_str().expect("Could not convert CStr to Str").to_lowercase() == "iso"
+                || ext == "img"
+        }) && path.exists()
+        {
             let _ = app.state.ui_event_tx.send(UiEvent::SetImageLabel(path));
         }
     }

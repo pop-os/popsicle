@@ -18,7 +18,9 @@ impl OpenDialog {
             ..set_filter(&cascade! {
                 FileFilter::new();
                 ..add_pattern("*.iso");
+                ..add_pattern("*.ISO");
                 ..add_pattern("*.img");
+                ..add_pattern("*.IMG");
             });
             | if let Some(p) = path {
                 dialog.set_current_folder(p);
