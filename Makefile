@@ -56,13 +56,15 @@ clean:
 	cargo clean
 
 distclean: clean
-	rm -rf .cargo vendor vendor.tar.xz
+	rm -rf .cargo vendor vendor.tar
 
-vendor:
+vendor: vendor.tar
+
+vendor.tar:
 	mkdir -p .cargo
 	cargo vendor | head -n -1 > .cargo/config
 	echo 'directory = "vendor"' >> .cargo/config
-	tar pcfJ vendor.tar.xz vendor
+	tar pcf vendor.tar vendor
 	rm -rf vendor
 
 install-cli: cli
@@ -106,7 +108,7 @@ update:
 
 extract:
 ifeq ($(VENDORED),1)
-	tar pxf vendor.tar.xz
+	tar pxf vendor.tar
 endif
 
 $(TARGET)/$(BIN): extract
