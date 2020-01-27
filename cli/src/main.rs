@@ -146,7 +146,7 @@ async fn popsicle(
             task.subscribe(disk, disk_path, pb);
         }
 
-        thread::spawn(|| {
+        let handle = thread::spawn(|| {
             executor::block_on(async move {
                 let buf = &mut [0u8; 64 * 1024];
                 let _ = rtx.send(task.process(buf).await);
@@ -154,6 +154,9 @@ async fn popsicle(
         });
 
         mb.listen();
+
+        // Ensure that the background thread has exited before we continue
+        let _ = handle.join();
     } else {
         let (etx, erx) = mpsc::unbounded();
         let mut paths = Vec::new();
