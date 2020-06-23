@@ -5,6 +5,8 @@ use gtk::prelude::*;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
+use bytesize;
+
 type ViewReadySignal = Rc<RefCell<Box<dyn Fn(bool)>>>;
 
 pub struct DevicesView {
@@ -93,7 +95,7 @@ impl DevicesView {
             let valid_size = device.size_in_bytes() >= image_size;
 
             let name = if valid_size {
-                format!("<b>{}</b>", device.label())
+                format!("<b>{}: {}</b>", device.label(), bytesize::to_string(device.size_in_bytes(), true))
             } else {
                 format!("<b>{}: Device too small</b>", device.label())
             };
