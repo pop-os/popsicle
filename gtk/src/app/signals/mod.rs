@@ -79,7 +79,7 @@ impl App {
                     if let Ok(file) = File::open(&path) {
                         let image_size = file.metadata().ok().map_or(0, |m| m.len());
 
-                        ui.content.image_view.set_image_path(&path);
+                        ui.content.image_view.set_image_path_size(&path, image_size);
                         ui.content.image_view.set_hash_sensitive(true);
                         ui.header.next.set_sensitive(true);
 
