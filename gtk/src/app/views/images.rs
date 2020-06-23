@@ -1,4 +1,5 @@
 use super::View;
+use bytesize;
 use gtk::*;
 use pango::{AttrList, Attribute, EllipsizeMode};
 use std::path::Path;
@@ -132,9 +133,11 @@ impl ImageView {
         }
     }
 
-    pub fn set_image_path(&self, path: &Path) {
-        self.image_path.set_label(
-            &path.file_name().expect("file chooser can't select directories").to_string_lossy(),
-        );
+    pub fn set_image_path_size(&self, path: &Path, size: u64) {
+        let label = match path.file_name() {
+            Some(name) => format!("{} ({})", name.to_string_lossy(), bytesize::to_string(size, true)),
+            None => "file chooser can't select directories".to_string()
+        };
+        self.image_path.set_label(&label);
     }
 }
