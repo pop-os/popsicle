@@ -50,7 +50,7 @@ impl ImageView {
 
         let hash = cascade! {
             ComboBoxText::new();
-            ..append_text("Type");
+            ..append_text("None");
             ..append_text("SHA256");
             ..append_text("MD5");
             ..set_active(0);
@@ -72,6 +72,17 @@ impl ImageView {
             ..get_style_context().add_class(&STYLE_CLASS_SUGGESTED_ACTION);
             ..set_sensitive(false);
         };
+
+        let hash_label_clone = hash_label.clone();
+        let check_clone = check.clone();
+        hash.connect_changed(move |combo_box| {
+            let sensitive = match combo_box.get_active_text() {
+                Some(text) if text.as_str() != "None" => true,
+                _ => false
+            };
+            hash_label_clone.set_sensitive(sensitive);
+            check_clone.set_sensitive(sensitive);
+        });
 
         let combo_container = cascade! {
             Box::new(Orientation::Horizontal, 0);
@@ -113,8 +124,6 @@ impl ImageView {
 
     pub fn set_hash_sensitive(&self, sensitive: bool) {
         self.hash.set_sensitive(sensitive);
-        self.check.set_sensitive(sensitive);
-        self.hash_label.set_sensitive(sensitive);
     }
 
     pub fn set_hash(&self, hash: &str) {
