@@ -225,11 +225,7 @@ impl App {
 
                                     let sum: u64 = prev_values.iter().skip(1).sum();
                                     let per_second = sum / 3;
-                                    label.set_label(&if per_second > (1024 * 1024) {
-                                        format!("{} MiB/s", per_second / (1024 * 1024))
-                                    } else {
-                                        format!("{} KiB/s", per_second / 1024)
-                                    });
+                                    label.set_label(&format!("{}/s", bytesize::to_string(per_second, true)));
                                 }
                             }
 
