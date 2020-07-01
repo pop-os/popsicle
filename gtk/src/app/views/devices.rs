@@ -94,10 +94,11 @@ impl DevicesView {
         for device in devices {
             let valid_size = device.size_in_bytes() >= image_size;
 
+            let size_str = bytesize::to_string(device.size_in_bytes(), true);
             let name = if valid_size {
-                format!("<b>{}: {}</b>", device.label(), bytesize::to_string(device.size_in_bytes(), true))
+                format!("<b>{}</b>\n{}", device.label(), size_str)
             } else {
-                format!("<b>{}: Device too small</b>", device.label())
+                format!("<b>{}</b>\n{}: <b>Device too small</b>", device.label(), size_str)
             };
 
             let view_ready = self.view_ready.clone();
