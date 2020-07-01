@@ -58,6 +58,10 @@ impl BlockDevice {
     }
 
     pub fn label(&self) -> String {
-        format!("{} {} ({})", self.vendor, self.model, self.path.display())
+        if self.vendor.is_empty() {
+            format!("{} ({})", self.model, self.path.display())
+        } else {
+            format!("{} {} ({})", self.vendor, self.model, self.path.display())
+        }
     }
 }
