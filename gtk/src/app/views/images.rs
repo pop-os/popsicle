@@ -23,9 +23,10 @@ impl ImageView {
         };
 
         let image_path = cascade! {
-            Label::new("No image selected");
+            Label::new("<b>No image selected</b>");
+            ..set_use_markup(true);
+            ..set_justify(Justification::Center);
             ..set_ellipsize(EllipsizeMode::End);
-            ..get_style_context().add_class("bold");
         };
 
         let button_box = cascade! {
@@ -143,10 +144,11 @@ impl ImageView {
     }
 
     pub fn set_image_path_size(&self, path: &Path, size: u64) {
+        let size_str = bytesize::to_string(size, true);
         let label = match path.file_name() {
-            Some(name) => format!("{} ({})", name.to_string_lossy(), bytesize::to_string(size, true)),
-            None => "file chooser can't select directories".to_string()
+            Some(name) => format!("<b>{}</b>\n{}", name.to_string_lossy(), size_str),
+            None => "<b>File chooser can't select directories</b>".to_string()
         };
-        self.image_path.set_label(&label);
+        self.image_path.set_markup(&label);
     }
 }
