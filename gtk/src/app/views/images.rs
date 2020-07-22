@@ -129,7 +129,7 @@ impl ImageView {
 
     pub fn set_hash(&self, hash: &str) {
         if let Some(text) = self.hash_label.get_text().filter(|text| !text.is_empty()) {
-            if let Some(fg) = if text == hash {
+            if let Some(fg) = if text.eq_ignore_ascii_case(hash) {
                 Attribute::new_foreground(0, std::u16::MAX, 0)
             } else {
                 Attribute::new_foreground(std::u16::MAX, 0, 0)
