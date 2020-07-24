@@ -48,7 +48,6 @@
 		</mimetypes>
 		<binaries>
 			<binary>popsicle-gtk</binary>
-			<binary>popsicle-pkexec</binary>
 			<binary>popsicle</binary>
 		</binaries>
 	</provides>

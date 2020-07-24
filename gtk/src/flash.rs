@@ -1,14 +1,22 @@
 use atomic::Atomic;
-use bus_writer::{BusWriter, BusWriterMessage};
+use dbus::arg::{OwnedFd, RefArg, Variant};
+use dbus::blocking::{Connection, Proxy};
+use futures::executor;
 use libc;
+use popsicle::{Progress, Task};
 use proc_mounts::MountList;
-use std::fs::{self, File};
-use std::io;
-use std::os::unix::fs::OpenOptionsExt;
-use std::path::PathBuf;
+use std::cell::Cell;
+use std::collections::HashMap;
+use std::fmt::{self, Debug, Display, Formatter};
+use std::fs::File;
+use std::os::unix::io::FromRawFd;
+use std::os::unix::ffi::OsStrExt;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
-use sys_mount::{unmount, UnmountFlags};
+use std::time::Duration;
+
+type UDisksOptions = HashMap<&'static str, Variant<Box<dyn RefArg>>>;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum FlashStatus {
@@ -18,7 +26,7 @@ pub enum FlashStatus {
 }
 
 pub struct FlashRequest {
-    source: File,
+    source: Option<File>,
     destinations: Vec<PathBuf>,
     status: Arc<Atomic<FlashStatus>>,
     progress: Arc<Vec<Atomic<u64>>>,
@@ -31,6 +39,43 @@ pub struct FlashTask {
     pub finished: Arc<Vec<Atomic<bool>>>,
 }
 
+struct FlashProgress<'a> {
+    request: &'a FlashRequest,
+    id: usize,
+    errors: &'a [Cell<Result<(), FlashError>>],
+}
+
+#[derive(Clone, Debug)]
+pub struct FlashError {
+    kind: String, 
+    message: String,
+}
+
+impl Display for FlashError {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}: {}", self.kind, self.message)
+    }
+}
+
+impl std::error::Error for FlashError {}
+
+impl<'a> Progress for FlashProgress<'a> {
+    fn message(&mut self, _path: &async_std::path::Path, kind: &str, message: &str) {
+        self.errors[self.id].set(Err(FlashError {
+            kind: kind.to_string(),
+            message: message.to_string(),
+        }));
+    }
+
+    fn finish(&mut self) {
+        self.request.finished[self.id].store(true, Ordering::SeqCst);
+    }
+
+    fn set(&mut self, value: u64) {
+        self.request.progress[self.id].store(value, Ordering::SeqCst);
+    }
+}
+
 impl FlashRequest {
     pub fn new(
         source: File,
@@ -39,81 +84,112 @@ impl FlashRequest {
         progress: Arc<Vec<Atomic<u64>>>,
         finished: Arc<Vec<Atomic<bool>>>,
     ) -> FlashRequest {
-        FlashRequest { source, destinations, status, progress, finished }
+        FlashRequest { source: Some(source), destinations, status, progress, finished }
     }
 
-    pub fn write(self) -> io::Result<Vec<io::Result<()>>> {
-        let finished = self.finished.clone();
-        let res = self.write_inner();
-        if res.is_err() {
-            for i in 0..finished.len() {
-                finished[i].store(true, Ordering::SeqCst);
-            }
+    pub fn write(mut self) -> anyhow::Result<(anyhow::Result<()>, Vec<Result<(), FlashError>>)> {
+        self.status.store(FlashStatus::Active, Ordering::SeqCst);
+
+        let source = self.source.take().unwrap();
+        let res = self.write_inner(source);
+
+        for atomic in self.finished.iter() {
+            atomic.store(true, Ordering::SeqCst);
         }
+
+        self.status.store(FlashStatus::Inactive, Ordering::SeqCst);
+
         res
     }
 
-    fn write_inner(self) -> io::Result<Vec<io::Result<()>>> {
-        let status = &self.status;
-        let progress = &self.progress;
-        let finished = &self.finished;
-        let destinations = self.destinations;
-        let mut source = self.source;
-
-        status.store(FlashStatus::Active, Ordering::SeqCst);
-
+    fn write_inner<'a>(&'a self, source: File) -> anyhow::Result<(anyhow::Result<()>, Vec<Result<(), FlashError>>)> {
         // Unmount the devices beforehand.
         if let Ok(mounts) = MountList::new() {
-            for file in &destinations {
+            for file in &self.destinations {
                 for mount in mounts.source_starts_with(file) {
-                    let _ = unmount(&mount.dest, UnmountFlags::DETACH);
+                    let _ = udisks_unmount(&mount.source);
                 }
             }
         }
 
         // Then open them for writing to.
         let mut files = Vec::new();
-        for file in &destinations {
-            let file = fs::OpenOptions::new()
-                .read(true)
-                .write(true)
-                .custom_flags(libc::O_SYNC)
-                .open(file)?;
+        for file in &self.destinations {
+            let file = udisks_open(file)?;
             files.push(file);
         }
 
-        let mut errors = (0..files.len()).map(|_| Ok(())).collect::<Vec<_>>();
+        let mut errors = vec![Ok(()); files.len()];
+        let errors_cells = Cell::from_mut(&mut errors as &mut [_]).as_slice_of_cells();
 
         // How many bytes to write at a given time.
-        let mut bucket = [0u8; 8 * 1024 * 1024];
+        let mut bucket = [0u8; 64 * 1024];
 
-        let result = BusWriter::new(
-            &mut source,
-            &mut files,
-            |event| match event {
-                BusWriterMessage::Written { id, bytes_written } => {
-                    progress[id].store(bytes_written, Ordering::SeqCst);
-                }
-                BusWriterMessage::Completed { id } => {
-                    finished[id].store(true, Ordering::SeqCst);
-                }
-                BusWriterMessage::Errored { id, why } => {
-                    errors[id] = Err(why);
-                }
-            },
-            // Write will exit early when this is true
-            || FlashStatus::Killing == status.load(Ordering::SeqCst),
-        )
-        .with_bucket(&mut bucket[..])
-        .write()
-        .map(|_| errors);
-
-        for atomic in finished.iter() {
-            atomic.store(true, Ordering::SeqCst);
+        let mut task = Task::new(source.into(), false);
+        for (i, file) in files.into_iter().enumerate() {
+            let progress = FlashProgress {request: &self, errors: errors_cells, id: i};
+            let destination = async_std::path::PathBuf::from(self.destinations[i].clone()).into_boxed_path();
+            task.subscribe(file.into(), destination, progress);
         }
 
-        status.store(FlashStatus::Inactive, Ordering::SeqCst);
+        let res = executor::block_on(task.process(&mut bucket));
 
-        result
+        Ok((res, errors))
     }
+}
+
+fn udisks_unmount(block_device: &Path) -> anyhow::Result<()> {
+    let connection = Connection::new_system()?;
+
+    let mut dbus_path = b"/org/freedesktop/UDisks2/block_devices/".to_vec();
+    dbus_path.extend_from_slice(block_device.strip_prefix("/dev")?.as_os_str().as_bytes());
+    let dbus_path = ::dbus::strings::Path::new(dbus_path).map_err(anyhow::Error::msg)?;
+
+    let proxy = Proxy::new(
+        "org.freedesktop.UDisks2",
+        dbus_path,
+        Duration::new(25, 0),
+        &connection,
+    );
+
+    let mut options = UDisksOptions::new();
+    options.insert("force", Variant(Box::new(true)));
+    let res: Result<(), _> = proxy.method_call(
+        "org.freedesktop.UDisks2.Filesystem",
+        "Unmount",
+        (options,),
+    );
+
+    if let Err(err) = res {
+        if err.name() != Some("org.freedesktop.UDisks2.Error.NotMounted") {
+            return Err(anyhow::Error::new(err));
+        }
+    }
+
+    Ok(())
+}
+
+fn udisks_open(block_device: &Path) -> anyhow::Result<File> {
+    let connection = Connection::new_system()?;
+
+    let mut dbus_path = b"/org/freedesktop/UDisks2/block_devices/".to_vec();
+    dbus_path.extend_from_slice(block_device.strip_prefix("/dev")?.as_os_str().as_bytes());
+    let dbus_path = ::dbus::strings::Path::new(dbus_path).map_err(anyhow::Error::msg)?;
+
+    let proxy = Proxy::new(
+        "org.freedesktop.UDisks2",
+        &dbus_path,
+        Duration::new(25, 0),
+        &connection,
+    );
+
+    let mut options = UDisksOptions::new();
+    options.insert("flags", Variant(Box::new(libc::O_SYNC)));
+    let res: (OwnedFd,) = proxy.method_call(
+        "org.freedesktop.UDisks2.Block",
+        "OpenDevice",
+        ("rw", options),
+    )?;
+
+    Ok(unsafe { File::from_raw_fd(res.0.into_fd()) })
 }
