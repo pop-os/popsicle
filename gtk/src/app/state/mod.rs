@@ -1,4 +1,4 @@
-use crate::app::events::{self, BackgroundEvent, PrivilegedEvent, UiEvent};
+use crate::app::events::{self, BackgroundEvent, UiEvent};
 use crate::block::BlockDevice;
 use atomic::Atomic;
 use crossbeam_channel::{unbounded, Receiver, Sender};
@@ -22,7 +22,6 @@ pub struct State {
     pub ui_event_tx: Sender<UiEvent>,
     pub ui_event_rx: Receiver<UiEvent>,
     pub back_event_tx: Sender<BackgroundEvent>,
-    pub priv_event_tx: Sender<PrivilegedEvent>,
 
     pub active_view: Cell<ActiveView>,
 
@@ -37,10 +36,7 @@ pub struct State {
 impl State {
     pub fn new() -> Self {
         let (back_event_tx, back_event_rx) = unbounded();
-        let (priv_event_tx, priv_event_rx) = unbounded();
         let (ui_event_tx, ui_event_rx) = unbounded();
-
-        events::privileged(ui_event_tx.clone(), priv_event_rx);
 
         // If running in pkexec or sudo, restore home directory for open dialog,
         // and then downgrade permissions back to a regular user.
@@ -53,13 +49,12 @@ impl State {
             }
         }
 
-        events::unprivileged(ui_event_tx.clone(), back_event_rx);
+        events::background_thread(ui_event_tx.clone(), back_event_rx);
 
         Self {
             ui_event_rx,
             ui_event_tx,
             back_event_tx,
-            priv_event_tx,
             active_view: Cell::new(ActiveView::Images),
             image: RefCell::new(None),
             image_path: RefCell::new(PathBuf::new()),
@@ -73,9 +68,7 @@ impl State {
 /// Downgrades the permissions of the current thread to the specified user and group ID.
 fn downgrade_permissions(uid: u32, gid: u32) {
     unsafe {
-        // By using system calls directly, we apply this on a per-thread basis.
-        // The setresuid() and setresguid() functions apply to all threads.
-        libc::syscall(libc::SYS_setresgid, gid, gid, gid);
-        libc::syscall(libc::SYS_setresuid, uid, uid, uid);
+        libc::setresgid(gid, gid, gid);
+        libc::setresuid(uid, uid, uid);
     }
 }

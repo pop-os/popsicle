@@ -1,5 +1,5 @@
 use crate::block::BlockDevice;
-use crate::flash::FlashRequest;
+use crate::flash::{FlashError, FlashRequest};
 use crate::hash::hasher;
 
 use async_std::path::Path as AsyncPath;
@@ -18,36 +18,17 @@ pub enum UiEvent {
     SetImageLabel(PathBuf),
     RefreshDevices(Box<[BlockDevice]>),
     SetHash(io::Result<String>),
-    Flash(JoinHandle<io::Result<Vec<io::Result<()>>>>),
+    Flash(JoinHandle<anyhow::Result<(anyhow::Result<()>, Vec<Result<(), FlashError>>)>>),
     Reset,
 }
 
 pub enum BackgroundEvent {
     GenerateHash(PathBuf, &'static str),
+    Flash(FlashRequest),
     RefreshDevices,
 }
 
-pub enum PrivilegedEvent {
-    Flash(FlashRequest),
-}
-
-/// Actions which require root authentication will be spawned as background threads from here.
-///
-/// This function should be called before `downgrade_permissions()`.
-pub fn privileged(events_tx: Sender<UiEvent>, events_rx: Receiver<PrivilegedEvent>) {
-    thread::spawn(move || {
-        while let Ok(PrivilegedEvent::Flash(request)) = events_rx.recv() {
-            let _ = events_tx.send(UiEvent::Flash(
-                thread::Builder::new()
-                    .stack_size(10 * 1024 * 1024)
-                    .spawn(move || request.write())
-                    .unwrap(),
-            ));
-        }
-    });
-}
-
-pub fn unprivileged(events_tx: Sender<UiEvent>, events_rx: Receiver<BackgroundEvent>) {
+pub fn background_thread(events_tx: Sender<UiEvent>, events_rx: Receiver<BackgroundEvent>) {
     thread::spawn(move || {
         let mut hashed: HashMap<(PathBuf, &'static str), String> = HashMap::new();
 
@@ -103,6 +84,14 @@ pub fn unprivileged(events_tx: Sender<UiEvent>, events_rx: Receiver<BackgroundEv
                         }
                         Err(why) => eprintln!("failed to refresh devices: {}", why),
                     }
+                }
+                Ok(BackgroundEvent::Flash(request)) => {
+                    let _ = events_tx.send(UiEvent::Flash(
+                        thread::Builder::new()
+                            .stack_size(10 * 1024 * 1024)
+                            .spawn(|| request.write())
+                            .unwrap(),
+                    ));
                 }
                 Err(_) => break,
             }

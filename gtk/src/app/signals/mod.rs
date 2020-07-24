@@ -1,13 +1,14 @@
 mod devices;
 mod images;
 
-use crate::app::events::{BackgroundEvent, PrivilegedEvent, UiEvent};
+use crate::app::events::{BackgroundEvent, UiEvent};
 use crate::app::state::ActiveView;
 use crate::app::App;
 use crate::flash::{FlashRequest, FlashStatus, FlashTask};
 use atomic::Atomic;
 use crossbeam_channel::TryRecvError;
 use gtk::{self, prelude::*};
+use std::fmt::Write;
 use std::fs::File;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
@@ -167,7 +168,7 @@ impl App {
                         );
 
                         let _ =
-                            state.priv_event_tx.send(PrivilegedEvent::Flash(FlashRequest::new(
+                            state.back_event_tx.send(BackgroundEvent::Flash(FlashRequest::new(
                                 image,
                                 destinations,
                                 flash_status.clone(),
@@ -254,12 +255,12 @@ impl App {
                                     Err(()) => return Continue(true),
                                 };
 
-                                let results = match ui.errorck(
+                                let (result, results) = match ui.errorck(
                                     &state,
                                     handle,
                                     "Errored starting flashing process",
                                 ) {
-                                    Ok(results) => results,
+                                    Ok(result) => result,
                                     Err(()) => return Continue(true),
                                 };
 
@@ -279,32 +280,38 @@ impl App {
                                 let list = &ui.content.summary_view.list;
                                 let description = &ui.content.summary_view.view.description;
 
-                                if errors.is_empty() {
+                                if result.is_ok() && errors.is_empty() {
                                     let desc = format!("{} devices successfully flashed", ntasks);
                                     description.set_text(&desc);
                                     list.hide();
                                 } else {
-                                    let desc = format!(
+                                    let mut desc = format!(
                                         "{} of {} devices successfully flashed",
                                         ntasks - errors.len(),
                                         ntasks
                                     );
 
-                                    description.set_text(&desc);
-                                    list.show();
+                                    if let Err(why) = result {
+                                        let _ = write!(desc, ": <b>{}</b>", why);
+                                    }
+
+                                    description.set_markup(&desc);
 
                                     for (device, why) in errors {
                                         let device = gtk::Label::new(Some(device.label().as_str()));
                                         let why = gtk::Label::new(Some(format!("{}", why).as_str()));
+                                        why.get_style_context().add_class("bold");
 
                                         let container = cascade! {
-                                            gtk::Box::new(gtk::Orientation::Horizontal, 0);
+                                            gtk::Box::new(gtk::Orientation::Horizontal, 6);
                                             ..pack_start(&device, false, false, 0);
                                             ..pack_start(&why, true, true, 0);
                                         };
 
                                         list.insert(&container, -1);
                                     }
+
+                                    list.show_all();
                                 }
                             }
                         }

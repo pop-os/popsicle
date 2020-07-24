@@ -1,6 +1,4 @@
 usr/bin/popsicle-gtk
-usr/bin/popsicle-pkexec
 usr/share/applications/com.system76.Popsicle.desktop
 usr/share/metainfo/com.system76.Popsicle.appdata.xml
-usr/share/polkit-1/actions/com.system76.pkexec.popsicle.policy
 usr/share/icons/hicolor/
