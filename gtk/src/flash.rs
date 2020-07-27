@@ -43,6 +43,17 @@ impl FlashRequest {
     }
 
     pub fn write(self) -> io::Result<Vec<io::Result<()>>> {
+        let finished = self.finished.clone();
+        let res = self.write_inner();
+        if res.is_err() {
+            for i in 0..finished.len() {
+                finished[i].store(true, Ordering::SeqCst);
+            }
+        }
+        res
+    }
+
+    fn write_inner(self) -> io::Result<Vec<io::Result<()>>> {
         let status = &self.status;
         let progress = &self.progress;
         let finished = &self.finished;
