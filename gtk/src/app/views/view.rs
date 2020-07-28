@@ -16,18 +16,18 @@ impl View {
         description: &str,
         configure_panel: F,
     ) -> View {
-        let icon = Image::new_from_icon_name(icon, gtk::IconSize::Dialog);
+        let icon = Image::from_icon_name(Some(icon), gtk::IconSize::Dialog);
         icon.set_valign(Align::Start);
 
         let topic = cascade! {
-            Label::new(topic);
+            Label::new(Some(topic));
             ..set_halign(Align::Start);
             ..get_style_context().add_class("h2");
             ..set_margin_bottom(6);
         };
 
         let description = cascade! {
-            Label::new(description);
+            Label::new(Some(description));
             ..set_line_wrap(true);
             ..set_xalign(0.0);
             ..get_style_context().add_class("desc");

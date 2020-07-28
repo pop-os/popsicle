@@ -1,6 +1,7 @@
 use super::View;
 use bytesize;
 use gtk::*;
+use gtk::prelude::*;
 use pango::{AttrList, Attribute, EllipsizeMode};
 use std::path::Path;
 
@@ -17,13 +18,13 @@ pub struct ImageView {
 impl ImageView {
     pub fn new() -> ImageView {
         let chooser = cascade! {
-            Button::new_with_label("Choose Image");
+            Button::with_label("Choose Image");
             ..set_halign(Align::Center);
             ..set_margin_bottom(6);
         };
 
         let image_path = cascade! {
-            Label::new("<b>No image selected</b>");
+            Label::new(Some("<b>No image selected</b>"));
             ..set_use_markup(true);
             ..set_justify(Justification::Center);
             ..set_ellipsize(EllipsizeMode::End);
@@ -39,7 +40,7 @@ impl ImageView {
         spinner.start();
 
         let spinner_label = cascade! {
-            Label::new("Generating Checksum");
+            Label::new(Some("Generating Checksum"));
             ..get_style_context().add_class("bold");
         };
 
@@ -54,7 +55,7 @@ impl ImageView {
             ..append_text("None");
             ..append_text("SHA256");
             ..append_text("MD5");
-            ..set_active(0);
+            ..set_active(Some(0));
             ..set_sensitive(false);
         };
 
@@ -64,12 +65,12 @@ impl ImageView {
         };
 
         let label = cascade! {
-            Label::new("Hash:");
+            Label::new(Some("Hash:"));
             ..set_margin_end(6);
         };
 
         let check = cascade! {
-            Button::new_with_label("Check");
+            Button::with_label("Check");
             ..get_style_context().add_class(&STYLE_CLASS_SUGGESTED_ACTION);
             ..set_sensitive(false);
         };
@@ -128,7 +129,8 @@ impl ImageView {
     }
 
     pub fn set_hash(&self, hash: &str) {
-        if let Some(text) = self.hash_label.get_text().filter(|text| !text.is_empty()) {
+        let text = self.hash_label.get_text();
+        if !text.is_empty() {
             if let Some(fg) = if text.eq_ignore_ascii_case(hash) {
                 Attribute::new_foreground(0, std::u16::MAX, 0)
             } else {
