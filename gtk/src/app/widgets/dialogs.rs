@@ -37,6 +37,6 @@ impl OpenDialog {
 
 impl Drop for OpenDialog {
     fn drop(&mut self) {
-        self.0.destroy();
+        self.0.close();
     }
 }

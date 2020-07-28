@@ -63,7 +63,7 @@ impl GtkUi {
         let window = cascade! {
             gtk::Window::new(gtk::WindowType::Toplevel);
             // Set the headerbar as the title bar widget.
-            ..set_titlebar(&header.container);
+            ..set_titlebar(Some(&header.container));
             // Set the title of the window.
             ..set_title("Popsicle");
             // The default size of the window to create.

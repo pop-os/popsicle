@@ -64,7 +64,7 @@ impl App {
 
         gtk::timeout_add(16, move || {
             match state.ui_event_rx.try_recv() {
-                Err(TryRecvError::Disconnected) => return gtk::Continue(false),
+                Err(TryRecvError::Disconnected) => return Continue(false),
                 Err(TryRecvError::Empty) => (),
                 Ok(UiEvent::SetHash(hash)) => {
                     ui.content.image_view.set_hash(&match hash {
@@ -121,7 +121,7 @@ impl App {
                     // When the flashing view is active, and an image has not started flashing.
                     Some(image) => {
                         let summary_grid = &ui.content.flash_view.progress_list;
-                        summary_grid.foreach(WidgetExt::destroy);
+                        summary_grid.foreach(|w| summary_grid.remove(w));
                         let mut destinations = Vec::new();
 
                         let selected_devices = state.selected_devices.borrow_mut();
@@ -134,7 +134,7 @@ impl App {
                             };
 
                             let label = cascade! {
-                                gtk::Label::new(device.label().as_str());
+                                gtk::Label::new(Some(device.label().as_str()));
                                 ..set_justify(gtk::Justification::Right);
                                 ..get_style_context().add_class("bold");
                             };
@@ -242,7 +242,7 @@ impl App {
                                     Ok(results) => {
                                         results.join().map_err(|why| format!("{:?}", why))
                                     }
-                                    Err(()) => return gtk::Continue(true),
+                                    Err(()) => return Continue(true),
                                 };
 
                                 let handle = match ui.errorck(
@@ -251,7 +251,7 @@ impl App {
                                     "Failed to join flash thread",
                                 ) {
                                     Ok(results) => results,
-                                    Err(()) => return gtk::Continue(true),
+                                    Err(()) => return Continue(true),
                                 };
 
                                 let results = match ui.errorck(
@@ -260,7 +260,7 @@ impl App {
                                     "Errored starting flashing process",
                                 ) {
                                     Ok(results) => results,
-                                    Err(()) => return gtk::Continue(true),
+                                    Err(()) => return Continue(true),
                                 };
 
                                 let mut errors = Vec::new();
@@ -294,8 +294,8 @@ impl App {
                                     list.show();
 
                                     for (device, why) in errors {
-                                        let device = gtk::Label::new(device.label().as_str());
-                                        let why = gtk::Label::new(format!("{}", why).as_str());
+                                        let device = gtk::Label::new(Some(device.label().as_str()));
+                                        let why = gtk::Label::new(Some(format!("{}", why).as_str()));
 
                                         let container = cascade! {
                                             gtk::Box::new(gtk::Orientation::Horizontal, 0);
@@ -313,7 +313,7 @@ impl App {
                 _ => (),
             }
 
-            gtk::Continue(true)
+            Continue(true)
         });
     }
 }

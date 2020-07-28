@@ -27,7 +27,7 @@ impl DevicesView {
 
         let list_ = list.clone();
         let select_all = cascade! {
-            gtk::CheckButton::new_with_label("Select all");
+            gtk::CheckButton::with_label("Select all");
             ..set_margin_start(4);
             ..set_margin_bottom(3);
             ..connect_toggled(move |all| {
@@ -87,7 +87,7 @@ impl DevicesView {
     }
 
     pub fn refresh(&self, devices: &[BlockDevice], image_size: u64) {
-        self.list.foreach(WidgetExt::destroy);
+        self.list.foreach(|w| self.list.remove(w));
 
         let nselected = Rc::new(Cell::new(0));
 
@@ -108,7 +108,7 @@ impl DevicesView {
                 gtk::CheckButton::new();
                 ..set_sensitive(valid_size);
                 ..add(&cascade! {
-                    gtk::Label::new(name.as_str());
+                    gtk::Label::new(Some(name.as_str()));
                     ..set_use_markup(true);
                 });
                 ..connect_toggled(move |button| {

@@ -9,12 +9,12 @@ pub struct Header {
 impl Header {
     pub fn new() -> Header {
         let back = cascade! {
-            Button::new_with_label("Cancel");
+            Button::with_label("Cancel");
             ..get_style_context().add_class("back");
         };
 
         let next = cascade! {
-            Button::new_with_label("Next");
+            Button::with_label("Next");
             ..set_sensitive(false);
             ..get_style_context().add_class(&STYLE_CLASS_SUGGESTED_ACTION);
         };
@@ -23,7 +23,7 @@ impl Header {
         Header {
             container: cascade! {
                 HeaderBar::new();
-                ..set_title("USB Flasher");
+                ..set_title(Some("USB Flasher"));
                 ..pack_start(&back);
                 ..pack_end(&next);
             },
