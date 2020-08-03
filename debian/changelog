@@ -1,3 +1,9 @@
+popsicle (1.1.0) focal; urgency=medium
+
+  * 1.1.0 release
+
+ -- Ian Douglas Scott <idscott@system76.com>  Mon, 03 Aug 2020 10:48:06 -0700
+
 popsicle (0.1.5) bionic; urgency=medium
 
   * 0.1.5 release
