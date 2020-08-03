@@ -52,4 +52,5 @@
 		</binaries>
 	</provides>
 	<project_group>Pop!_OS</project_group>
+	<content_rating type="oars-1.0" />
 </component>
