@@ -24,6 +24,7 @@ gdk = "0.13"
 glib = "0.10"
 gtk = { version = "0.9", features = ["v3_22"] }
 hex-view = "0.1"
+iso9660 = { git = "https://github.com/ids1024/iso9660-rs" }
 libc = "0.2"
 md-5 = "0.8"
 pango = "0.9"
