@@ -145,12 +145,17 @@ impl ImageView {
         }
     }
 
-    pub fn set_image_path_size(&self, path: &Path, size: u64) {
+    pub fn set_image(&self, path: &Path, size: u64, warning: Option<&str>) {
         let size_str = bytesize::to_string(size, true);
-        let label = match path.file_name() {
+        let mut label = match path.file_name() {
             Some(name) => format!("<b>{}</b>\n{}", name.to_string_lossy(), size_str),
             None => "<b>File chooser can't select directories</b>".to_string()
         };
+
+        if let Some(warning) = warning {
+            label += &format!("\n<span foreground='red'><b>Warning</b>: {}</span>", warning);
+        };
+
         self.image_path.set_markup(&label);
     }
 }

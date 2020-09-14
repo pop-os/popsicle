@@ -10,6 +10,7 @@ use crossbeam_channel::TryRecvError;
 use gtk::{self, prelude::*};
 use std::fmt::Write;
 use std::fs::File;
+use iso9660::ISO9660;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
@@ -80,7 +81,13 @@ impl App {
                     if let Ok(file) = File::open(&path) {
                         let image_size = file.metadata().ok().map_or(0, |m| m.len());
 
-                        ui.content.image_view.set_image_path_size(&path, image_size);
+                        let warning = if is_windows_iso(&file) {
+                            Some("Windows ISOs are not currently supported")
+                        } else {
+                            None
+                        };
+
+                        ui.content.image_view.set_image(&path, image_size, warning);
                         ui.content.image_view.set_hash_sensitive(true);
                         ui.header.next.set_sensitive(true);
 
@@ -323,4 +330,11 @@ impl App {
             Continue(true)
         });
     }
+}
+
+fn is_windows_iso(file: &File) -> bool {
+    if let Ok(fs) = ISO9660::new(file) {
+        return fs.publisher_identifier() == "MICROSOFT CORPORATION";
+    }
+    false
 }
