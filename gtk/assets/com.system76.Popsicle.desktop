@@ -9,4 +9,4 @@ Keywords="USB;Flash;Drive;Popsicle;"
 MimeType=application/x-cd-image;application/x-raw-disk-image;
 Terminal=false
 StartupNotify=true
-Exec=/usr/local/bin/popsicle-gtk %U
+Exec=/usr/local/bin/popsicle-gtk %f
