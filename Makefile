@@ -77,9 +77,6 @@ install-gtk: gtk
 		install -D -m 0644 "gtk/assets/icons/$$icon" "$(DESTDIR)$(datadir)/icons/hicolor/$$icon"; \
 	done
 
-	# Fix paths in assets
-	sed -i -e 's#$(default_prefix)#$(prefix)#g' $(DESTDIR)$(datadir)/applications/$(DESKTOP)
-
 install: all install-cli install-gtk
 
 uninstall-cli:
