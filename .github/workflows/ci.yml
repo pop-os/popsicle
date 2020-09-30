@@ -1,0 +1,17 @@
+on: [push, pull_request]
+
+name: ci
+
+jobs:
+  appimage:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - run: docker run --rm -v "$PWD:/popsicle" -w "/popsicle" rust:1.40.0-stretch bash appimage.sh
+    - uses: actions/upload-artifact@v2
+      with:
+        if-no-files-found: error
+        name: popsicle-appimage-${{ github.sha }}
+        path: Popsicle_USB_Flasher-*.AppImage
