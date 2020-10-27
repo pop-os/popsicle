@@ -1,7 +1,7 @@
 [package]
 name = "popsicle"
 description = "USB Flasher"
-version = "1.1.0"
+version = "1.2.0"
 authors = [
     "Jeremy Soller <jeremy@system76.com>",
     "Michael Aaron Murphy <michael@system76.com>",
