@@ -1,3 +1,9 @@
+popsicle (1.2.0) groovy; urgency=medium
+
+  * 1.2.0 Release 
+
+ -- Ian Douglas Scott <idscott@system76.com>  Tue, 27 Oct 2020 13:42:44 -0700
+
 popsicle (1.1.0) focal; urgency=medium
 
   * 1.1.0 release
