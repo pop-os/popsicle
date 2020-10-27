@@ -1,4 +1,8 @@
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  release:
+    types: [published]
 
 name: ci
 
@@ -15,3 +19,21 @@ jobs:
         if-no-files-found: error
         name: popsicle-appimage-${{ github.sha }}
         path: Popsicle_USB_Flasher-*.AppImage
+
+  upload-to-release:
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    needs: appimage
+    steps:
+    - uses: actions/download-artifact@v2
+      with:
+        name: popsicle-appimage-${{ github.sha }}
+    - run: printf 'APPIMAGE_FILENAME=%s\n' Popsicle_USB_Flasher-*.AppImage > $GITHUB_ENV
+    - uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: ${{ env.APPIMAGE_FILENAME }}
+        asset_name: ${{ env.APPIMAGE_FILENAME }}
+        asset_content_type: application/vnd.appimage
