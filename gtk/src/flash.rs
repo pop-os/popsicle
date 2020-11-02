@@ -12,6 +12,7 @@ use std::fs::File;
 use std::os::unix::io::FromRawFd;
 use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
+use std::str;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -141,8 +142,8 @@ impl FlashRequest {
 fn udisks_unmount(block_device: &Path) -> anyhow::Result<()> {
     let connection = Connection::new_system()?;
 
-    let mut dbus_path = b"/org/freedesktop/UDisks2/block_devices/".to_vec();
-    dbus_path.extend_from_slice(block_device.strip_prefix("/dev")?.as_os_str().as_bytes());
+    let mut dbus_path = "/org/freedesktop/UDisks2/block_devices/".to_string();
+    dbus_path.push_str(str::from_utf8(block_device.strip_prefix("/dev")?.as_os_str().as_bytes())?);
     let dbus_path = ::dbus::strings::Path::new(dbus_path).map_err(anyhow::Error::msg)?;
 
     let proxy = Proxy::new(
@@ -172,8 +173,8 @@ fn udisks_unmount(block_device: &Path) -> anyhow::Result<()> {
 fn udisks_open(block_device: &Path) -> anyhow::Result<File> {
     let connection = Connection::new_system()?;
 
-    let mut dbus_path = b"/org/freedesktop/UDisks2/block_devices/".to_vec();
-    dbus_path.extend_from_slice(block_device.strip_prefix("/dev")?.as_os_str().as_bytes());
+    let mut dbus_path = "/org/freedesktop/UDisks2/block_devices/".to_string();
+    dbus_path.push_str(str::from_utf8(block_device.strip_prefix("/dev")?.as_os_str().as_bytes())?);
     let dbus_path = ::dbus::strings::Path::new(dbus_path).map_err(anyhow::Error::msg)?;
 
     let proxy = Proxy::new(
