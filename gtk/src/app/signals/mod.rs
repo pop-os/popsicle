@@ -5,6 +5,7 @@ use crate::app::events::{BackgroundEvent, UiEvent};
 use crate::app::state::ActiveView;
 use crate::app::App;
 use crate::flash::{FlashRequest, FlashStatus, FlashTask};
+use crate::misc;
 use atomic::Atomic;
 use crossbeam_channel::TryRecvError;
 use gtk::{self, prelude::*};
@@ -142,7 +143,7 @@ impl App {
                             };
 
                             let label = cascade! {
-                                gtk::Label::new(Some(device.label().as_str()));
+                                gtk::Label::new(Some(&misc::device_label(&device)));
                                 ..set_justify(gtk::Justification::Right);
                                 ..get_style_context().add_class("bold");
                             };
@@ -162,7 +163,7 @@ impl App {
                             summary_grid.attach(&bar_container, 1, id, 1, 1);
 
                             flashing_devices.push((pbar, bar_label));
-                            destinations.push(device.path.clone());
+                            destinations.push(device.clone());
                         }
 
                         summary_grid.show_all();
@@ -305,7 +306,7 @@ impl App {
                                     description.set_markup(&desc);
 
                                     for (device, why) in errors {
-                                        let device = gtk::Label::new(Some(device.label().as_str()));
+                                        let device = gtk::Label::new(Some(&misc::device_label(&device)));
                                         let why = gtk::Label::new(Some(format!("{}", why).as_str()));
                                         why.get_style_context().add_class("bold");
 

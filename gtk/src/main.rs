@@ -4,7 +4,6 @@
 extern crate cascade;
 
 mod app;
-mod block;
 mod flash;
 mod hash;
 mod misc;

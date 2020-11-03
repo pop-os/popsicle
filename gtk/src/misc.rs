@@ -1,3 +1,4 @@
+use dbus_udisks2::DiskDevice;
 use gdk;
 use gtk::{self, prelude::*, SelectionData};
 
@@ -26,4 +27,12 @@ where
 
     // Then handle the dropped data, setting the image if the dropped data is valid.
     widget.connect_drag_data_received(move |_view, _ctx, _x, _y, data, _info, _time| action(data));
+}
+
+pub fn device_label(device: &DiskDevice) -> String {
+    if device.drive.vendor.is_empty() {
+        format!("{} ({})", device.drive.model, device.parent.preferred_device.display())
+    } else {
+        format!("{} {} ({})", device.drive.vendor, device.drive.model, device.parent.preferred_device.display())
+    }
 }
