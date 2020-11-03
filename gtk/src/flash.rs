@@ -1,17 +1,15 @@
 use atomic::Atomic;
 use dbus::arg::{OwnedFd, RefArg, Variant};
 use dbus::blocking::{Connection, Proxy};
+use dbus_udisks2::DiskDevice;
 use futures::executor;
 use libc;
 use popsicle::{Progress, Task};
-use proc_mounts::MountList;
 use std::cell::Cell;
 use std::collections::HashMap;
 use std::fmt::{self, Debug, Display, Formatter};
 use std::fs::File;
 use std::os::unix::io::FromRawFd;
-use std::os::unix::ffi::OsStrExt;
-use std::path::{Path, PathBuf};
 use std::str;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
@@ -28,7 +26,7 @@ pub enum FlashStatus {
 
 pub struct FlashRequest {
     source: Option<File>,
-    destinations: Vec<PathBuf>,
+    destinations: Vec<Arc<DiskDevice>>,
     status: Arc<Atomic<FlashStatus>>,
     progress: Arc<Vec<Atomic<u64>>>,
     finished: Arc<Vec<Atomic<bool>>>,
@@ -82,7 +80,7 @@ impl<'a> Progress for FlashProgress<'a> {
 impl FlashRequest {
     pub fn new(
         source: File,
-        destinations: Vec<PathBuf>,
+        destinations: Vec<Arc<DiskDevice>>,
         status: Arc<Atomic<FlashStatus>>,
         progress: Arc<Vec<Atomic<u64>>>,
         finished: Arc<Vec<Atomic<bool>>>,
@@ -107,18 +105,17 @@ impl FlashRequest {
 
     fn write_inner<'a>(&'a self, source: File) -> anyhow::Result<(anyhow::Result<()>, Vec<Result<(), FlashError>>)> {
         // Unmount the devices beforehand.
-        if let Ok(mounts) = MountList::new() {
-            for file in &self.destinations {
-                for mount in mounts.source_starts_with(file) {
-                    let _ = udisks_unmount(&mount.source);
-                }
+        for device in &self.destinations {
+            let _ = udisks_unmount(&device.parent.path);
+            for partition in &device.partitions {
+                let _ = udisks_unmount(&partition.path);
             }
         }
 
         // Then open them for writing to.
         let mut files = Vec::new();
-        for file in &self.destinations {
-            let file = udisks_open(file)?;
+        for device in &self.destinations {
+            let file = udisks_open(&device.parent.path)?;
             files.push(file);
         }
 
@@ -140,11 +137,9 @@ impl FlashRequest {
     }
 }
 
-fn udisks_unmount(block_device: &Path) -> anyhow::Result<()> {
+fn udisks_unmount(dbus_path: &str) -> anyhow::Result<()> {
     let connection = Connection::new_system()?;
 
-    let mut dbus_path = "/org/freedesktop/UDisks2/block_devices/".to_string();
-    dbus_path.push_str(str::from_utf8(block_device.strip_prefix("/dev")?.as_os_str().as_bytes())?);
     let dbus_path = ::dbus::strings::Path::new(dbus_path).map_err(anyhow::Error::msg)?;
 
     let proxy = Proxy::new(
@@ -171,11 +166,9 @@ fn udisks_unmount(block_device: &Path) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn udisks_open(block_device: &Path) -> anyhow::Result<File> {
+fn udisks_open(dbus_path: &str) -> anyhow::Result<File> {
     let connection = Connection::new_system()?;
 
-    let mut dbus_path = "/org/freedesktop/UDisks2/block_devices/".to_string();
-    dbus_path.push_str(str::from_utf8(block_device.strip_prefix("/dev")?.as_os_str().as_bytes())?);
     let dbus_path = ::dbus::strings::Path::new(dbus_path).map_err(anyhow::Error::msg)?;
 
     let proxy = Proxy::new(

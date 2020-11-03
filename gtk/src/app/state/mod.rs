@@ -1,7 +1,7 @@
 use crate::app::events::{self, BackgroundEvent, UiEvent};
-use crate::block::BlockDevice;
 use atomic::Atomic;
 use crossbeam_channel::{unbounded, Receiver, Sender};
+use dbus_udisks2::DiskDevice;
 use libc;
 use std::cell::{Cell, RefCell};
 use std::env;
@@ -29,8 +29,8 @@ pub struct State {
     pub image_path: RefCell<PathBuf>,
     pub image_size: Arc<Atomic<u64>>,
 
-    pub available_devices: RefCell<Box<[BlockDevice]>>,
-    pub selected_devices: RefCell<Vec<BlockDevice>>,
+    pub available_devices: RefCell<Box<[Arc<DiskDevice>]>>,
+    pub selected_devices: RefCell<Vec<Arc<DiskDevice>>>,
 }
 
 impl State {

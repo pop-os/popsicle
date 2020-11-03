@@ -1,22 +1,19 @@
-use crate::block::BlockDevice;
 use crate::flash::{FlashError, FlashRequest};
 use crate::hash::hasher;
 
-use async_std::path::Path as AsyncPath;
 use crossbeam_channel::{Receiver, Sender};
+use dbus_udisks2::{DiskDevice, Disks, UDisks2};
 use md5::Md5;
-use popsicle;
 use sha2::Sha256;
 use std::collections::HashMap;
 use std::io;
-use std::mem;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
+use std::sync::Arc;
 use std::thread::{self, JoinHandle};
-use std::time::Instant;
 
 pub enum UiEvent {
     SetImageLabel(PathBuf),
-    RefreshDevices(Box<[BlockDevice]>),
+    RefreshDevices(Box<[Arc<DiskDevice>]>),
     SetHash(io::Result<String>),
     Flash(JoinHandle<anyhow::Result<(anyhow::Result<()>, Vec<Result<(), FlashError>>)>>),
     Reset,
@@ -32,8 +29,7 @@ pub fn background_thread(events_tx: Sender<UiEvent>, events_rx: Receiver<Backgro
     thread::spawn(move || {
         let mut hashed: HashMap<(PathBuf, &'static str), String> = HashMap::new();
 
-        let mut devices = Vec::new();
-        let mut devices_cmp = Vec::new();
+        let mut device_paths = Vec::new();
 
         loop {
             match events_rx.recv() {
@@ -64,23 +60,13 @@ pub fn background_thread(events_tx: Sender<UiEvent>, events_rx: Receiver<Backgro
                 }
                 Ok(BackgroundEvent::RefreshDevices) => {
                     // Fetch the current list of USB devices from popsicle.
-                    match popsicle::get_disk_args(&mut devices_cmp) {
-                        Ok(()) => {
-                            if devices_cmp != devices {
-                                // If they differed, the new device vec is the current device vec.
-                                mem::swap(&mut devices_cmp, &mut devices);
-
-                                // Attempt to fetch more detailed information on the block devices.
-                                match fetch_block_devices(&devices) {
-                                    Ok(devices) => {
-                                        // Signal to the UI to refresh the list.
-                                        let _ = events_tx.send(UiEvent::RefreshDevices(devices));
-                                    }
-                                    Err(why) => eprintln!("failed to fetch block info: {}", why),
-                                }
+                    match refresh_devices() {
+                        Ok(devices) => {
+                            let new_device_paths: Vec<_> = devices.iter().map(|d| d.drive.path.clone()).collect();
+                            if new_device_paths != device_paths {
+                                device_paths = new_device_paths;
+                                let _ = events_tx.send(UiEvent::RefreshDevices(devices));
                             }
-
-                            devices_cmp.clear();
                         }
                         Err(why) => eprintln!("failed to refresh devices: {}", why),
                     }
@@ -99,24 +85,16 @@ pub fn background_thread(events_tx: Sender<UiEvent>, events_rx: Receiver<Backgro
     });
 }
 
-fn fetch_block_devices(devices: &[Box<AsyncPath>]) -> io::Result<Box<[BlockDevice]>> {
-    let mut output = Vec::new();
-    let start = Instant::now();
-
-    for device in devices {
-        if let Ok(ref device) = Path::new(device.as_os_str()).canonicalize() {
-            let mut block = BlockDevice::new_from(device)?;
-
-            // In the case of a device with a sector count of 0, it will be polled again.
-            // The polling will stop if there is no change after 5 seconds since this function
-            // began execution.
-            while block.sectors == 0 && Instant::now().duration_since(start).as_secs() < 5 {
-                block.recheck_size();
-            }
-
-            output.push(block);
-        }
-    }
-
-    Ok(output.into_boxed_slice())
+fn refresh_devices() -> anyhow::Result<Box<[Arc<DiskDevice>]>> {
+    let udisks = UDisks2::new()?;
+    let devices = Disks::new(&udisks).devices;
+    let mut devices = devices
+        .into_iter()
+        .filter(|d| d.drive.connection_bus == "usb" || d.drive.connection_bus == "sdio")
+        .filter(|d| d.parent.size != 0)
+        .map(Arc::new)
+        .collect::<Vec<_>>()
+        .into_boxed_slice();
+    devices.sort_by_key(|d| d.drive.id.clone());
+    Ok(devices)
 }

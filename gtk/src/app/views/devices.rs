@@ -1,9 +1,11 @@
+use crate::misc;
 use super::View;
-use crate::block::BlockDevice;
+use dbus_udisks2::DiskDevice;
 use gtk;
 use gtk::prelude::*;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
+use std::sync::Arc;
 
 use bytesize;
 
@@ -86,19 +88,21 @@ impl DevicesView {
             .filter_map(|(id, button)| if button.get_active() { Some(id) } else { None })
     }
 
-    pub fn refresh(&self, devices: &[BlockDevice], image_size: u64) {
+    pub fn refresh(&self, devices: &[Arc<DiskDevice>], image_size: u64) {
         self.list.foreach(|w| self.list.remove(w));
 
         let nselected = Rc::new(Cell::new(0));
 
         for device in devices {
-            let valid_size = device.size_in_bytes() >= image_size;
+            let valid_size = device.parent.size >= image_size;
 
-            let size_str = bytesize::to_string(device.size_in_bytes(), true);
+            let label = &misc::device_label(&device);
+
+            let size_str = bytesize::to_string(device.parent.size, true);
             let name = if valid_size {
-                format!("<b>{}</b>\n{}", device.label(), size_str)
+                format!("<b>{}</b>\n{}", label, size_str)
             } else {
-                format!("<b>{}</b>\n{}: <b>Device too small</b>", device.label(), size_str)
+                format!("<b>{}</b>\n{}: <b>Device too small</b>", label, size_str)
             };
 
             let view_ready = self.view_ready.clone();
