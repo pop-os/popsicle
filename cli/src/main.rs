@@ -194,7 +194,9 @@ pub struct MachineProgress {
 }
 
 impl Progress for MachineProgress {
-    fn message(&mut self, _path: &Path, kind: &str, message: &str) {
+    type Device = Box<Path>;
+
+    fn message(&mut self, _path: &Box<Path>, kind: &str, message: &str) {
         let _ = self.handle.unbounded_send(Event::Message(
             self.id,
             if message.is_empty() { kind.into() } else { [kind, " ", message].concat().into() },
@@ -216,7 +218,9 @@ pub struct InteractiveProgress {
 }
 
 impl Progress for InteractiveProgress {
-    fn message(&mut self, path: &Path, kind: &str, message: &str) {
+    type Device = Box<Path>;
+
+    fn message(&mut self, path: &Box<Path>, kind: &str, message: &str) {
         self.pipe.message(&format!("{} {}: {}", kind, path.display(), message));
     }
 
