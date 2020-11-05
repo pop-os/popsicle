@@ -1,23 +1,24 @@
 use anyhow::Context;
-use async_std::{fs::File, path::Path, prelude::*};
+use async_std::{fs::File, prelude::*};
 use srmw::*;
 use std::{collections::HashMap, io::SeekFrom, time::Instant};
 
 pub trait Progress {
-    fn message(&mut self, path: &Path, kind: &str, message: &str);
+    type Device;
+    fn message(&mut self, device: &Self::Device, kind: &str, message: &str);
     fn finish(&mut self);
     fn set(&mut self, value: u64);
 }
 
 #[derive(new)]
-pub struct Task<P> {
+pub struct Task<P: Progress> {
     image: File,
 
     #[new(default)]
     pub writer: MultiWriter<File>,
 
     #[new(default)]
-    pub state: HashMap<usize, (Box<Path>, P)>,
+    pub state: HashMap<usize, (P::Device, P)>,
 
     #[new(value = "125")]
     pub millis_between: u64,
@@ -42,9 +43,9 @@ impl<P: Progress> Task<P> {
         Ok(())
     }
 
-    pub fn subscribe(&mut self, file: File, path: Box<Path>, progress: P) -> &mut Self {
+    pub fn subscribe(&mut self, file: File, device: P::Device, progress: P) -> &mut Self {
         let entity = self.writer.insert(file);
-        self.state.insert(entity, (path, progress));
+        self.state.insert(entity, (device, progress));
         self
     }
 
@@ -65,13 +66,13 @@ impl<P: Progress> Task<P> {
                     }
                 }
                 CopyEvent::Failure(entity, why) => {
-                    let (path, mut pb) = self.state.remove(&entity).expect("missing entity");
-                    pb.message(&path, "E", &format!("{}", why));
+                    let (device, mut pb) = self.state.remove(&entity).expect("missing entity");
+                    pb.message(&device, "E", &format!("{}", why));
                     pb.finish();
                 }
                 CopyEvent::SourceFailure(why) => {
-                    for (path, pb) in self.state.values_mut() {
-                        pb.message(&path, "E", &format!("{}", why));
+                    for (device, pb) in self.state.values_mut() {
+                        pb.message(&device, "E", &format!("{}", why));
                         pb.finish();
                     }
 

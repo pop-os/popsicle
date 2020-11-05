@@ -61,7 +61,9 @@ impl Display for FlashError {
 impl std::error::Error for FlashError {}
 
 impl<'a> Progress for FlashProgress<'a> {
-    fn message(&mut self, _path: &async_std::path::Path, kind: &str, message: &str) {
+    type Device = ();
+
+    fn message(&mut self, _device: &(), kind: &str, message: &str) {
         self.errors[self.id].set(Err(FlashError {
             kind: kind.to_string(),
             message: message.to_string(),
@@ -129,8 +131,7 @@ impl FlashRequest {
         let mut task = Task::new(source.into(), false);
         for (i, file) in files.into_iter().enumerate() {
             let progress = FlashProgress {request: &self, errors: errors_cells, id: i};
-            let destination = async_std::path::PathBuf::from(self.destinations[i].clone()).into_boxed_path();
-            task.subscribe(file.into(), destination, progress);
+            task.subscribe(file.into(), (), progress);
         }
 
         let res = executor::block_on(task.process(&mut bucket));
