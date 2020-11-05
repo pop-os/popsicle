@@ -1,7 +1,7 @@
 [package]
 name = "popsicle_cli"
 description = "USB Flasher"
-version = "1.2.0"
+version = "1.3.0"
 authors = ["Jeremy Soller <jeremy@system76.com>"]
 license = "MIT"
 readme = "README.md"
