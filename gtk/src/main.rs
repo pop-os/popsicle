@@ -5,6 +5,7 @@ extern crate cascade;
 
 mod app;
 mod flash;
+mod gresource;
 mod hash;
 mod misc;
 
@@ -15,6 +16,10 @@ use std::env;
 use std::path::PathBuf;
 
 fn main() {
+    gtk::init().unwrap();
+
+    gresource::init().expect("failed to init popsicle gresource");
+
     glib::set_program_name("Popsicle".into());
     glib::set_application_name("Popsicle");
 

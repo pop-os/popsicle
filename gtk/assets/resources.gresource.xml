@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+    <gresource prefix="/org/Pop-OS/Popsicle">
+        <file>application-x-cd-image.png</file>
+        <file>drive-removable-media-usb.png</file>
+        <file compressed="true">process-completed-symbolic.svg</file>
+    </gresource>
+</gresources>
