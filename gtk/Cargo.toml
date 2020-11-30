@@ -22,6 +22,8 @@ dbus-udisks2 = { git = "https://github.com/pop-os/dbus-udisks2" }
 digest = "0.8"
 futures = "0.3"
 gdk = "0.13"
+gdk-pixbuf = "0.9"
+gio = "0.9"
 glib = "0.10"
 gtk = { version = "0.9", features = ["v3_22"] }
 hex-view = "0.1"
