@@ -91,6 +91,8 @@ impl<P: Progress> Task<P> {
             pb.message(&path, "S", "");
         }
 
+        self.image.seek(SeekFrom::Start(0)).await?;
+
         let mut stream = self.writer.seek(SeekFrom::Start(0));
         while let Some((entity, why)) = stream.next().await {
             let (path, mut pb) = self.state.remove(&entity).expect("missing entity");
