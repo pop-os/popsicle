@@ -9,6 +9,7 @@ use self::state::*;
 use self::views::*;
 use self::widgets::*;
 
+use crate::fl;
 use gtk::{self, prelude::*};
 use std::{fs::File, process, rc::Rc, sync::Arc};
 
@@ -97,7 +98,7 @@ impl GtkUi {
         &self,
         state: &State,
         result: Result<T, E>,
-        context: &'static str,
+        context: &str,
     ) -> Result<T, ()> {
         result.map_err(|why| {
             self.content.error_view.view.description.set_text(&format!("{}: {}", context, why));
@@ -116,7 +117,7 @@ impl GtkUi {
                 .error_view
                 .view
                 .description
-                .set_text(&format!("{}: no value found", context));
+                .set_text(&format!("{}: {}", context, fl!("no-value-found")));
             self.switch_to(state, ActiveView::Error);
         })
     }
@@ -131,11 +132,11 @@ impl GtkUi {
 
         let widget = match view {
             ActiveView::Images => {
-                back.set_label("Cancel");
+                back.set_label(&fl!("cancel"));
                 back_ctx.remove_class("back-button");
                 back_ctx.remove_class(&gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
 
-                next.set_label("Next");
+                next.set_label(&fl!("next"));
                 next.set_visible(true);
                 next.set_sensitive(true);
                 next_ctx.remove_class(&gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
@@ -155,7 +156,7 @@ impl GtkUi {
                 match self.errorck(
                     &state,
                     File::open(&*state.image_path.borrow()),
-                    "Failed to open ISO",
+                    &fl!("iso-open-failed"),
                 ) {
                     Ok(file) => *state.image.borrow_mut() = Some(file),
                     Err(()) => return,
@@ -178,7 +179,7 @@ impl GtkUi {
             }
             ActiveView::Summary => {
                 back_ctx.remove_class(&gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
-                back.set_label("Flash Again");
+                back.set_label(&fl!("flash-again"));
 
                 next_ctx.remove_class(&gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
                 next.set_visible(true);
@@ -186,11 +187,11 @@ impl GtkUi {
                 &self.content.summary_view.view.container
             }
             ActiveView::Error => {
-                back.set_label("Flash Again");
+                back.set_label(&fl!("flash-again"));
                 back_ctx.remove_class(&gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
 
                 next.set_visible(true);
-                next.set_label("Close");
+                next.set_label(&fl!("close"));
                 next_ctx.remove_class(&gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
                 next_ctx.remove_class(&gtk::STYLE_CLASS_SUGGESTED_ACTION);
 

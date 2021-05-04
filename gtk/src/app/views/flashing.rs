@@ -1,3 +1,4 @@
+use crate::fl;
 use super::View;
 use gtk::*;
 
@@ -21,8 +22,8 @@ impl FlashView {
 
         let view = View::new(
             "drive-removable-media-usb",
-            "Flashing Devices",
-            "Do not unplug devices while they are being flashed.",
+            &fl!("flash-view-title"),
+            &fl!("flash-view-description"),
             |right_panel| right_panel.pack_start(&progress_scroller, true, true, 0),
         );
 
