@@ -2,7 +2,6 @@
 
 Popsicle is a Linux utility for flashing multiple USB devices in parallel, written in [Rust](https://www.rust-lang.org/en-US/).
 
-
 ## Build Dependencies
 
 If building the GTK front end, you will be required to install the development dependencies for GTK, usually named `libgtk-3-dev`. No other dependencies are required to build the CLI or GTK front ends, besides Rust's `cargo` utility.
@@ -39,3 +38,22 @@ The list will also dynamically refresh as devices are added and removed
 ### Summary
 
 ![Summary](./screenshots/screenshot-05.png)
+
+## Translators
+
+Translators are welcome to submit translations directly as a pull request to this project. It is generally expected that your pull requests will contain a single commit for each language that was added or improved, using a syntax like so:
+
+```
+i18n(eo): Add Esperanto language support
+```
+
+```
+i18n(pl): Improvements to Polish language support
+```
+
+Translation files for the GTK application can be found [here](./gtk/i18n/). We are using [Project Fluent](https://projectfluent.org) for our translations, which should be easier than working with gettext.
+
+### Supported Languages
+
+- [English](./gtk/i18n/en/)
+- [Polish](./gtk/i18n/pl/)
