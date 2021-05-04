@@ -133,7 +133,7 @@ async fn popsicle(
     if is_tty {
         println!();
 
-        let mut mb = MultiBar::new();
+        let mb = MultiBar::new();
         let mut task = Task::new(image, check);
 
         for (disk_path, disk) in disks {

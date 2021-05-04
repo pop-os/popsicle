@@ -41,11 +41,11 @@ impl View {
         };
 
         let right_panel = cascade! {
-            panel: gtk::Box::new(Orientation::Vertical, 0);
+            let panel = gtk::Box::new(Orientation::Vertical, 0);
             ..add(&topic);
             ..add(&description);
             ..get_style_context().add_class("right-panel");
-            | configure_panel(&panel);
+            configure_panel(&panel);
         };
 
         View {

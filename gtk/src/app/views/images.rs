@@ -94,7 +94,7 @@ impl ImageView {
         };
 
         let hash_container = cascade! {
-            tmp: Box::new(Orientation::Horizontal, 0);
+            let tmp = Box::new(Orientation::Horizontal, 0);
             ..pack_start(&label, false, false, 0);
             ..pack_start(&combo_container, true, true, 0);
             ..pack_start(&check, false, false, 0);

@@ -65,7 +65,7 @@ impl App {
         let mut flash_handles = None;
         let mut tasks = None;
 
-        gtk::timeout_add(16, move || {
+        glib::timeout_add_local(16, move || {
             match state.ui_event_rx.try_recv() {
                 Err(TryRecvError::Disconnected) => return Continue(false),
                 Err(TryRecvError::Empty) => (),
