@@ -1,3 +1,4 @@
+use crate::fl;
 use super::View;
 use bytesize;
 use gtk::*;
@@ -18,13 +19,15 @@ pub struct ImageView {
 impl ImageView {
     pub fn new() -> ImageView {
         let chooser = cascade! {
-            Button::with_label("Choose Image");
+            Button::with_label(&fl!("choose-image-button"));
             ..set_halign(Align::Center);
             ..set_margin_bottom(6);
         };
 
+        let image_label = format!("<b>{}</b>", fl!("no-image-selected"));
+
         let image_path = cascade! {
-            Label::new(Some("<b>No image selected</b>"));
+            Label::new(Some(&image_label));
             ..set_use_markup(true);
             ..set_justify(Justification::Center);
             ..set_ellipsize(EllipsizeMode::End);
@@ -40,7 +43,7 @@ impl ImageView {
         spinner.start();
 
         let spinner_label = cascade! {
-            Label::new(Some("Generating Checksum"));
+            Label::new(Some(&fl!("generating-checksum")));
             ..get_style_context().add_class("bold");
         };
 
@@ -52,7 +55,7 @@ impl ImageView {
 
         let hash = cascade! {
             ComboBoxText::new();
-            ..append_text("None");
+            ..append_text(&fl!("none"));
             ..append_text("SHA256");
             ..append_text("MD5");
             ..set_active(Some(0));
@@ -65,12 +68,12 @@ impl ImageView {
         };
 
         let label = cascade! {
-            Label::new(Some("Hash:"));
+            Label::new(Some(&fl!("hash-label")));
             ..set_margin_end(6);
         };
 
         let check = cascade! {
-            Button::with_label("Check");
+            Button::with_label(&fl!("check-label"));
             ..get_style_context().add_class(&STYLE_CLASS_SUGGESTED_ACTION);
             ..set_sensitive(false);
         };
@@ -112,9 +115,8 @@ impl ImageView {
 
         let view = View::new(
             "application-x-cd-image",
-            "Choose an Image",
-            "Select the .iso or .img that you want to flash. You can also plug your USB drives in \
-             now.",
+            &fl!("image-view-title"),
+            &fl!("image-view-description"),
             |right_panel| {
                 right_panel.pack_start(&chooser_container, true, false, 0);
                 right_panel.pack_start(&hash_container, false, false, 0);
@@ -147,13 +149,14 @@ impl ImageView {
 
     pub fn set_image(&self, path: &Path, size: u64, warning: Option<&str>) {
         let size_str = bytesize::to_string(size, true);
-        let mut label = match path.file_name() {
+        let mut label: String = match path.file_name() {
             Some(name) => format!("<b>{}</b>\n{}", name.to_string_lossy(), size_str),
-            None => "<b>File chooser can't select directories</b>".to_string()
+            None => format!("<b>{}</b>", fl!("cannot-select-directories"))
         };
 
         if let Some(warning) = warning {
-            label += &format!("\n<span foreground='red'><b>Warning</b>: {}</span>", warning);
+            let subject = fl!("warning");
+            label += &format!("\n<span foreground='red'><b>{}</b>: {}</span>", subject, warning);
         };
 
         self.image_path.set_markup(&label);

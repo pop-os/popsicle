@@ -7,6 +7,7 @@ mod app;
 mod flash;
 mod gresource;
 mod hash;
+mod localize;
 mod misc;
 
 use crate::app::events::UiEvent;
@@ -14,8 +15,16 @@ use crate::app::state::State;
 use crate::app::App;
 use std::env;
 use std::path::PathBuf;
+use i18n_embed::DesktopLanguageRequester;
 
 fn main() {
+    let localizer = crate::localize::localizer();
+    let requested_languages = DesktopLanguageRequester::requested_languages();
+
+    if let Err(error) = localizer.select(&requested_languages) {
+        eprintln!("Error while loading languages for library_fluent {}", error);
+    }
+
     gtk::init().unwrap();
 
     gresource::init().expect("failed to init popsicle gresource");

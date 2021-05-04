@@ -1,3 +1,4 @@
+use crate::fl;
 use gtk::*;
 use std::path::PathBuf;
 
@@ -9,11 +10,11 @@ impl OpenDialog {
         #[allow(unused_mut)]
         OpenDialog(cascade! {
             let dialog = FileChooserNative::new(
-                Some("Open"),
+                Some(&fl!("open")),
                 Some(&Window::new(WindowType::Popup)),
                 FileChooserAction::Open,
-                Some("Open"),
-                Some("Cancel"),
+                Some(&fl!("open")),
+                Some(&fl!("cancel")),
             );
             ..set_filter(&cascade! {
                 FileFilter::new();

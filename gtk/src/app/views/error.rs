@@ -1,3 +1,4 @@
+use crate::fl;
 use super::View;
 
 pub struct ErrorView {
@@ -6,6 +7,6 @@ pub struct ErrorView {
 
 impl ErrorView {
     pub fn new() -> ErrorView {
-        ErrorView { view: View::new("dialog-error", "Critical Error Occurred", "", |_| ()) }
+        ErrorView { view: View::new("dialog-error", &fl!("critical-error"), "", |_| ()) }
     }
 }

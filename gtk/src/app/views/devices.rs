@@ -1,3 +1,4 @@
+use crate::fl;
 use crate::misc;
 use super::View;
 use dbus_udisks2::DiskDevice;
@@ -29,7 +30,7 @@ impl DevicesView {
 
         let list_ = list.clone();
         let select_all = cascade! {
-            gtk::CheckButton::with_label("Select all");
+            gtk::CheckButton::with_label(&fl!("select-all"));
             ..set_margin_start(4);
             ..set_margin_bottom(3);
             ..connect_toggled(move |all| {
@@ -63,8 +64,8 @@ impl DevicesView {
 
         let view = View::new(
             "drive-removable-media-usb",
-            "Select Drives",
-            "Flashing will erase all data on the selected drives.",
+            &fl!("devices-view-title"),
+            &fl!("devices-view-description"),
             |right_panel| right_panel.add(&select_scroller),
         );
 
@@ -102,7 +103,8 @@ impl DevicesView {
             let name = if valid_size {
                 format!("<b>{}</b>\n{}", label, size_str)
             } else {
-                format!("<b>{}</b>\n{}: <b>Device too small</b>", label, size_str)
+                let too_small = fl!("device-too-small");
+                format!("<b>{}</b>\n{}: <b>{}</b>", label, size_str, too_small)
             };
 
             let view_ready = self.view_ready.clone();

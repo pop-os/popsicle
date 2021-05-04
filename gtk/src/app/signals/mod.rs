@@ -4,6 +4,7 @@ mod images;
 use crate::app::events::{BackgroundEvent, UiEvent};
 use crate::app::state::ActiveView;
 use crate::app::App;
+use crate::fl;
 use crate::flash::{FlashRequest, FlashStatus, FlashTask};
 use crate::misc;
 use atomic::Atomic;
@@ -72,7 +73,7 @@ impl App {
                 Ok(UiEvent::SetHash(hash)) => {
                     ui.content.image_view.set_hash(&match hash {
                         Ok(hash) => hash,
-                        Err(why) => format!("error: {}", why),
+                        Err(why) => fl!("error", why = format!("{}", why)),
                     });
                     ui.content.image_view.set_hash_sensitive(true);
 
@@ -83,12 +84,12 @@ impl App {
                         let image_size = file.metadata().ok().map_or(0, |m| m.len());
 
                         let warning = if is_windows_iso(&file) {
-                            Some("Windows ISOs are not currently supported")
+                            Some(fl!("win-isos-not-supported"))
                         } else {
                             None
                         };
 
-                        ui.content.image_view.set_image(&path, image_size, warning);
+                        ui.content.image_view.set_image(&path, image_size, warning.as_ref().map(|x| x.as_str()));
                         ui.content.image_view.set_hash_sensitive(true);
                         ui.header.next.set_sensitive(true);
 
@@ -222,7 +223,7 @@ impl App {
                                 pbar.set_fraction(value);
 
                                 if task_is_finished {
-                                    label.set_label("Complete");
+                                    label.set_label(&fl!("task-finished"));
                                 } else {
                                     prev_values[1] = prev_values[2];
                                     prev_values[2] = prev_values[3];
@@ -289,14 +290,14 @@ impl App {
                                 let description = &ui.content.summary_view.view.description;
 
                                 if result.is_ok() && errors.is_empty() {
-                                    let desc = format!("{} devices successfully flashed", ntasks);
+                                    let desc = fl!("successful-flash", total = ntasks);
                                     description.set_text(&desc);
                                     list.hide();
                                 } else {
-                                    let mut desc = format!(
-                                        "{} of {} devices successfully flashed",
-                                        ntasks - errors.len(),
-                                        ntasks
+                                    let mut desc = fl!(
+                                        "partial-flash",
+                                        number = {ntasks - errors.len()},
+                                        total = ntasks
                                     );
 
                                     if let Err(why) = result {
