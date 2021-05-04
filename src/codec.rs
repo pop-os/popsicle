@@ -1,5 +1,4 @@
-use bytes::BytesMut;
-use futures_codec::Decoder;
+use futures_codec::{BytesMut, Decoder};
 use memchr::memchr;
 use serde::{Deserialize, Serialize};
 use std::{io, path::PathBuf};

@@ -8,7 +8,7 @@ impl OpenDialog {
     pub fn new(path: Option<PathBuf>) -> OpenDialog {
         #[allow(unused_mut)]
         OpenDialog(cascade! {
-            dialog: FileChooserNative::new(
+            let dialog = FileChooserNative::new(
                 Some("Open"),
                 Some(&Window::new(WindowType::Popup)),
                 FileChooserAction::Open,
@@ -20,7 +20,7 @@ impl OpenDialog {
                 ..add_pattern("*.[Ii][Ss][Oo]");
                 ..add_pattern("*.[Ii][Mm][Gg]");
             });
-            | if let Some(p) = path {
+            if let Some(p) = path {
                 dialog.set_current_folder(p);
             };
         })

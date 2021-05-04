@@ -14,9 +14,9 @@ pub(crate) fn hasher<H: Digest>(image: &Path) -> io::Result<String> {
             if read == 0 {
                 break;
             }
-            hasher.input(&buffer[..read]);
+            hasher.update(&buffer[..read]);
         }
 
-        Ok(format!("{:x}", HexView::from(hasher.result().as_slice())))
+        Ok(format!("{:x}", HexView::from(hasher.finalize().as_slice())))
     })
 }
