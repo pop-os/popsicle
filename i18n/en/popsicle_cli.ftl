@@ -24,3 +24,4 @@ error-no-disks-specified = no disks specified
 error-fetching-mounts = failed to fetch list of mounts
 error-opening-disks = failed to open disks
 error-exiting = exiting without flashing
+error-reading-mounts = error reading mounts
