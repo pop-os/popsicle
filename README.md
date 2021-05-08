@@ -51,7 +51,7 @@ i18n(eo): Add Esperanto language support
 i18n(pl): Improvements to Polish language support
 ```
 
-Translation files for the GTK application can be found [here](./gtk/i18n/). We are using [Project Fluent](https://projectfluent.org) for our translations, which should be easier than working with gettext.
+Translation files can be found [here](./i18n/). We are using [Project Fluent](https://projectfluent.org) for our translations, which should be easier than working with gettext.
 
 ### Supported Languages
 

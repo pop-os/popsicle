@@ -6,7 +6,7 @@ use once_cell::sync::Lazy;
 use rust_embed::RustEmbed;
 
 #[derive(RustEmbed)]
-#[folder = "i18n/"]
+#[folder = "../i18n/"]
 struct Localizations;
 
 pub static LANGUAGE_LOADER: Lazy<FluentLanguageLoader> = Lazy::new(|| {
