@@ -1549,9 +1549,13 @@ dependencies = [
  "derive-new",
  "fomat-macros",
  "futures",
+ "i18n-embed",
+ "i18n-embed-fl",
  "libc",
+ "once_cell",
  "pbr",
  "popsicle",
+ "rust-embed",
 ]
 
 [[package]]

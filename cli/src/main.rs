@@ -9,6 +9,8 @@ extern crate derive_new;
 #[macro_use]
 extern crate fomat_macros;
 
+mod localize;
+
 use anyhow::Context;
 use async_std::{
     fs::OpenOptions,
@@ -21,6 +23,7 @@ use futures::{
     executor, join,
     prelude::*,
 };
+use i18n_embed::DesktopLanguageRequester;
 use pbr::{MultiBar, Pipe, ProgressBar, Units};
 use popsicle::{mnt, Progress, Task};
 use std::{
@@ -29,22 +32,21 @@ use std::{
 };
 
 fn main() {
+    translate();
     better_panic::install();
+
+    let arg_image = fl!("arg-image");
+    let arg_disks = fl!("arg-disks");
 
     let matches = App::new(env!("CARGO_PKG_NAME"))
         .about(env!("CARGO_PKG_DESCRIPTION"))
         .version(env!("CARGO_PKG_VERSION"))
-        .arg(Arg::with_name("IMAGE").help("Input image file").required(true))
-        .arg(Arg::with_name("DISKS").help("Output disk devices").multiple(true))
-        .arg(Arg::with_name("all").help("Flash all detected USB drives").short("a").long("all"))
-        .arg(
-            Arg::with_name("check")
-                .help("Check written image matches read image")
-                .short("c")
-                .long("check"),
-        )
-        .arg(Arg::with_name("unmount").help("Unmount mounted devices").short("u").long("unmount"))
-        .arg(Arg::with_name("yes").help("Continue without confirmation").short("y").long("yes"))
+        .arg(Arg::with_name(&arg_image).help(&fl!("arg-image-desc")).required(true))
+        .arg(Arg::with_name(&arg_disks).help(&fl!("arg-disks-desc")).multiple(true))
+        .arg(Arg::with_name("all").help(&fl!("arg-all-desc")).short("a").long("all"))
+        .arg(Arg::with_name("check").help(&fl!("arg-check-desc")).short("c").long("check"))
+        .arg(Arg::with_name("unmount").help(&fl!("arg-unmount-desc")).short("u").long("unmount"))
+        .arg(Arg::with_name("yes").help(&fl!("arg-yes-desc")).short("y").long("yes"))
         .get_matches();
 
     let (rtx, rrx) = oneshot::channel::<anyhow::Result<()>>();
@@ -62,7 +64,7 @@ fn main() {
     if let Err(why) = result {
         eprintln!("popsicle: {}", why);
         for source in why.chain().skip(1) {
-            eprintln!("    caused by: {}", source)
+            epintln!("    " (fl!("error-caused-by")) ": " (source))
         }
 
         process::exit(1);
@@ -73,30 +75,33 @@ async fn popsicle(
     rtx: oneshot::Sender<anyhow::Result<()>>,
     matches: ArgMatches<'_>,
 ) -> anyhow::Result<()> {
-    let image_path = matches.value_of("IMAGE").expect("IMAGE not set");
+    let image_path =
+        matches.value_of(&fl!("arg-image")).with_context(|| fl!("error-image-not-set"))?;
 
     let image = OpenOptions::new()
         .custom_flags(libc::O_SYNC)
         .read(true)
         .open(image_path)
         .await
-        .with_context(|| format!("error with image at '{}'", image_path))?;
+        .with_context(|| fl!("error-image-open", image_path = image_path.clone()))?;
 
     let image_size = image
         .metadata()
         .await
         .map(|x| x.len())
-        .with_context(|| format!("image metadata error at '{}'", image_path))?;
+        .with_context(|| fl!("error-image-metadata", image_path = image_path.clone()))?;
 
     let mut disk_args = Vec::new();
     if matches.is_present("all") {
-        popsicle::usb_disk_devices(&mut disk_args).await.context("error getting USB disks")?;
+        popsicle::usb_disk_devices(&mut disk_args)
+            .await
+            .with_context(|| fl!("error-disks-fetch"))?;
     } else if let Some(disks) = matches.values_of("DISKS") {
         disk_args.extend(disks.map(String::from).map(PathBuf::from).map(Box::from));
     }
 
     if disk_args.is_empty() {
-        return Err(anyhow!("no disks specified"));
+        return Err(anyhow!(fl!("error-no-disks-specified")));
     }
 
     let mounts = mnt::get_submounts(Path::new("/")).context("error reading mounts")?;
@@ -104,17 +109,17 @@ async fn popsicle(
     let disks =
         popsicle::disks_from_args(disk_args.into_iter(), &mounts, matches.is_present("unmount"))
             .await
-            .context("failed to open disks")?;
+            .with_context(|| fl!("error-opening-disks"))?;
 
     let is_tty = atty::is(atty::Stream::Stdout);
 
     if is_tty && !matches.is_present("yes") {
         epint!(
-            "Are you sure you want to flash '" (image_path) "' to the following drives?\n"
+            (fl!("question", image_path = image_path)) "\n"
             for (path, _) in &disks {
                 " - " (path.display()) "\n"
             }
-            "y/N: "
+            (fl!("yn")) ": "
         );
 
         io::stdout().flush().unwrap();
@@ -123,7 +128,7 @@ async fn popsicle(
         io::stdin().read_line(&mut confirm).unwrap();
 
         if confirm.trim() != "y" && confirm.trim() != "yes" {
-            return Err(anyhow!("exiting without flashing"));
+            return Err(anyhow!(fl!("error-exiting")));
         }
     }
 
@@ -262,5 +267,14 @@ async fn machine_output(
                 let _ = witeln!(stdout, "Set(\"" (paths[id].display()) "\"," (written) ")");
             }
         }
+    }
+}
+
+fn translate() {
+    let requested_languages = DesktopLanguageRequester::requested_languages();
+    let localizer = crate::localize::localizer();
+
+    if let Err(error) = localizer.select(&requested_languages) {
+        eprintln!("Error while loading languages for popsicle-cli {}", error);
     }
 }
