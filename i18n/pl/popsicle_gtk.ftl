@@ -32,6 +32,7 @@ critical-error = Wystąpił Krytyczny Błąd
 # Misc
 cancel = Anuluj
 close = Zamknij
+done = Zakończ
 next = Następny
 open = Otwórz
 task-finished = Zakończono

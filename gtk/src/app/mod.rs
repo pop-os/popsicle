@@ -183,7 +183,7 @@ impl GtkUi {
 
                 next_ctx.remove_class(&gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
                 next.set_visible(true);
-                next.set_label("Done");
+                next.set_label(&fl!("done"));
                 &self.content.summary_view.view.container
             }
             ActiveView::Error => {
