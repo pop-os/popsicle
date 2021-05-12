@@ -16,10 +16,6 @@ scripts:
   post_build:
     # just USB Flasher might make sense on Pop!_OS, but not on other distros
     - sed -i 's|Name=USB Flasher|Name=Popsicle USB Flasher|' "$BUILD_DIR"/AppDir/usr/share/applications/com.system76.Popsicle.desktop
-    # these fixes can likely be removed when #105 is merged
-    - sed -i 's|System$|System;|' "$BUILD_DIR"/AppDir/usr/share/applications/com.system76.Popsicle.desktop
-    - sed -i 's|/usr/local/bin/||g' "$BUILD_DIR"/AppDir/usr/share/applications/com.system76.Popsicle.desktop
-    - sed -i 's|/usr/bin/||g' "$BUILD_DIR"/AppDir/usr/share/applications/com.system76.Popsicle.desktop
 
 appimage:
   linuxdeploy:
