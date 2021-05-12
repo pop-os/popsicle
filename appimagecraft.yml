@@ -19,5 +19,7 @@ scripts:
 
 appimage:
   linuxdeploy:
+    environment:
+      UPD_INFO: 'gh-releases-zsync|pop-os|popsicle|latest|Popsicle_USB_Flasher-*x86_64.AppImage.zsync'
     plugins:
       - gtk
