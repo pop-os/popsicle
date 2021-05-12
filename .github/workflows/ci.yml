@@ -18,7 +18,7 @@ jobs:
       with:
         if-no-files-found: error
         name: popsicle-appimage-${{ github.sha }}
-        path: Popsicle_USB_Flasher-*.AppImage
+        path: Popsicle_USB_Flasher-*.AppImage*
 
   upload-to-release:
     if: github.event_name == 'release'
