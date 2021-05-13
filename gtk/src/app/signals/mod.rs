@@ -317,7 +317,13 @@ impl App {
                                             ..pack_start(&why, true, true, 0);
                                         };
 
-                                        list.insert(&container, -1);
+                                        let row = cascade! {
+                                            gtk::ListBoxRow::new();
+                                            ..set_selectable(false);
+                                            ..add(&container);
+                                        };
+
+                                        list.add(&row);
                                     }
 
                                     list.show_all();
