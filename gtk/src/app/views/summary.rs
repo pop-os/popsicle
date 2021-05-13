@@ -9,8 +9,10 @@ pub struct SummaryView {
 
 impl SummaryView {
     pub fn new() -> SummaryView {
-        let list = ListBox::new();
-        list.set_visible(false);
+        let list = cascade! {
+            ListBox::new();
+            ..get_style_context().add_class("frame");
+        };
 
         let view = View::new("process-completed", &fl!("flashing-completed"), "", |right_panel| {
             right_panel.pack_start(&list, true, true, 0);

@@ -23,6 +23,7 @@ impl DevicesView {
     pub fn new() -> DevicesView {
         let list = cascade! {
             gtk::ListBox::new();
+            ..get_style_context().add_class("frame");
             ..get_style_context().add_class("devices");
             ..set_hexpand(true);
             ..set_vexpand(true);
@@ -51,7 +52,6 @@ impl DevicesView {
         let list_box = cascade! {
             gtk::Box::new(gtk::Orientation::Vertical, 0);
             ..add(&select_all);
-            ..add(&gtk::Separator::new(gtk::Orientation::Horizontal));
             ..add(&list);
         };
 
