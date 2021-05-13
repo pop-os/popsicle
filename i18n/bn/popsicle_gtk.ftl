@@ -10,7 +10,7 @@ image-view-description = যে .iso বা .img ফাইল ফ্ল্যা
 image-view-title = ইমেজ নির্বাচন
 no-image-selected = কোনো ইমেজ নির্বাচন করা হয়নি
 none = কোনোটাই না
-warning = সতর্কতা :
+warning = সতর্কতা:
 
 # Devices View
 device-too-small = ডিভাইসের আকার খুব ছোট
