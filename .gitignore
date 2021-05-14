@@ -10,3 +10,7 @@ debian/*
 target/
 vendor/
 vendor.tar
+*.AppImage*
+*.zsync
+*.swp
+.appimagecraft-*/
