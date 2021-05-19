@@ -24,6 +24,7 @@ flash-view-title = Flashing Devices
 
 # Summary View
 flashing-completed = Flashing Completed
+flashing-completed-with-errors = Flashing Completed with Errors
 flash-again = Flash Again
 
 # Error View
