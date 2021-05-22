@@ -24,6 +24,7 @@ flash-view-title = Gravando dispositivos
 
 # Summary View
 flashing-completed = Gravação finalizada
+flashing-completed-with-errors = Gravação finalizada com erros
 flash-again = Gravar novamente
 
 # Error View
