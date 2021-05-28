@@ -6,7 +6,7 @@ check-label = Ellenőrzés
 choose-image-button = Lemezkép kiválasztása
 generating-checksum = Checksum készítése
 hash-label = Hash:
-image-view-description = Válaszd ki a .iso vagy .img fájlt amit kiszeretnél íratni. Most tudod a pendrivot is behelyezni.
+image-view-description = Válaszd ki a .iso vagy .img fájlt amit kiszeretnél íratni. Most tudod a pendrive-ot is behelyezni.
 image-view-title = Válasz ki egy lemezképet
 no-image-selected = Nincs lemezkép kiválasztva
 none = Semelyik
@@ -19,7 +19,7 @@ devices-view-title = Válaszd ki az eszközöket
 select-all = Összes kiválasztása
 
 # Flashing View
-flash-view-description = Ne távoloítsd el az eszközöket amíg az írás folyamatban van.
+flash-view-description = Ne távolítsd el az eszközöket amíg az írás folyamatban van.
 flash-view-title = Írás az eszközökre
 
 # Summary View
