@@ -1,4 +1,4 @@
-question = '{$image_path}' konumundaki disk görüntüsünü listelenen bellek aygıtlarına yazdırmak istediğinizden emin misiniz?
+question = '{$image_path}' konumundaki disk görüntüsünü listelenen bellek aygıtlarına yazdırmak istediğinize emin misiniz?
 
 yn = e/H
 
