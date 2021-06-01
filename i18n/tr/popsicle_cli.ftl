@@ -16,12 +16,12 @@ arg-yes-desc = Onay almadan devam et
 
 # errors
 error-caused-by = sebep:
-error-image-not-set = {arg-image} seçilmedi
-error-image-open = '{$image_path}' konumundaki disk görüntüsü açılamadı
-error-image-metadata = '{$image_path}' konumundaki disk görüntüsünün üst verisine ulaşılamadı
-error-disks-fetch = USB bellek aygıtlarının listesine ulaşılamadı
-error-no-disks-specified = bellek aygıtı seçilmedi
-error-fetching-mounts = bağlı cihazların listesine ulaşılamadı
-error-opening-disks = bellek aygıtı açılamadı
-error-exiting = yazdırılmadan sonlandırılıyor
-error-reading-mounts = bağlı bellek aygıtları okunurken bir hata oluştu
+error-image-not-set = {arg-image} seçilmedi.
+error-image-open = '{$image_path}' konumundaki disk görüntüsü açılamadı.
+error-image-metadata = '{$image_path}' konumundaki disk görüntüsünün üst verisine ulaşılamadı.
+error-disks-fetch = USB bellek aygıtlarının listesine ulaşılamadı.
+error-no-disks-specified = Bellek aygıtı seçilmedi.
+error-fetching-mounts = Bağlı cihazların listesine ulaşılamadı.
+error-opening-disks = Bellek aygıtı açılamadı.
+error-exiting = Yazdırılmadan sonlandırılıyor.
+error-reading-mounts = Bağlı bellek aygıtları okunurken bir hata oluştu.
