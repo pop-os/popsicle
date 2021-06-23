@@ -55,5 +55,16 @@ Translation files can be found [here](./i18n/). We are using [Project Fluent](ht
 
 ### Supported Languages
 
-- [English](./gtk/i18n/en/)
-- [Polish](./gtk/i18n/pl/)
+- [English](./i18n/en/)
+- [Bangla](./i18n/bn/)
+- [German](./i18n/de/)
+- [Spanish](./i18n/es/)
+- [French](./i18n/fr/)
+- [Hungarian](./i18n/hu/)
+- [Dutch](./i18n/nl/)
+- [Polish](./i18n/pl/)
+- [Brazilian Portuguese](./i18n/pt-BR/)
+- [Portuguese](./i18n/pt/)
+- [Russian](./i18n/ru/)
+- [Serbian](./i18n/sr/)
+- [Turkish](./i18n/tr/)
