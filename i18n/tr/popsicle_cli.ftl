@@ -6,7 +6,7 @@ yn = e/H
 arg-image = DİSK GÖRÜNTÜSÜ
 arg-image-desc = (Girdi) disk görüntüsü dosyası
 
-arg-disks = DISKS
+arg-disks = DİSKLER
 arg-disks-desc = (Çıktı) bellek aygıtı
 
 arg-all-desc = Algılanan tüm USB bellek aygıtlarına yazdır
