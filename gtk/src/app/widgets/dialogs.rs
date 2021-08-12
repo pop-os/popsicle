@@ -1,5 +1,5 @@
 use crate::fl;
-use gtk::*;
+use gtk::{prelude::*, *};
 use std::path::PathBuf;
 
 /// A wrapped FileChooserNative that automatically destroys itself upon being dropped.
@@ -29,7 +29,7 @@ impl OpenDialog {
 
     pub fn run(&self) -> Option<PathBuf> {
         if self.0.run() == ResponseType::Accept {
-            self.0.get_filename()
+            self.0.filename()
         } else {
             None
         }

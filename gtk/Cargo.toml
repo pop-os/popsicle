@@ -21,16 +21,16 @@ dbus = "0.9"
 dbus-udisks2 = { git = "https://github.com/pop-os/dbus-udisks2" }
 digest = "0.10"
 futures = "0.3"
-gdk = "0.13"
-gdk-pixbuf = "0.9"
-gio = "0.9"
-glib = "0.10"
-gtk = { version = "0.9", features = ["v3_22"] }
+gdk = "0.15"
+gdk-pixbuf = "0.15"
+gio = "0.15"
+glib = "0.15"
+gtk = { version = "0.15", features = ["v3_22"] }
 hex-view = "0.1"
 iso9660 = { git = "https://github.com/ids1024/iso9660-rs" }
 libc = "0.2"
 md-5 = "0.10"
-pango = "0.9"
+pango = "0.15"
 parking_lot = "0.11"
 popsicle = { path = ".." }
 pwd = "1"

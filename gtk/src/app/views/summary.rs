@@ -1,6 +1,6 @@
 use super::View;
 use crate::fl;
-use gtk::*;
+use gtk::{prelude::*, *};
 
 pub struct SummaryView {
     pub view: View,
@@ -11,7 +11,7 @@ impl SummaryView {
     pub fn new() -> SummaryView {
         let list = cascade! {
             ListBox::new();
-            ..get_style_context().add_class("frame");
+            ..style_context().add_class("frame");
         };
 
         let view = View::new("process-completed", &fl!("flashing-completed"), "", |right_panel| {

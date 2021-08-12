@@ -12,7 +12,7 @@ pub use self::images::ImageView;
 pub use self::summary::SummaryView;
 pub use self::view::View;
 
-use gtk::*;
+use gtk::{prelude::*, *};
 
 pub struct Content {
     pub container: Stack,

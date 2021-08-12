@@ -14,15 +14,15 @@ where
     // Then actually handle drags that are inside the view.
     widget.connect_drag_motion(|_view, ctx, _x, _y, time| {
         ctx.drag_status(gdk::DragAction::COPY, time);
-        Inhibit(true)
+        true
     });
 
     // Get the dropped data, if possible, when the active drag is valid.
     widget.connect_drag_drop(|view, ctx, _x, _y, time| {
-        Inhibit(ctx.list_targets().last().map_or(false, |ref target| {
+        ctx.list_targets().last().map_or(false, |ref target| {
             view.drag_get_data(ctx, target, time);
             true
-        }))
+        })
     });
 
     // Then handle the dropped data, setting the image if the dropped data is valid.
