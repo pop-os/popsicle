@@ -22,7 +22,7 @@ impl View {
         let topic = cascade! {
             Label::new(Some(topic));
             ..set_halign(Align::Start);
-            ..get_style_context().add_class("h2");
+            ..style_context().add_class("h2");
             ..set_margin_bottom(6);
         };
 
@@ -30,21 +30,21 @@ impl View {
             Label::new(Some(description));
             ..set_line_wrap(true);
             ..set_xalign(0.0);
-            ..get_style_context().add_class("desc");
+            ..style_context().add_class("desc");
             ..set_margin_bottom(6);
         };
 
         let left_panel = cascade! {
             gtk::Box::new(Orientation::Vertical, 0);
             ..add(&icon);
-            ..get_style_context().add_class("left-panel");
+            ..style_context().add_class("left-panel");
         };
 
         let right_panel = cascade! {
             let panel = gtk::Box::new(Orientation::Vertical, 0);
             ..add(&topic);
             ..add(&description);
-            ..get_style_context().add_class("right-panel");
+            ..style_context().add_class("right-panel");
             configure_panel(&panel);
         };
 

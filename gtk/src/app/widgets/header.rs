@@ -1,5 +1,5 @@
 use crate::fl;
-use gtk::*;
+use gtk::{prelude::*, *};
 
 pub struct Header {
     pub container: HeaderBar,
@@ -11,13 +11,13 @@ impl Header {
     pub fn new() -> Header {
         let back = cascade! {
             Button::with_label(&fl!("cancel"));
-            ..get_style_context().add_class("back");
+            ..style_context().add_class("back");
         };
 
         let next = cascade! {
             Button::with_label(&fl!("next"));
             ..set_sensitive(false);
-            ..get_style_context().add_class(&STYLE_CLASS_SUGGESTED_ACTION);
+            ..style_context().add_class(&STYLE_CLASS_SUGGESTED_ACTION);
         };
 
         // Returns the header and all of it's state

@@ -15,7 +15,7 @@ use std::fmt::Write;
 use std::fs::File;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 impl App {
     pub fn connect_back(&self) {
@@ -66,7 +66,7 @@ impl App {
         let mut flash_handles = None;
         let mut tasks = None;
 
-        glib::timeout_add_local(16, move || {
+        glib::timeout_add_local(Duration::from_millis(16), move || {
             match state.ui_event_rx.try_recv() {
                 Err(TryRecvError::Disconnected) => return Continue(false),
                 Err(TryRecvError::Empty) => (),
@@ -150,7 +150,7 @@ impl App {
                             let label = cascade! {
                                 gtk::Label::new(Some(&misc::device_label(&device)));
                                 ..set_justify(gtk::Justification::Right);
-                                ..get_style_context().add_class("bold");
+                                ..style_context().add_class("bold");
                             };
 
                             let bar_label = cascade! {
@@ -324,7 +324,7 @@ impl App {
                                             gtk::Label::new(Some(&misc::device_label(&device)));
                                         let why =
                                             gtk::Label::new(Some(format!("{}", why).as_str()));
-                                        why.get_style_context().add_class("bold");
+                                        why.style_context().add_class("bold");
 
                                         let container = cascade! {
                                             gtk::Box::new(gtk::Orientation::Horizontal, 6);

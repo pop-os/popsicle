@@ -73,9 +73,9 @@ impl GtkUi {
         };
 
         // Add a custom CSS style
-        let screen = window.get_screen().unwrap();
+        let screen = window.screen().unwrap();
         let style = gtk::CssProvider::new();
-        let _ = gtk::CssProviderExt::load_from_data(&style, CSS.as_bytes());
+        let _ = style.load_from_data(CSS.as_bytes());
         gtk::StyleContext::add_provider_for_screen(
             &screen,
             &style,
@@ -127,8 +127,8 @@ impl GtkUi {
         let next = &self.header.next;
         let stack = &self.content.container;
 
-        let back_ctx = back.get_style_context();
-        let next_ctx = next.get_style_context();
+        let back_ctx = back.style_context();
+        let next_ctx = next.style_context();
 
         let widget = match view {
             ActiveView::Images => {
@@ -167,7 +167,7 @@ impl GtkUi {
 
                 devices.clear();
 
-                for active_id in self.content.devices_view.get_active_ids() {
+                for active_id in self.content.devices_view.is_active_ids() {
                     devices.push(all_devices[active_id].clone());
                 }
 

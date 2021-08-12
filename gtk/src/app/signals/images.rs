@@ -32,7 +32,7 @@ impl App {
         let image_view = ui.content.image_view.view.container.clone();
 
         misc::drag_and_drop(&image_view, move |data| {
-            if let Some(uri) = data.get_text() {
+            if let Some(uri) = data.text() {
                 if uri.starts_with("file://") {
                     let path = Path::new(&uri[7..uri.len() - 1]);
                     if path.extension().map_or(false, |ext| ext == "iso" || ext == "img")
@@ -51,7 +51,7 @@ fn set_hash_widget(state: &State, ui: &GtkUi) {
     let hash = &ui.content.image_view.hash;
 
     let path = state.image_path.borrow();
-    let kind = match hash.get_active() {
+    let kind = match hash.active() {
         Some(1) => "SHA256",
         Some(2) => "SHA1",
         Some(3) => "MD5",

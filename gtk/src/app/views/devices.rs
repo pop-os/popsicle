@@ -23,8 +23,8 @@ impl DevicesView {
     pub fn new() -> DevicesView {
         let list = cascade! {
             gtk::ListBox::new();
-            ..get_style_context().add_class("frame");
-            ..get_style_context().add_class("devices");
+            ..style_context().add_class("frame");
+            ..style_context().add_class("devices");
             ..set_hexpand(true);
             ..set_vexpand(true);
         };
@@ -35,11 +35,11 @@ impl DevicesView {
             ..set_margin_start(4);
             ..set_margin_bottom(3);
             ..connect_toggled(move |all| {
-                let state = all.get_active();
+                let state = all.is_active();
 
-                for row in list_.get_children() {
+                for row in list_.children() {
                     if let Ok(row) = row.downcast::<gtk::ListBoxRow>() {
-                        if let Some(widget) = row.get_children().get(0) {
+                        if let Some(widget) = row.children().get(0) {
                             if let Some(button) = widget.downcast_ref::<gtk::CheckButton>() {
                                 button.set_active(button.get_sensitive() && state);
                             }
@@ -56,7 +56,7 @@ impl DevicesView {
         };
 
         let select_scroller = cascade! {
-            gtk::ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
+            gtk::ScrolledWindow::new(gtk::Adjustment::NONE, gtk::Adjustment::NONE);
             ..set_hexpand(true);
             ..set_vexpand(true);
             ..add(&list_box);
@@ -76,17 +76,17 @@ impl DevicesView {
 
     pub fn get_buttons(&self) -> impl Iterator<Item = gtk::CheckButton> {
         self.list
-            .get_children()
+            .children()
             .into_iter()
             .filter_map(|row| row.downcast::<gtk::ListBoxRow>().ok())
-            .filter_map(|row| row.get_children().get(0).cloned())
+            .filter_map(|row| row.children().get(0).cloned())
             .filter_map(|row| row.downcast::<gtk::CheckButton>().ok())
     }
 
-    pub fn get_active_ids(&self) -> impl Iterator<Item = usize> {
+    pub fn is_active_ids(&self) -> impl Iterator<Item = usize> {
         self.get_buttons()
             .enumerate()
-            .filter_map(|(id, button)| if button.get_active() { Some(id) } else { None })
+            .filter_map(|(id, button)| if button.is_active() { Some(id) } else { None })
     }
 
     pub fn refresh(&self, devices: &[Arc<DiskDevice>], image_size: u64) {
@@ -118,7 +118,7 @@ impl DevicesView {
                     ..set_use_markup(true);
                 });
                 ..connect_toggled(move |button| {
-                    if button.get_active() {
+                    if button.is_active() {
                         nselected.set(nselected.get() + 1);
                     } else {
                         nselected.set(nselected.get() - 1);

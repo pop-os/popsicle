@@ -1,6 +1,6 @@
 use super::View;
 use crate::fl;
-use gtk::*;
+use gtk::{prelude::*, *};
 
 pub struct FlashView {
     pub view: View,
@@ -16,7 +16,7 @@ impl FlashView {
         };
 
         let progress_scroller = cascade! {
-            ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
+            ScrolledWindow::new(gtk::Adjustment::NONE, gtk::Adjustment::NONE);
             ..add(&progress_list);
         };
 
