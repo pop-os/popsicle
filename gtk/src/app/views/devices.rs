@@ -1,6 +1,6 @@
+use super::View;
 use crate::fl;
 use crate::misc;
-use super::View;
 use dbus_udisks2::DiskDevice;
 use gtk;
 use gtk::prelude::*;

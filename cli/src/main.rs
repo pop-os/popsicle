@@ -104,8 +104,7 @@ async fn popsicle(
         return Err(anyhow!(fl!("error-no-disks-specified")));
     }
 
-    let mounts = mnt::get_submounts(Path::new("/"))
-        .with_context(|| fl!("error-reading-mounts"))?;
+    let mounts = mnt::get_submounts(Path::new("/")).with_context(|| fl!("error-reading-mounts"))?;
 
     let disks =
         popsicle::disks_from_args(disk_args.into_iter(), &mounts, matches.is_present("unmount"))

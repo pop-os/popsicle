@@ -10,9 +10,9 @@ use crate::misc;
 use atomic::Atomic;
 use crossbeam_channel::TryRecvError;
 use gtk::{self, prelude::*};
+use iso9660::ISO9660;
 use std::fmt::Write;
 use std::fs::File;
-use iso9660::ISO9660;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
@@ -89,7 +89,11 @@ impl App {
                             None
                         };
 
-                        ui.content.image_view.set_image(&path, image_size, warning.as_ref().map(|x| x.as_str()));
+                        ui.content.image_view.set_image(
+                            &path,
+                            image_size,
+                            warning.as_ref().map(|x| x.as_str()),
+                        );
                         ui.content.image_view.set_hash_sensitive(true);
                         ui.header.next.set_sensitive(true);
 
@@ -235,7 +239,10 @@ impl App {
 
                                     let sum: u64 = prev_values.iter().skip(1).sum();
                                     let per_second = sum / 3;
-                                    label.set_label(&format!("{}/s", bytesize::to_string(per_second, true)));
+                                    label.set_label(&format!(
+                                        "{}/s",
+                                        bytesize::to_string(per_second, true)
+                                    ));
                                 }
                             }
 
@@ -294,11 +301,15 @@ impl App {
                                     description.set_text(&desc);
                                     list.hide();
                                 } else {
-                                    ui.content.summary_view.view.topic.set_text(&fl!("flashing-completed-with-errors"));
+                                    ui.content
+                                        .summary_view
+                                        .view
+                                        .topic
+                                        .set_text(&fl!("flashing-completed-with-errors"));
 
                                     let mut desc = fl!(
                                         "partial-flash",
-                                        number = {ntasks - errors.len()},
+                                        number = { ntasks - errors.len() },
                                         total = ntasks
                                     );
 
@@ -309,8 +320,10 @@ impl App {
                                     description.set_markup(&desc);
 
                                     for (device, why) in errors {
-                                        let device = gtk::Label::new(Some(&misc::device_label(&device)));
-                                        let why = gtk::Label::new(Some(format!("{}", why).as_str()));
+                                        let device =
+                                            gtk::Label::new(Some(&misc::device_label(&device)));
+                                        let why =
+                                            gtk::Label::new(Some(format!("{}", why).as_str()));
                                         why.get_style_context().add_class("bold");
 
                                         let container = cascade! {

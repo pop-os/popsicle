@@ -62,7 +62,8 @@ pub fn background_thread(events_tx: Sender<UiEvent>, events_rx: Receiver<Backgro
                     // Fetch the current list of USB devices from popsicle.
                     match refresh_devices() {
                         Ok(devices) => {
-                            let new_device_paths: Vec<_> = devices.iter().map(|d| d.drive.path.clone()).collect();
+                            let new_device_paths: Vec<_> =
+                                devices.iter().map(|d| d.drive.path.clone()).collect();
                             if new_device_paths != device_paths {
                                 device_paths = new_device_paths;
                                 let _ = events_tx.send(UiEvent::RefreshDevices(devices));
