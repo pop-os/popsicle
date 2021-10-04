@@ -11,14 +11,14 @@ Standards-Version: 4.1.1
 Homepage: https://github.com/pop-os/popsicle
 
 Package: popsicle
-Architecture: amd64
+Architecture: amd64 arm64
 Depends:
   ${misc:Depends},
   ${shlib:Depends}
 Description: USB Flasher
 
 Package: popsicle-gtk
-Architecture: amd64
+Architecture: amd64 arm64
 Depends:
   libgtk-3-0,
   ${misc:Depends},
