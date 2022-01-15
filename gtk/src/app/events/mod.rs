@@ -5,6 +5,7 @@ use crossbeam_channel::{Receiver, Sender};
 use dbus_udisks2::{DiskDevice, Disks, UDisks2};
 use md5::Md5;
 use sha2::Sha256;
+use sha1::Sha1;
 use std::collections::HashMap;
 use std::io;
 use std::path::PathBuf;
@@ -44,6 +45,7 @@ pub fn background_thread(events_tx: Sender<UiEvent>, events_rx: Receiver<Backgro
                     let result = match kind {
                         "MD5" => hasher::<Md5>(&path),
                         "SHA256" => hasher::<Sha256>(&path),
+                        "SHA1" => hasher::<Sha1>(&path),
                         _ => Err(io::Error::new(
                             io::ErrorKind::InvalidInput,
                             "hash kind not supported",

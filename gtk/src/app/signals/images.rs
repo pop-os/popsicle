@@ -54,6 +54,7 @@ fn set_hash_widget(state: &State, ui: &GtkUi) {
     let kind = match hash.get_active() {
         Some(1) => "SHA256",
         Some(2) => "MD5",
+        Some(3) => "SHA1",
         _ => return,
     };
 
