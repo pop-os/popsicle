@@ -1,5 +1,5 @@
-use crate::fl;
 use super::View;
+use crate::fl;
 use gtk::*;
 
 pub struct FlashView {

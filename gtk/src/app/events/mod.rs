@@ -4,8 +4,8 @@ use crate::hash::hasher;
 use crossbeam_channel::{Receiver, Sender};
 use dbus_udisks2::{DiskDevice, Disks, UDisks2};
 use md5::Md5;
-use sha2::Sha256;
 use sha1::Sha1;
+use sha2::Sha256;
 use std::collections::HashMap;
 use std::io;
 use std::path::PathBuf;
@@ -64,7 +64,8 @@ pub fn background_thread(events_tx: Sender<UiEvent>, events_rx: Receiver<Backgro
                     // Fetch the current list of USB devices from popsicle.
                     match refresh_devices() {
                         Ok(devices) => {
-                            let new_device_paths: Vec<_> = devices.iter().map(|d| d.drive.path.clone()).collect();
+                            let new_device_paths: Vec<_> =
+                                devices.iter().map(|d| d.drive.path.clone()).collect();
                             if new_device_paths != device_paths {
                                 device_paths = new_device_paths;
                                 let _ = events_tx.send(UiEvent::RefreshDevices(devices));

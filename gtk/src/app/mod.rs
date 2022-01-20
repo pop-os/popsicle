@@ -113,11 +113,11 @@ impl GtkUi {
         context: &'static str,
     ) -> Result<T, ()> {
         result.ok_or_else(|| {
-            self.content
-                .error_view
-                .view
-                .description
-                .set_text(&format!("{}: {}", context, fl!("no-value-found")));
+            self.content.error_view.view.description.set_text(&format!(
+                "{}: {}",
+                context,
+                fl!("no-value-found")
+            ));
             self.switch_to(state, ActiveView::Error);
         })
     }
