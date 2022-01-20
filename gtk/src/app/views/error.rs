@@ -1,5 +1,5 @@
-use crate::fl;
 use super::View;
+use crate::fl;
 
 pub struct ErrorView {
     pub view: View,

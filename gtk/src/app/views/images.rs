@@ -1,8 +1,8 @@
-use crate::fl;
 use super::View;
+use crate::fl;
 use bytesize;
-use gtk::*;
 use gtk::prelude::*;
+use gtk::*;
 use pango::{AttrList, Attribute, EllipsizeMode};
 use std::path::Path;
 
@@ -57,6 +57,7 @@ impl ImageView {
             ComboBoxText::new();
             ..append_text(&fl!("none"));
             ..append_text("SHA256");
+            ..append_text("SHA1");
             ..append_text("MD5");
             ..set_active(Some(0));
             ..set_sensitive(false);
@@ -83,7 +84,7 @@ impl ImageView {
         hash.connect_changed(move |combo_box| {
             let sensitive = match combo_box.get_active_text() {
                 Some(text) if text.as_str() != "None" => true,
-                _ => false
+                _ => false,
             };
             hash_label_clone.set_sensitive(sensitive);
             check_clone.set_sensitive(sensitive);
@@ -151,7 +152,7 @@ impl ImageView {
         let size_str = bytesize::to_string(size, true);
         let mut label: String = match path.file_name() {
             Some(name) => format!("<b>{}</b>\n{}", name.to_string_lossy(), size_str),
-            None => format!("<b>{}</b>", fl!("cannot-select-directories"))
+            None => format!("<b>{}</b>", fl!("cannot-select-directories")),
         };
 
         if let Some(warning) = warning {

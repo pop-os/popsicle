@@ -53,7 +53,8 @@ fn set_hash_widget(state: &State, ui: &GtkUi) {
     let path = state.image_path.borrow();
     let kind = match hash.get_active() {
         Some(1) => "SHA256",
-        Some(2) => "MD5",
+        Some(2) => "SHA1",
+        Some(3) => "MD5",
         _ => return,
     };
 

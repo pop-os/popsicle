@@ -19,7 +19,7 @@ cascade = "1.0"
 crossbeam-channel = "0.5"
 dbus = "0.9"
 dbus-udisks2 = { git = "https://github.com/pop-os/dbus-udisks2" }
-digest = "0.9"
+digest = "0.10"
 futures = "0.3"
 gdk = "0.13"
 gdk-pixbuf = "0.9"
@@ -29,12 +29,13 @@ gtk = { version = "0.9", features = ["v3_22"] }
 hex-view = "0.1"
 iso9660 = { git = "https://github.com/ids1024/iso9660-rs" }
 libc = "0.2"
-md-5 = "0.9"
+md-5 = "0.10"
 pango = "0.9"
 parking_lot = "0.11"
 popsicle = { path = ".." }
 pwd = "1"
-sha2 = "0.9"
+sha2 = "0.10"
+sha-1 = { version = "0.10", features = ["asm"] }
 sys-mount = "1"
 async-std = "1.3"
 i18n-embed = { version = "0.12.0", features = ["fluent-system", "desktop-requester"] }
