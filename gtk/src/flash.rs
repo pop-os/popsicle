@@ -46,7 +46,7 @@ struct FlashProgress<'a> {
 
 #[derive(Clone, Debug)]
 pub struct FlashError {
-    kind: String, 
+    kind: String,
     message: String,
 }
 
@@ -62,10 +62,8 @@ impl<'a> Progress for FlashProgress<'a> {
     type Device = ();
 
     fn message(&mut self, _device: &(), kind: &str, message: &str) {
-        self.errors[self.id].set(Err(FlashError {
-            kind: kind.to_string(),
-            message: message.to_string(),
-        }));
+        self.errors[self.id]
+            .set(Err(FlashError { kind: kind.to_string(), message: message.to_string() }));
     }
 
     fn finish(&mut self) {
@@ -103,7 +101,10 @@ impl FlashRequest {
         res
     }
 
-    fn write_inner<'a>(&'a self, source: File) -> anyhow::Result<(anyhow::Result<()>, Vec<Result<(), FlashError>>)> {
+    fn write_inner<'a>(
+        &'a self,
+        source: File,
+    ) -> anyhow::Result<(anyhow::Result<()>, Vec<Result<(), FlashError>>)> {
         // Unmount the devices beforehand.
         for device in &self.destinations {
             let _ = udisks_unmount(&device.parent.path);
@@ -127,7 +128,7 @@ impl FlashRequest {
 
         let mut task = Task::new(source.into(), false);
         for (i, file) in files.into_iter().enumerate() {
-            let progress = FlashProgress {request: &self, errors: errors_cells, id: i};
+            let progress = FlashProgress { request: &self, errors: errors_cells, id: i };
             task.subscribe(file.into(), (), progress);
         }
 
@@ -142,20 +143,12 @@ fn udisks_unmount(dbus_path: &str) -> anyhow::Result<()> {
 
     let dbus_path = ::dbus::strings::Path::new(dbus_path).map_err(anyhow::Error::msg)?;
 
-    let proxy = Proxy::new(
-        "org.freedesktop.UDisks2",
-        dbus_path,
-        Duration::new(25, 0),
-        &connection,
-    );
+    let proxy = Proxy::new("org.freedesktop.UDisks2", dbus_path, Duration::new(25, 0), &connection);
 
     let mut options = UDisksOptions::new();
     options.insert("force", Variant(Box::new(true)));
-    let res: Result<(), _> = proxy.method_call(
-        "org.freedesktop.UDisks2.Filesystem",
-        "Unmount",
-        (options,),
-    );
+    let res: Result<(), _> =
+        proxy.method_call("org.freedesktop.UDisks2.Filesystem", "Unmount", (options,));
 
     if let Err(err) = res {
         if err.name() != Some("org.freedesktop.UDisks2.Error.NotMounted") {
@@ -171,20 +164,13 @@ fn udisks_open(dbus_path: &str) -> anyhow::Result<File> {
 
     let dbus_path = ::dbus::strings::Path::new(dbus_path).map_err(anyhow::Error::msg)?;
 
-    let proxy = Proxy::new(
-        "org.freedesktop.UDisks2",
-        &dbus_path,
-        Duration::new(25, 0),
-        &connection,
-    );
+    let proxy =
+        Proxy::new("org.freedesktop.UDisks2", &dbus_path, Duration::new(25, 0), &connection);
 
     let mut options = UDisksOptions::new();
     options.insert("flags", Variant(Box::new(libc::O_SYNC)));
-    let res: (OwnedFd,) = proxy.method_call(
-        "org.freedesktop.UDisks2.Block",
-        "OpenDevice",
-        ("rw", options),
-    )?;
+    let res: (OwnedFd,) =
+        proxy.method_call("org.freedesktop.UDisks2.Block", "OpenDevice", ("rw", options))?;
 
     Ok(unsafe { File::from_raw_fd(res.0.into_fd()) })
 }
