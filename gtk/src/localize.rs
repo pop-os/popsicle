@@ -12,9 +12,7 @@ struct Localizations;
 pub static LANGUAGE_LOADER: Lazy<FluentLanguageLoader> = Lazy::new(|| {
     let loader: FluentLanguageLoader = fluent_language_loader!();
 
-    loader
-        .load_fallback_language(&Localizations)
-        .expect("Error while loading fallback language");
+    loader.load_fallback_language(&Localizations).expect("Error while loading fallback language");
 
     loader
 });

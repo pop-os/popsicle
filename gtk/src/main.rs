@@ -13,9 +13,9 @@ mod misc;
 use crate::app::events::UiEvent;
 use crate::app::state::State;
 use crate::app::App;
+use i18n_embed::DesktopLanguageRequester;
 use std::env;
 use std::path::PathBuf;
-use i18n_embed::DesktopLanguageRequester;
 
 fn main() {
     let localizer = crate::localize::localizer();
