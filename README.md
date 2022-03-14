@@ -68,4 +68,5 @@ Translation files can be found [here](./i18n/). We are using [Project Fluent](ht
 - [Portuguese](./i18n/pt/)
 - [Russian](./i18n/ru/)
 - [Serbian](./i18n/sr/)
+- [Swedish](./i18n/sv/)
 - [Turkish](./i18n/tr/)
