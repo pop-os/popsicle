@@ -1,0 +1,43 @@
+{
+    "app-id" : "com.system76.Popsicle",
+    "runtime" : "org.freedesktop.Platform",
+    "runtime-version" : "22.08",
+    "sdk" : "org.freedesktop.Sdk",
+    "sdk-extensions" : [
+        "org.freedesktop.Sdk.Extension.rust-stable"
+    ],
+    "build-options" : {
+        "append-path" : "/usr/lib/sdk/rust-stable/bin",
+        "env" : {
+            "CARGO_HOME" : "/run/build/popsicle/cargo"
+        }
+    },
+    "finish-args" : [
+        "--share=ipc",
+        "--socket=fallback-x11",
+        "--socket=wayland",
+        "--system-talk-name=org.freedesktop.UDisks2"
+    ],
+    "command" : "popsicle-gtk",
+    "cleanup" : [
+        "/share/icons/hicolor/512x512@2x"
+    ],
+    "modules" : [
+        {
+            "name" : "popsicle",
+            "buildsystem" : "simple",
+            "sources" : [
+                {
+                    "type" : "dir",
+                    "path" : "."
+                },
+                "generated-sources.json"
+            ],
+            "build-commands" : [
+                "sed -i 's|</launchable>|</launchable>\\n<icon type=\"remote\" height=\"512\" width=\"512\">https://raw.githubusercontent.com/pop-os/popsicle/master/gtk/assets/icons/512x512/apps/com.system76.Popsicle.png</icon>|' gtk/assets/com.system76.Popsicle.appdata.xml",
+                "make",
+                "make install prefix=/app"
+            ]
+        }
+    ]
+}
