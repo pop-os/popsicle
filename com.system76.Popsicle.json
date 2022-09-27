@@ -34,7 +34,6 @@
                 "generated-sources.json"
             ],
             "build-commands" : [
-                "sed -i 's|</launchable>|</launchable>\\n<icon type=\"remote\" height=\"512\" width=\"512\">https://raw.githubusercontent.com/pop-os/popsicle/master/gtk/assets/icons/512x512/apps/com.system76.Popsicle.png</icon>|' gtk/assets/com.system76.Popsicle.appdata.xml",
                 "make",
                 "make install prefix=/app"
             ]
