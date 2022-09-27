@@ -1,61 +1,62 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Copyright 2018-2019 System76 -->
 <component type="desktop-application">
-	<id>com.system76.Popsicle</id>
-	<metadata_license>CC0-1.0</metadata_license>
-	<project_license>MIT</project_license>
-	<developer_name>System76</developer_name>
-	<update_contact>michael@system76.com</update_contact>
-	<url type="homepage">https://github.com/pop-os/popsicle</url>
-	<url type="bugtracker">https://github.com/pop-os/popsicle</url>
-	<name>Popsicle</name>
-	<summary>Flash multiple USB devices in parallel</summary>
-	<description>
-		<p>Write an ISO or other image to multiple USB devices all at once. Easily preparing a bunch of flash drives of your favorite OS with just a couple of clicks.</p>
-    	<ul>
-      		<li>Supports USB 2 and 3 devices</li>
-      		<li>Use USB hubs for massively parallel writing</li>
-			<li>Verify your image with the SHA256 or MD5 checksum</li>
-      		<li>Check the progress, speed, and success of each device while flashing</li>
-      		<li>Open ISO or IMG files from the app, or straight from your file manager</li>
-    	</ul>
-	</description>
-	<categories>
-		<category>System</category>
-	</categories>
-	<launchable type="desktop-id">com.system76.Popsicle.desktop</launchable>
-	<screenshots>
-		<screenshot type="default">
-			<image>https://raw.githubusercontent.com/pop-os/popsicle/master/screenshots/screenshot-01.png</image>
-		</screenshot>
-		<screenshot>
-			<image>https://raw.githubusercontent.com/pop-os/popsicle/master/screenshots/screenshot-02.png</image>
-		</screenshot>
-		<screenshot>
-			<image>https://raw.githubusercontent.com/pop-os/popsicle/master/screenshots/screenshot-03.png</image>
-		</screenshot>
-		<screenshot>
-			<image>https://raw.githubusercontent.com/pop-os/popsicle/master/screenshots/screenshot-04.png</image>
-		</screenshot>
-		<screenshot>
-			<image>https://raw.githubusercontent.com/pop-os/popsicle/master/screenshots/screenshot-05.png</image>
-		</screenshot>
-	</screenshots>
-	<provides>
-		<mimetypes>
-			<mimetype>application/x-cd-image</mimetype>
-			<mimetype>application/x-raw-disk-image</mimetype>
-		</mimetypes>
-		<binaries>
-			<binary>popsicle-gtk</binary>
-			<binary>popsicle</binary>
-		</binaries>
-	</provides>
-	<project_group>Pop!_OS</project_group>
-	<content_rating type="oars-1.0" />
-	<releases>
-		<release version="1.3.0" date="2020-11-05" />
-		<release version="1.2.0" date="2020-10-27" />
-		<release version="1.1.0" date="2020-08-03" />
-	</releases>
+  <id>com.system76.Popsicle</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <developer_name>System76</developer_name>
+  <update_contact>michael@system76.com</update_contact>
+  <url type="homepage">https://github.com/pop-os/popsicle</url>
+  <url type="bugtracker">https://github.com/pop-os/popsicle</url>
+  <name>Popsicle</name>
+  <summary>Flash multiple USB devices in parallel</summary>
+  <description>
+    <p>Write an ISO or other image to multiple USB devices all at once. Easily preparing a bunch of flash drives of your favorite OS with just a couple of clicks.</p>
+    <ul>
+      <li>Supports USB 2 and 3 devices</li>
+      <li>Use USB hubs for massively parallel writing</li>
+      <li>Verify your image with the SHA256 or MD5 checksum</li>
+      <li>Check the progress, speed, and success of each device while flashing</li>
+      <li>Open ISO or IMG files from the app, or straight from your file manager</li>
+    </ul>
+  </description>
+  <categories>
+    <category>System</category>
+  </categories>
+  <launchable type="desktop-id">com.system76.Popsicle.desktop</launchable>
+  <icon type="remote" height="512" width="512">https://raw.githubusercontent.com/pop-os/popsicle/master/gtk/assets/icons/512x512/apps/com.system76.Popsicle.png</icon>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/pop-os/popsicle/master/screenshots/screenshot-01.png</image>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/pop-os/popsicle/master/screenshots/screenshot-02.png</image>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/pop-os/popsicle/master/screenshots/screenshot-03.png</image>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/pop-os/popsicle/master/screenshots/screenshot-04.png</image>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/pop-os/popsicle/master/screenshots/screenshot-05.png</image>
+    </screenshot>
+  </screenshots>
+  <provides>
+    <mimetypes>
+      <mimetype>application/x-cd-image</mimetype>
+      <mimetype>application/x-raw-disk-image</mimetype>
+    </mimetypes>
+    <binaries>
+      <binary>popsicle-gtk</binary>
+      <binary>popsicle</binary>
+    </binaries>
+  </provides>
+  <project_group>Pop!_OS</project_group>
+  <content_rating type="oars-1.0" />
+  <releases>
+    <release version="1.3.0" date="2020-11-05" />
+    <release version="1.2.0" date="2020-10-27" />
+    <release version="1.1.0" date="2020-08-03" />
+  </releases>
 </component>
