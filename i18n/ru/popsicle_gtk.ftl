@@ -24,7 +24,8 @@ flash-view-title = Запись на устройства
 
 # Summary View
 flashing-completed = Запись завершена
-flash-again = Записать еще раз
+flashing-completed-with-errors = Запись завершена с ошибками
+flash-again = Записать снова
 
 # Error View
 critical-error = Произошла критическая ошибка
@@ -32,9 +33,10 @@ critical-error = Произошла критическая ошибка
 # Misc
 cancel = Отмена
 close = Закрыть
+done = Готово
 next = Далее
 open = Открыть
-task-finished = Готово
+task-finished = Завершено
 
 # Events
 error = ошибка: {$why}
