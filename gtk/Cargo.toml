@@ -12,33 +12,32 @@ name = "popsicle-gtk"
 path = "src/main.rs"
 
 [dependencies]
-atomic = "0.5"
-anyhow = "1"
-bytesize = "1.0"
-cascade = "1.0"
-crossbeam-channel = "0.5"
-dbus = "0.9"
+atomic = "0.5.1"
+anyhow = "1.0.65"
+bytesize = "1.1.0"
+cascade = "1.0.1"
+crossbeam-channel = "0.5.6"
+dbus = "0.9.6"
 dbus-udisks2 = { git = "https://github.com/pop-os/dbus-udisks2" }
-digest = "0.10"
-futures = "0.3"
-gdk = "0.15"
-gdk-pixbuf = "0.15"
-gio = "0.15"
-glib = "0.15"
-gtk = { version = "0.15", features = ["v3_22"] }
-hex-view = "0.1"
+digest = "0.10.5"
+futures = "0.3.24"
+gdk = "0.15.4"
+gdk-pixbuf = "0.15.11"
+gio = "0.15.12"
+glib = "0.15.12"
+gtk = { version = "0.15.5", features = ["v3_22"] }
+hex-view = "0.1.3"
 iso9660 = { git = "https://github.com/ids1024/iso9660-rs" }
-libc = "0.2"
-md-5 = "0.10"
-pango = "0.15"
-parking_lot = "0.11"
+libc = "0.2.134"
+md-5 = "0.10.5"
+pango = "0.15.10"
 popsicle = { path = ".." }
-pwd = "1"
-sha2 = "0.10"
-sha-1 = { version = "0.10", features = ["asm"] }
-sys-mount = "1"
-async-std = "1.3"
-i18n-embed = { version = "0.12.0", features = ["fluent-system", "desktop-requester"] }
-i18n-embed-fl = "0.5.0"
-rust-embed = { version = "5.9.0", features = ["debug-embed"] }
-once_cell = "1.7.2"
+pwd = "1.4.0"
+sha2 = "0.10.6"
+sha-1 = { version = "0.10.0", features = ["asm"] }
+sys-mount = "1.5.1"
+async-std = "1.12.0"
+i18n-embed = { version = "0.13.4", features = ["fluent-system", "desktop-requester"] }
+i18n-embed-fl = "0.6.4"
+rust-embed = { version = "6.4.1", features = ["debug-embed"] }
+once_cell = "1.15.0"
