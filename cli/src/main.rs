@@ -17,13 +17,15 @@ use async_std::{
     os::unix::fs::OpenOptionsExt,
     path::{Path, PathBuf},
 };
-use clap::{App, Arg, ArgMatches};
+
+use clap::{builder::Arg, ArgMatches, Command};
 use futures::{
     channel::{mpsc, oneshot},
     executor, join,
     prelude::*,
 };
 use i18n_embed::DesktopLanguageRequester;
+use once_cell::sync::Lazy;
 use pbr::{MultiBar, Pipe, ProgressBar, Units};
 use popsicle::{mnt, Progress, Task};
 use std::{
@@ -31,22 +33,22 @@ use std::{
     process, thread,
 };
 
+static ARG_IMAGE: Lazy<String> = Lazy::new(|| fl!("arg-image"));
+static ARG_DISKS: Lazy<String> = Lazy::new(|| fl!("arg-disks"));
+
 fn main() {
     translate();
     better_panic::install();
 
-    let arg_image = fl!("arg-image");
-    let arg_disks = fl!("arg-disks");
-
-    let matches = App::new(env!("CARGO_PKG_NAME"))
+    let matches = Command::new(env!("CARGO_PKG_NAME"))
         .about(env!("CARGO_PKG_DESCRIPTION"))
         .version(env!("CARGO_PKG_VERSION"))
-        .arg(Arg::with_name(&arg_image).help(&fl!("arg-image-desc")).required(true))
-        .arg(Arg::with_name(&arg_disks).help(&fl!("arg-disks-desc")).multiple(true))
-        .arg(Arg::with_name("all").help(&fl!("arg-all-desc")).short("a").long("all"))
-        .arg(Arg::with_name("check").help(&fl!("arg-check-desc")).short("c").long("check"))
-        .arg(Arg::with_name("unmount").help(&fl!("arg-unmount-desc")).short("u").long("unmount"))
-        .arg(Arg::with_name("yes").help(&fl!("arg-yes-desc")).short("y").long("yes"))
+        .arg(Arg::new(&**ARG_IMAGE).help(&fl!("arg-image-desc")).required(true))
+        .arg(Arg::new(&**ARG_DISKS).help(&fl!("arg-disks-desc")))
+        .arg(Arg::new("all").help(&fl!("arg-all-desc")).short('a').long("all"))
+        .arg(Arg::new("check").help(&fl!("arg-check-desc")).short('c').long("check"))
+        .arg(Arg::new("unmount").help(&fl!("arg-unmount-desc")).short('u').long("unmount"))
+        .arg(Arg::new("yes").help(&fl!("arg-yes-desc")).short('y').long("yes"))
         .get_matches();
 
     let (rtx, rrx) = oneshot::channel::<anyhow::Result<()>>();
@@ -73,15 +75,16 @@ fn main() {
 
 async fn popsicle(
     rtx: oneshot::Sender<anyhow::Result<()>>,
-    matches: ArgMatches<'_>,
+    matches: ArgMatches,
 ) -> anyhow::Result<()> {
-    let image_path =
-        matches.value_of(&fl!("arg-image")).with_context(|| fl!("error-image-not-set"))?;
+    let image_path = matches.get_one::<String>(&fl!("arg-image"))
+        .with_context(|| fl!("error-image-not-set"))?
+        .clone();
 
     let image = OpenOptions::new()
         .custom_flags(libc::O_SYNC)
         .read(true)
-        .open(image_path)
+        .open(&image_path)
         .await
         .with_context(|| fl!("error-image-open", image_path = image_path.clone()))?;
 
@@ -92,12 +95,12 @@ async fn popsicle(
         .with_context(|| fl!("error-image-metadata", image_path = image_path.clone()))?;
 
     let mut disk_args = Vec::new();
-    if matches.is_present("all") {
+    if matches.get_flag("all") {
         popsicle::usb_disk_devices(&mut disk_args)
             .await
             .with_context(|| fl!("error-disks-fetch"))?;
-    } else if let Some(disks) = matches.values_of("DISKS") {
-        disk_args.extend(disks.map(String::from).map(PathBuf::from).map(Box::from));
+    } else if let Some(disks) = matches.get_many::<String>("DISKS") {
+        disk_args.extend(disks.map(PathBuf::from).map(Box::from));
     }
 
     if disk_args.is_empty() {
@@ -108,13 +111,13 @@ async fn popsicle(
         .with_context(|| fl!("error-reading-mounts"))?;
 
     let disks =
-        popsicle::disks_from_args(disk_args.into_iter(), &mounts, matches.is_present("unmount"))
+        popsicle::disks_from_args(disk_args.into_iter(), &mounts, matches.get_flag("unmount"))
             .await
             .with_context(|| fl!("error-opening-disks"))?;
 
     let is_tty = atty::is(atty::Stream::Stdout);
 
-    if is_tty && !matches.is_present("yes") {
+    if is_tty && !matches.get_flag("yes") {
         epint!(
             (fl!("question", image_path = image_path)) "\n"
             for (path, _) in &disks {
@@ -133,7 +136,7 @@ async fn popsicle(
         }
     }
 
-    let check = matches.is_present("check");
+    let check = matches.get_flag("check");
 
     // If this is a TTY, display a progress bar. If not, display machine-readable info.
     if is_tty {

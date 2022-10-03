@@ -7,7 +7,7 @@ use std::{io, path::PathBuf};
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("failed to decode popsicle message: {{\n  {}\n}}", input)]
-    Decode { input: Box<str>, source: ron::de::Error },
+    Decode { input: Box<str>, source: ron::de::SpannedError },
     #[error("reading from popsicle stream failed")]
     Read(#[from] io::Error),
 }
