@@ -18,7 +18,7 @@ use async_std::{
     path::{Path, PathBuf},
 };
 
-use clap::{builder::Arg, ArgMatches, Command};
+use clap::{builder::Arg, ArgAction, ArgMatches, Command};
 use futures::{
     channel::{mpsc, oneshot},
     executor, join,
@@ -45,10 +45,34 @@ fn main() {
         .version(env!("CARGO_PKG_VERSION"))
         .arg(Arg::new(&**ARG_IMAGE).help(&fl!("arg-image-desc")).required(true))
         .arg(Arg::new(&**ARG_DISKS).help(&fl!("arg-disks-desc")))
-        .arg(Arg::new("all").help(&fl!("arg-all-desc")).short('a').long("all"))
-        .arg(Arg::new("check").help(&fl!("arg-check-desc")).short('c').long("check"))
-        .arg(Arg::new("unmount").help(&fl!("arg-unmount-desc")).short('u').long("unmount"))
-        .arg(Arg::new("yes").help(&fl!("arg-yes-desc")).short('y').long("yes"))
+        .arg(
+            Arg::new("all")
+                .help(&fl!("arg-all-desc"))
+                .short('a')
+                .long("all")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("check")
+                .help(&fl!("arg-check-desc"))
+                .short('c')
+                .long("check")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("unmount")
+                .help(&fl!("arg-unmount-desc"))
+                .short('u')
+                .long("unmount")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("yes")
+                .help(&fl!("arg-yes-desc"))
+                .short('y')
+                .long("yes")
+                .action(ArgAction::SetTrue),
+        )
         .get_matches();
 
     let (rtx, rrx) = oneshot::channel::<anyhow::Result<()>>();
@@ -77,7 +101,8 @@ async fn popsicle(
     rtx: oneshot::Sender<anyhow::Result<()>>,
     matches: ArgMatches,
 ) -> anyhow::Result<()> {
-    let image_path = matches.get_one::<String>(&fl!("arg-image"))
+    let image_path = matches
+        .get_one::<String>(&fl!("arg-image"))
         .with_context(|| fl!("error-image-not-set"))?
         .clone();
 
@@ -107,8 +132,7 @@ async fn popsicle(
         return Err(anyhow!(fl!("error-no-disks-specified")));
     }
 
-    let mounts = mnt::get_submounts(Path::new("/"))
-        .with_context(|| fl!("error-reading-mounts"))?;
+    let mounts = mnt::get_submounts(Path::new("/")).with_context(|| fl!("error-reading-mounts"))?;
 
     let disks =
         popsicle::disks_from_args(disk_args.into_iter(), &mounts, matches.get_flag("unmount"))
