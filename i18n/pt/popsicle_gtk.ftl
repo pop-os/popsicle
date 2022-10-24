@@ -1,47 +1,49 @@
 app-title = Criar disco de arranque
 
 # Images View
-cannot-select-directories = O selector de ficheiros não pode seleccionar diretórios
+cannot-select-directories = O seletor de ficheiros não pode selecionar diretórios
 check-label = Verificar
 choose-image-button = Escolher Imagem
-generating-checksum = Gerando Checksum
+generating-checksum = A gerar Checksum
 hash-label = Hash:
-image-view-description = Seleccionar o .iso ou .img que deseja gravar. Também pode inserir agora as suas unidades USB.
+image-view-description = Selecionar a .iso ou .img que deseja gravar. Pode também inserir agora as suas unidades USB.
 image-view-title = Escolha uma Imagem
-no-image-selected = Nenhuma imagem seleccionada
+no-image-selected = Nenhuma imagem selecionada
 none = Nenhuma
 warning = Aviso:
 
 # Devices View
 device-too-small = Dispositivo demasiado pequeno
-devices-view-description = Durante a gravação todos os dados nas unidades seleccionadas serão eliminados.
-devices-view-title = Seleccionar Unidades
-select-all = Seleccionar tudo
+devices-view-description = Durante a gravação todos os dados nas unidades selecionadas serão eliminados.
+devices-view-title = Selecionar Unidades
+select-all = Selecionar tudo
 
 # Flashing View
-flash-view-description = Não retire as unidades durante o processo de gravação.
+flash-view-description = Não retire os dispositivos durante o processo de gravação.
 flash-view-title = Gravação em curso no dispositivo
 
 # Summary View
 flashing-completed = Processo de gravação concluído
+flashing-completed-with-errors = Processo de gravação concluído com erros
 flash-again = Repetir processo de gravação
 
 # Error View
-critical-error = Occoreu um Erro Crítico
+critical-error = Ocorreu um erro crítico
 
 # Misc
 cancel = Cancelar
 close = Fechar
-next = Próximo
+done = Terminado
+next = Seguinte
 open = Abrir
 task-finished = Concluído
 
 # Events
 error = erro: {$why}
-partial-flash = {$number} de {$total} unidades foram gravadas com sucesso
-successful-flash = {$total} unidades foram gravadas com sucesso
-win-isos-not-supported = De momento imagens ISO do Windows não são suportadas
+partial-flash = {$number} de {$total} dispositivos gravados com sucesso
+successful-flash = {$total} dispositivos gravados com sucesso
+win-isos-not-supported = As ISOs do Windows não são atualmente suportadas
 
 # Errors
-iso-open-failed = Não foi possível abrir a imagem
-no-value-found = sem valor encontrado
+iso-open-failed = Falha ao abrir a ISO
+no-value-found = nenhum valor encontrado

@@ -1,15 +1,15 @@
-question = Tem a certeza de que pretende gravar '{$image_path}' nos seguintes dispositivos?
+question = Gravar '{$image_path}' nos seguintes dispositivos?
 
 yn = s/N
 
 # Arguments
 arg-image = IMAGEM
-arg-image-desc = Arquivo de imagem de entrada
+arg-image-desc = Ficheiro de imagem de entrada
 
 arg-disks = DISPOSITIVOS
 arg-disks-desc = Dispositivos de saída
 
-arg-all-desc = Gravar todos os dispositivos USB detectados
+arg-all-desc = Gravar todos os dispositivos USB detetados
 arg-check-desc = Verificar se a imagem gravada corresponde à imagem de origem
 arg-unmount-desc = Desmontar dispositivos montados
 arg-yes-desc = Prosseguir sem confirmação
