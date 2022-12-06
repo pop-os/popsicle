@@ -5,7 +5,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: bilelmoussaoui/flatpak-github-actions:gnome-42
+      image: flatpak/flatpak-github-actions:gnome-42
       options: --privileged
 
     strategy:
