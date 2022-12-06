@@ -28,7 +28,7 @@ jobs:
         platforms: arm64
       if: ${{ matrix.arch == 'aarch64' }}
 
-    - uses: bilelmoussaoui/flatpak-github-actions/flatpak-builder@v4
+    - uses: flatpak/flatpak-github-actions/flatpak-builder@v4
       with:
         bundle: Popsicle.flatpak
         manifest-path: com.system76.Popsicle.json
