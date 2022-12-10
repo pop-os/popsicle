@@ -1,6 +1,7 @@
 question = Segur que vols escriure '{$image_path}' als dispositius següents?
 
 yn = s/N
+y = s
 
 # Arguments
 arg-image = IMATGE

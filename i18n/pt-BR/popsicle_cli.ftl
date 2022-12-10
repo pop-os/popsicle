@@ -1,6 +1,7 @@
 question = Você tem certeza de que quer gravar '{$image_path}' nos seguintes dispositivos?
 
 yn = y/N
+y = y
 
 # Arguments
 arg-image = IMAGEM

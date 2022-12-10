@@ -1,6 +1,7 @@
 question = Sind sie sicher, dass sie '{$image_path}' auf folgende Datenträger schreiben möchten?
 
 yn = J/N
+y = j
 
 # Arguments
 arg-image = ABBILD

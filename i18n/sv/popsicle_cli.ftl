@@ -1,6 +1,7 @@
 question = Är du säker på att du vill bränna '{$image_path}' till dessa diskar?
 
 yn = y/N
+y = y
 
 # Arguments
 arg-image = OS Fil

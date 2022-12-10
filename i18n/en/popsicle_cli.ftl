@@ -1,6 +1,7 @@
 question = Are you sure you want to flash '{$image_path}' to the following drives?
 
 yn = y/N
+y = y
 
 # Arguments
 arg-image = IMAGE

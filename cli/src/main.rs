@@ -124,7 +124,7 @@ async fn popsicle(
         popsicle::usb_disk_devices(&mut disk_args)
             .await
             .with_context(|| fl!("error-disks-fetch"))?;
-    } else if let Some(disks) = matches.get_many::<String>("DISKS") {
+    } else if let Some(disks) = matches.get_many::<String>(&fl!("arg-disks")) {
         disk_args.extend(disks.map(PathBuf::from).map(Box::from));
     }
 
@@ -155,7 +155,7 @@ async fn popsicle(
         let mut confirm = String::new();
         io::stdin().read_line(&mut confirm).unwrap();
 
-        if confirm.trim() != "y" && confirm.trim() != "yes" {
+        if confirm.trim() != &fl!("y") && confirm.trim() != "yes" {
             return Err(anyhow!(fl!("error-exiting")));
         }
     }

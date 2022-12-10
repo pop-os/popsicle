@@ -1,6 +1,7 @@
 question = Вы уверены, что хотите записать '{$image_path}' на следующие диски?
 
 yn = y/n
+y = y
 
 # Arguments
 arg-image = ОБРАЗ

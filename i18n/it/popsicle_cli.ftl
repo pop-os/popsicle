@@ -1,6 +1,7 @@
 question = Sei sicuro di voler caricare '{$image_path}' nelle seguenti unità USB?
 
 yn = s/N
+y = s
 
 # Arguments
 arg-image = IMMAGINE

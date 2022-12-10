@@ -1,6 +1,7 @@
 question = তুমি কি আসলেই '{$image_path}' এই ড্রাইভে ইন্সটল করতে চাও?
 
 yn = y/N 
+y = y
 
 # Arguments
 arg-image = ইমেজ
