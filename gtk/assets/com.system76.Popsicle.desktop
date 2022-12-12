@@ -1,14 +1,14 @@
 [Desktop Entry]
 Type=Application
-Name=Popsicle
-Name[fr_FR]=Popsicle
-Name[pt_BR]=Popsicle
-GenericName=Popsicle
-GenericName[fr_FR]=Popsicle
-GenericName[pt_BR]=Popsicle
-X-GNOME-FullName=Popsicle
-X-GNOME-FullName[fr_FR]=Popsicle
-X-GNOME-FullName[pt_BR]=Popsicle
+Name=Popsicle USB Flasher
+Name[fr_FR]=Flasheur USB Popsicle
+Name[pt_BR]=Pisca-Pisca USB Popsicle
+GenericName=USB Flasher
+GenericName[fr_FR]=Flasheur USB
+GenericName[pt_BR]=Pisca-Pisca USB
+X-GNOME-FullName=Popsicle USB Flasher
+X-GNOME-FullName[fr_FR]=Flasheur USB Popsicle
+X-GNOME-FullName[pt_BR]=Pisca-Pisca USB Popsicle
 Icon=com.system76.Popsicle
 Categories=System;
 Keywords="USB;Flash;Drive;Popsicle;"
