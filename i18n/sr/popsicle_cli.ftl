@@ -1,7 +1,8 @@
 question = Da li ste sigurni da želite da pomoću '{$image_path}' napravite sledeće uređaje instalacionim uređajima?
 
 yn = d/N
-
+y = d
+ 
 # Arguments
 arg-image = FAJL
 arg-image-desc = Ulazni instalacioni fajl

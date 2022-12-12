@@ -1,6 +1,7 @@
 question = 你确实要将 '{$image_path}' 镜像刷入到所示的磁盘吗？
 
 yn = y/N
+y = y
 
 # Arguments
 arg-image = 镜像

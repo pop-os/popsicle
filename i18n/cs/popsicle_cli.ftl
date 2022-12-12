@@ -1,5 +1,6 @@
 question = Jste si jistí, že chcete flashnout '{$image_path}' do následujících disků?
 yn = y/N
+y = y
 
 # Arguments
 arg-image = OBRAZ

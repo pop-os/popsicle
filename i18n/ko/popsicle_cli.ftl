@@ -1,6 +1,7 @@
 question = 선택한 기기에 '{$image_path}'를 플레시 하시겠습니까?
 
 yn = 예/아니오(y/N)
+y = 예
 
 # Arguments
 arg-image = 이미지

@@ -1,6 +1,7 @@
 question = Ali ste prepričani, da želite '{$image_path}' utripati na naslednje pogone?
 
 yn = y/N
+y = y
 
 # Arguments
 arg-image = SLIKA

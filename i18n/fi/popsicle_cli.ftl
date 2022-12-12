@@ -1,6 +1,7 @@
 question = Oletko varma, että haluat kirjoittaa '{$image_path}' tähän asemaan?
 
 yn = y/N
+y = y
 
 # Arguments
 arg-image = LEVYKUVA

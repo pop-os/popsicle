@@ -1,6 +1,7 @@
 question = 次のデバイスに'{$image_path}'を書き込むで間違いありませんか?
 
 yn = y/N
+y = y
 
 # Arguments
 arg-image = イメージ

@@ -1,6 +1,7 @@
 question = Ki szeretnéd írni a '{$image_path}' a következő eszközökre?
 
 yn = y/N
+y = y
 
 # Arguments
 arg-image = LEMEZKÉP
