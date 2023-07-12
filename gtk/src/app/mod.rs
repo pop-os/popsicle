@@ -73,7 +73,7 @@ impl GtkUi {
         };
 
         // Add a custom CSS style
-        let screen = window.screen().unwrap();
+        let screen = WidgetExt::screen(&window).unwrap();
         let style = gtk::CssProvider::new();
         let _ = style.load_from_data(CSS.as_bytes());
         gtk::StyleContext::add_provider_for_screen(
