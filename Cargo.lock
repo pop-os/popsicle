@@ -1624,7 +1624,7 @@ dependencies = [
 
 [[package]]
 name = "popsicle"
-version = "1.3.0"
+version = "1.3.2"
 dependencies = [
  "anyhow",
  "as-result",
@@ -1644,7 +1644,7 @@ dependencies = [
 
 [[package]]
 name = "popsicle_cli"
-version = "1.3.0"
+version = "1.3.2"
 dependencies = [
  "anyhow",
  "async-std",
@@ -1666,7 +1666,7 @@ dependencies = [
 
 [[package]]
 name = "popsicle_gtk"
-version = "1.3.0"
+version = "1.3.2"
 dependencies = [
  "anyhow",
  "async-std",
