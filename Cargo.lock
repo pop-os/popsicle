@@ -1554,8 +1554,7 @@ dependencies = [
 [[package]]
 name = "pbr"
 version = "1.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed5827dfa0d69b6c92493d6c38e633bbaa5937c153d0d7c28bf12313f8c6d514"
+source = "git+https://github.com/ids1024/pb?branch=write#225bf70cdaf86193c4a6e65079ebccc1b2196c57"
 dependencies = [
  "crossbeam-channel",
  "libc",
