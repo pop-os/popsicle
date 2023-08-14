@@ -1,14 +1,15 @@
 [Desktop Entry]
 Type=Application
-Name=USB Flasher
-Name[fr_FR]=Flasheur USB
-Name[pt_BR]=Gravador USB
+Name=Popsicle USB Flasher
+Name[fr_FR]=Flasheur USB Popsicle
+Name[pt_BR]=Gravador USB Popsicle
 GenericName=USB Flasher
 GenericName[fr_FR]=Flasheur USB
 GenericName[pt_BR]=Gravador USB
-X-GNOME-FullName=USB Flasher
-X-GNOME-FullName[fr_FR]=Flasheur USB
-X-GNOME-FullName[pt_BR]=Gravador USB
+X-GNOME-FullName=Popsicle USB Flasher
+X-GNOME-FullName[fr_FR]=Flasheur USB Popsicle
+X-GNOME-FullName[pt_BR]=Gravador USB Popsicle
+Comment=Multi-USB image flashing utility
 Icon=com.system76.Popsicle
 Categories=System;
 Keywords="USB;Flash;Drive;Popsicle;"
