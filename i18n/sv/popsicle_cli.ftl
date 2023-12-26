@@ -4,14 +4,14 @@ yn = y/N
 y = y
 
 # Arguments
-arg-image = OS Fil
-arg-image-desc = Inmatning av OS fil
+arg-image = OS-fil
+arg-image-desc = Inmatning av OS-fil
 
 arg-disks = ENHETER
 arg-disks-desc = Utmatningsenheter
 
-arg-all-desc = Bränn alla upphittade USB enheter
-arg-check-desc = Kontrollera om den bännda OS filen matchar med ursprungsfilen
+arg-all-desc = Bränn alla upphittade USB-enheter
+arg-check-desc = Kontrollera om den brända OS-filen matchar med ursprungsfilen
 arg-unmount-desc = Mata ut inmatade enheter
 arg-yes-desc = Fortsätt utan bekräftelse
 
@@ -19,7 +19,7 @@ arg-yes-desc = Fortsätt utan bekräftelse
 error-caused-by = orsakad av
 error-image-not-set = ingen vald {arg-image}
 error-image-open = kunde inte öppna '{$image_path}'
-error-image-metadata = kunde inte hämta data ifrån '{$image_path}'
+error-image-metadata = kunde inte hämta data från '{$image_path}'
 error-disks-fetch = inga giltiga enheter hittades
 error-no-disks-specified = ingen enhet vald
 error-fetching-mounts = kunde inte hitta data av monterade enheter
