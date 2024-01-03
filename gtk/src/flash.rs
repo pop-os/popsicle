@@ -24,6 +24,8 @@ pub enum FlashStatus {
     Killing,
 }
 
+unsafe impl bytemuck::NoUninit for FlashStatus {}
+
 pub struct FlashRequest {
     source: Option<File>,
     destinations: Vec<Arc<DiskDevice>>,
