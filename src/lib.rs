@@ -90,7 +90,7 @@ pub async fn usb_disk_devices(disks: &mut Vec<Box<Path>>) -> anyhow::Result<()> 
 
     while let Some(device_result) = stream.next().await {
         match device_result {
-            Ok(disk) => disks.push(disk),
+            Ok(disk) => disks.push(PathBuf::from(&*disk).into_boxed_path()),
             Err(why) => {
                 eprintln!("failed to reach device path: {}", why);
             }

@@ -1,3 +1,9 @@
+popsicle (1.3.3) jammy; urgency=medium
+
+  * 1.3.3 release
+
+ -- Michael Murphy <michael@mmurphy.dev>  Wed, 03 Jan 2024 16:24:46 +0100
+
 popsicle (1.3.2) jammy; urgency=medium
 
   * 1.3.2 release 
