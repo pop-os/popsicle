@@ -10,10 +10,11 @@ jobs:
   appimage:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         fetch-depth: 0
-    - run: docker run --rm -v "$PWD:/popsicle" -w "/popsicle" rust:1.75.0-buster bash appimage.sh
+        set-safe-directory: '*'
+    - run: docker run --rm -v "$PWD:/github/workspace" -w "/github/workspace" rust:1.75.0-buster bash appimage.sh
     - uses: actions/upload-artifact@v2
       with:
         if-no-files-found: error
