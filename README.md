@@ -76,3 +76,4 @@ Translation files can be found [here](./i18n/). We are using [Project Fluent](ht
 - [Japanese](./i18n/ja)
 - [Korean](./i18n/ko)
 - [Slovenian](./i18n/sl)
+- [Slovak](./i18n/sk)
