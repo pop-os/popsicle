@@ -1,14 +1,15 @@
 [package]
 name = "popsicle"
 description = "USB Flasher"
-version = "1.3.2"
+version = "1.3.3"
 authors = [
     "Jeremy Soller <jeremy@system76.com>",
     "Michael Aaron Murphy <michael@system76.com>",
 ]
 license = "MIT"
 readme = "README.md"
-edition = "2018"
+edition = "2021"
+rust-version = "1.70.0"
 
 [lib]
 name = "popsicle"
@@ -21,14 +22,14 @@ members = ["cli", "gtk"]
 anyhow = "1.0.65"
 as-result = "0.2.1"
 async-std = "1.12.0"
-derive-new = "0.5.9"
+derive-new = "0.6.0"
 futures = "0.3.24"
 futures_codec = "0.4.1"
 libc = "0.2.134"
 memchr = "2.5.0"
 mnt = "0.3.1"
 ron = "0.8.0"
-serde = "1.0.145"
+serde = { version = "1.0.145", features = ["derive"] }
 srmw = "0.1.1"
 thiserror = "1.0.37"
-usb-disk-probe = "0.1.0"
+usb-disk-probe = "0.2.0"

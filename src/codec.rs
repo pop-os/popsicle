@@ -2,6 +2,7 @@ use futures_codec::{BytesMut, Decoder};
 use memchr::memchr;
 use serde::{Deserialize, Serialize};
 use std::{io, path::PathBuf};
+use thiserror::Error;
 
 /// Errors that may occur when decoding the IPC stream.
 #[derive(Debug, Error)]

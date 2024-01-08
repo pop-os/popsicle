@@ -1,7 +1,7 @@
 [package]
 name = "popsicle_cli"
 description = "USB Flasher"
-version = "1.3.2"
+version = "1.3.3"
 authors = ["Jeremy Soller <jeremy@system76.com>"]
 license = "MIT"
 readme = "README.md"
@@ -18,14 +18,14 @@ atty = "0.2.14"
 better-panic = "0.3.0"
 cascade = "1.0.1"
 clap = "4.0.8"
-derive-new = "0.5.9"
+derive-new = "0.6.0"
 fomat-macros = "0.3.1"
 futures = "0.3.24"
-i18n-embed = { version = "0.13.4", features = ["fluent-system", "desktop-requester"] }
-i18n-embed-fl = "0.6.4"
+i18n-embed = { version = "0.14.1", features = ["fluent-system", "desktop-requester"] }
+i18n-embed-fl = "0.7.0"
 libc = "0.2.134"
 once_cell = "1.15.0"
 # pbr = "1.0.4"
 pbr = { git = "https://github.com/ids1024/pb", branch = "write" }
 popsicle = { path = ".." }
-rust-embed = { version = "6.4.1", features = ["debug-embed"] }
+rust-embed = { version = "8.2.0", features = ["debug-embed"] }
