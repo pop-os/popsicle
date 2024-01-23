@@ -47,32 +47,5 @@ Translators are welcome to submit translations directly as a pull request to thi
 i18n(eo): Add Esperanto language support
 ```
 
-```
-i18n(pl): Improvements to Polish language support
-```
-
 Translation files can be found [here](./i18n/). We are using [Project Fluent](https://projectfluent.org) for our translations, which should be easier than working with gettext.
 
-### Supported Languages
-
-- [English](./i18n/en/)
-- [Bangla](./i18n/bn/)
-- [German](./i18n/de/)
-- [Italian](./i18n/it/)
-- [Spanish](./i18n/es/)
-- [French](./i18n/fr/)
-- [Hungarian](./i18n/hu/)
-- [Dutch](./i18n/nl/)
-- [Polish](./i18n/pl/)
-- [Brazilian Portuguese](./i18n/pt-BR/)
-- [Portuguese](./i18n/pt/)
-- [Russian](./i18n/ru/)
-- [Serbian](./i18n/sr/)
-- [Swedish](./i18n/sv/)
-- [Turkish](./i18n/tr/)
-- [Catalan](./i18n/ca)
-- [Chinese (Simplified)](./i18n/zh-CN)
-- [Czech](./i18n/cs)
-- [Japanese](./i18n/ja)
-- [Korean](./i18n/ko)
-- [Slovenian](./i18n/sl)
