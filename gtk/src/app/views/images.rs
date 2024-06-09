@@ -56,6 +56,7 @@ impl ImageView {
         let hash = cascade! {
             ComboBoxText::new();
             ..append_text(&fl!("none"));
+            ..append_text("SHA512");
             ..append_text("SHA256");
             ..append_text("SHA1");
             ..append_text("MD5");
