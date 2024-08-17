@@ -13,11 +13,13 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 
+pub type FlashResult = anyhow::Result<(anyhow::Result<()>, Vec<Result<(), FlashError>>)>;
+
 pub enum UiEvent {
     SetImageLabel(PathBuf),
     RefreshDevices(Box<[Arc<DiskDevice>]>),
     SetHash(io::Result<String>),
-    Flash(JoinHandle<anyhow::Result<(anyhow::Result<()>, Vec<Result<(), FlashError>>)>>),
+    Flash(JoinHandle<FlashResult>),
     Reset,
 }
 

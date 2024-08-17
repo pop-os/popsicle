@@ -12,7 +12,7 @@ fn main() {
 
     let status = Command::new("glib-compile-resources")
         .arg("--sourcedir=assets")
-        .arg(&format!("--target={}/compiled.gresource", out_dir))
+        .arg(format!("--target={}/compiled.gresource", out_dir))
         .arg("assets/resources.gresource.xml")
         .status()
         .unwrap();

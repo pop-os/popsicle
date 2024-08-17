@@ -1,9 +1,9 @@
+use crate::app::events::FlashResult;
 use atomic::Atomic;
 use dbus::arg::{OwnedFd, RefArg, Variant};
 use dbus::blocking::{Connection, Proxy};
 use dbus_udisks2::DiskDevice;
 use futures::executor;
-use libc;
 use popsicle::{Progress, Task};
 use std::cell::Cell;
 use std::collections::HashMap;
@@ -88,7 +88,7 @@ impl FlashRequest {
         FlashRequest { source: Some(source), destinations, status, progress, finished }
     }
 
-    pub fn write(mut self) -> anyhow::Result<(anyhow::Result<()>, Vec<Result<(), FlashError>>)> {
+    pub fn write(mut self) -> FlashResult {
         self.status.store(FlashStatus::Active, Ordering::SeqCst);
 
         let source = self.source.take().unwrap();
@@ -103,10 +103,7 @@ impl FlashRequest {
         res
     }
 
-    fn write_inner<'a>(
-        &'a self,
-        source: File,
-    ) -> anyhow::Result<(anyhow::Result<()>, Vec<Result<(), FlashError>>)> {
+    fn write_inner(&self, source: File) -> FlashResult {
         // Unmount the devices beforehand.
         for device in &self.destinations {
             let _ = udisks_unmount(&device.parent.path);
@@ -130,7 +127,7 @@ impl FlashRequest {
 
         let mut task = Task::new(source.into(), false);
         for (i, file) in files.into_iter().enumerate() {
-            let progress = FlashProgress { request: &self, errors: errors_cells, id: i };
+            let progress = FlashProgress { request: self, errors: errors_cells, id: i };
             task.subscribe(file.into(), (), progress);
         }
 

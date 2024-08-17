@@ -39,7 +39,7 @@ impl DevicesView {
 
                 for row in list_.children() {
                     if let Ok(row) = row.downcast::<gtk::ListBoxRow>() {
-                        if let Some(widget) = row.children().get(0) {
+                        if let Some(widget) = row.children().first() {
                             if let Some(button) = widget.downcast_ref::<gtk::CheckButton>() {
                                 button.set_active(button.get_sensitive() && state);
                             }
@@ -79,7 +79,7 @@ impl DevicesView {
             .children()
             .into_iter()
             .filter_map(|row| row.downcast::<gtk::ListBoxRow>().ok())
-            .filter_map(|row| row.children().get(0).cloned())
+            .filter_map(|row| row.children().first().cloned())
             .filter_map(|row| row.downcast::<gtk::CheckButton>().ok())
     }
 
@@ -97,7 +97,7 @@ impl DevicesView {
         for device in devices {
             let valid_size = device.parent.size >= image_size;
 
-            let label = &misc::device_label(&device);
+            let label = &misc::device_label(device);
 
             let size_str = bytesize::to_string(device.parent.size, true);
             let name = if valid_size {

@@ -72,7 +72,7 @@ impl<P: Progress> Task<P> {
                 }
                 CopyEvent::SourceFailure(why) => {
                     for (device, pb) in self.state.values_mut() {
-                        pb.message(&device, "E", &format!("{}", why));
+                        pb.message(device, "E", &format!("{}", why));
                         pb.finish();
                     }
 
@@ -88,7 +88,7 @@ impl<P: Progress> Task<P> {
     async fn seek(&mut self) -> anyhow::Result<()> {
         for (path, pb) in self.state.values_mut() {
             pb.set(0);
-            pb.message(&path, "S", "");
+            pb.message(path, "S", "");
         }
 
         self.image.seek(SeekFrom::Start(0)).await?;
@@ -106,7 +106,7 @@ impl<P: Progress> Task<P> {
     async fn validate(&mut self, buf: &mut [u8]) -> anyhow::Result<()> {
         for (path, pb) in self.state.values_mut() {
             pb.set(0);
-            pb.message(&path, "V", "");
+            pb.message(path, "V", "");
         }
 
         let copy_bufs = &mut Vec::new();
@@ -128,7 +128,7 @@ impl<P: Progress> Task<P> {
                 }
                 ValidationEvent::SourceFailure(why) => {
                     for (path, pb) in self.state.values_mut() {
-                        pb.message(&path, "E", &format!("error reading from source: {}", why));
+                        pb.message(path, "E", &format!("error reading from source: {}", why));
                         pb.finish();
                     }
 

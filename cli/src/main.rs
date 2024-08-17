@@ -155,7 +155,7 @@ async fn popsicle(
         let mut confirm = String::new();
         io::stdin().read_line(&mut confirm).unwrap();
 
-        if confirm.trim() != &fl!("y") && confirm.trim() != "yes" {
+        if confirm.trim() != fl!("y") && confirm.trim() != "yes" {
             return Err(anyhow!(fl!("error-exiting")));
         }
     }

@@ -134,19 +134,19 @@ impl GtkUi {
             ActiveView::Images => {
                 back.set_label(&fl!("cancel"));
                 back_ctx.remove_class("back-button");
-                back_ctx.remove_class(&gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
+                back_ctx.remove_class(gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
 
                 next.set_label(&fl!("next"));
                 next.set_visible(true);
                 next.set_sensitive(true);
-                next_ctx.remove_class(&gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
-                next_ctx.add_class(&gtk::STYLE_CLASS_SUGGESTED_ACTION);
+                next_ctx.remove_class(gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
+                next_ctx.add_class(gtk::STYLE_CLASS_SUGGESTED_ACTION);
 
                 &self.content.image_view.view.container
             }
             ActiveView::Devices => {
-                next_ctx.remove_class(&gtk::STYLE_CLASS_SUGGESTED_ACTION);
-                next_ctx.add_class(&gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
+                next_ctx.remove_class(gtk::STYLE_CLASS_SUGGESTED_ACTION);
+                next_ctx.add_class(gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
                 next.set_sensitive(false);
 
                 let _ = state.back_event_tx.send(BackgroundEvent::RefreshDevices);
@@ -154,7 +154,7 @@ impl GtkUi {
             }
             ActiveView::Flashing => {
                 match self.errorck(
-                    &state,
+                    state,
                     File::open(&*state.image_path.borrow()),
                     &fl!("iso-open-failed"),
                 ) {
@@ -172,28 +172,28 @@ impl GtkUi {
                 }
 
                 back_ctx.remove_class("back-button");
-                back_ctx.add_class(&gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
+                back_ctx.add_class(gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
 
                 next.set_visible(false);
                 &self.content.flash_view.view.container
             }
             ActiveView::Summary => {
-                back_ctx.remove_class(&gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
+                back_ctx.remove_class(gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
                 back.set_label(&fl!("flash-again"));
 
-                next_ctx.remove_class(&gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
+                next_ctx.remove_class(gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
                 next.set_visible(true);
                 next.set_label(&fl!("done"));
                 &self.content.summary_view.view.container
             }
             ActiveView::Error => {
                 back.set_label(&fl!("flash-again"));
-                back_ctx.remove_class(&gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
+                back_ctx.remove_class(gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
 
                 next.set_visible(true);
                 next.set_label(&fl!("close"));
-                next_ctx.remove_class(&gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
-                next_ctx.remove_class(&gtk::STYLE_CLASS_SUGGESTED_ACTION);
+                next_ctx.remove_class(gtk::STYLE_CLASS_DESTRUCTIVE_ACTION);
+                next_ctx.remove_class(gtk::STYLE_CLASS_SUGGESTED_ACTION);
 
                 &self.content.error_view.view.container
             }
