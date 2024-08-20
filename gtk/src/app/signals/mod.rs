@@ -89,11 +89,7 @@ impl App {
                             None
                         };
 
-                        ui.content.image_view.set_image(
-                            &path,
-                            image_size,
-                            warning.as_ref().map(|x| x.as_str()),
-                        );
+                        ui.content.image_view.set_image(&path, image_size, warning.as_deref());
                         ui.content.image_view.set_hash_sensitive(true);
                         ui.header.next.set_sensitive(true);
 
@@ -148,7 +144,7 @@ impl App {
                             };
 
                             let label = cascade! {
-                                gtk::Label::new(Some(&misc::device_label(&device)));
+                                gtk::Label::new(Some(&misc::device_label(device)));
                                 ..set_justify(gtk::Justification::Right);
                                 ..style_context().add_class("bold");
                             };
@@ -209,8 +205,7 @@ impl App {
                             let tasks = tasks.as_mut().expect("no flash task");
                             let mut previous = tasks.previous.lock().expect("mutex lock");
 
-                            for (id, &(ref pbar, ref label)) in flashing_devices.iter().enumerate()
-                            {
+                            for (id, (pbar, label)) in flashing_devices.iter().enumerate() {
                                 let prev_values = &mut previous[id];
                                 let progress = &tasks.progress[id];
                                 let finished = &tasks.finished[id];

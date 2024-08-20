@@ -1,5 +1,4 @@
 use dbus_udisks2::DiskDevice;
-use gdk;
 use gtk::{self, prelude::*, SelectionData};
 
 // Implements drag and drop support for a GTK widget.
@@ -19,7 +18,7 @@ where
 
     // Get the dropped data, if possible, when the active drag is valid.
     widget.connect_drag_drop(|view, ctx, _x, _y, time| {
-        ctx.list_targets().last().map_or(false, |ref target| {
+        ctx.list_targets().last().map_or(false, |target| {
             view.drag_get_data(ctx, target, time);
             true
         })
