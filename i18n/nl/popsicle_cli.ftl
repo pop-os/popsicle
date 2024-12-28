@@ -4,23 +4,23 @@ yn = j/N
 y = j
 
 # Arguments
-arg-image = IMAGE
-arg-image-desc = Imagebestand selecteren
+arg-image = SCHIJFKOPIE
+arg-image-desc = Kies een schijfkopie
 
 arg-disks = SCHIJVEN
 arg-disks-desc = Beschikbare schijven selecteren
 
-arg-all-desc = Alle gedetecteerde USB-schijven flashen
-arg-check-desc = Controleer of het geschreven image overeenkomt met het bronimage
+arg-all-desc = Alle gedetecteerde usb-schijven flashen
+arg-check-desc = Controleer of de geschreven schijfkopie overeenkomt met de bron
 arg-unmount-desc = Ontkoppel aangekoppelde apparaten
 arg-yes-desc = Doorgaan zonder bevestiging
 
 # errors
 error-caused-by = veroorzaakt door
 error-image-not-set = {arg-image} niet ingesteld
-error-image-open = kan het image op '{$image_path}' niet openen
-error-image-metadata = kan de metadata van het image op '{$image_path}' niet ophalen
-error-disks-fetch = kon de lijst van USB-schijven niet ophalen
+error-image-open = kan de schijfkopie op '{$image_path}' niet openen
+error-image-metadata = kan de metadata van de schijfkopie op '{$image_path}' niet ophalen
+error-disks-fetch = kon de lijst van usb-schijven niet ophalen
 error-no-disks-specified = geen schijven gespecificeerd
 error-fetching-mounts = kon de lijst van gekopelde schijven niet ophalen
 error-opening-disks = kon schijven niet openen
