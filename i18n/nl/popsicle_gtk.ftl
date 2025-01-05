@@ -1,12 +1,12 @@
-app-title = USB-opstartmaker
+app-title = usb-flasher
 
 # Images View
 cannot-select-directories = Er kunnen geen mappen worden gekozen
 check-label = Controleren
 choose-image-button = Kies een schijfkopie
-generating-checksum = Bezig met genereren van controlesom…
+generating-checksum = Controlegetal wordt gegenereerd
 hash-label = Hash:
-image-view-description = Kies een .iso- of .img-bestand en koppel uw usb-schijven aan.
+image-view-description = Selecteer een .iso- of .img-bestand en koppel uw usb-schijven.
 image-view-title = Kies een schijfkopie
 no-image-selected = Geen schijfkopie gekozen
 none = Geen
@@ -20,11 +20,12 @@ select-all = Alle schijven selecteren
 
 # Flashing View
 flash-view-description = Koppel uw usb-schijven niet af zolang het proces loopt.
-flash-view-title = Bezig met maken…
+flash-view-title = Schijven worden geflasht
 
 # Summary View
-flashing-completed = Voltooid
-flash-again = Opnieuw maken
+flashing-completed = Flashen voltooid
+flashing-completed-with-errors = Flashen voltooid, maar met fouten
+flash-again = Opnieuw flashen
 
 # Error View
 critical-error = Er is een kritieke fout opgetreden
@@ -32,6 +33,7 @@ critical-error = Er is een kritieke fout opgetreden
 # Misc
 cancel = Annuleren
 close = Sluiten
+done = Klaar
 next = Volgende
 open = Openen
 task-finished = Voltooid
@@ -40,8 +42,8 @@ task-finished = Voltooid
 error = Foutmelding: {$why}
 partial-flash = {$number} van {$total} opstartschijven gemaakt
 successful-flash = {$total} opstartschijven gemaakt
-win-isos-not-supported = Windows-iso-bestanden worden nog niet ondersteund
+win-isos-not-supported = ISO-bestanden van Windows worden momenteel niet ondersteund
 
 # Errors
-iso-open-failed = Het iso-bestand kan niet worden geopend
-no-value-found = Geen waarde aangetroffen
+iso-open-failed = Het ISO-bestand kan niet worden geopend
+no-value-found = geen waarde aangetroffen
