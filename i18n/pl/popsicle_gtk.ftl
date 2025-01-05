@@ -1,48 +1,49 @@
-app-title = Flasher USB
+app-title = USB flasher
 
 # Images View
-cannot-select-directories = Wybieranie pliku nie może zaznaczyć katalogów
-check-label = Sprawdź
-choose-image-button = Wybierz Obraz
-generating-checksum =  Generowanie Sumy Kontrolnej
-hash-label = Algorytm Skrótu:
-image-view-description = Zaznacz .iso lub .img które chcesz flashować. Teraz możesz również podłączyć swój dysk USB.
-image-view-title = Wybierz Obraz
-no-image-selected = Nie wybrano obrazu
-none = Brak
-warning = Ostrzeżenie:
+cannot-select-directories = Er kunnen geen mappen worden gekozen
+check-label = Controleren
+choose-image-button = Kies een schijfkopie
+generating-checksum = Controlegetal wordt gegenereerd
+hash-label = Hash:
+image-view-description = Selecteer een .iso- of .img-bestand en koppel uw USB-schijven.
+image-view-title = Kies een schijfkopie
+no-image-selected = Geen schijfkopie gekozen
+none = Geen
+warning = Waarschuwing:
 
 # Devices View
-device-too-small = Urządzenie zbyt małe
-devices-view-description = Flashing wymaże wszystkie dane na zaznaczonych dyskach
-devices-view-title = Zaznacz Dyski
-select-all = Zaznacz wszystko
+device-too-small = Het apparaat heeft onvoldoende ruimte
+devices-view-description = Door het maken van een opstartschijf, worden alle gegevens op de USB-schijf gewist.
+devices-view-title = Selecteer schijven
+select-all = Alle schijven selecteren
 
 # Flashing View
-flashing-view-description = Nie odłączaj urządzeń kiedy trwa ich flashowanie
-flashing-view-title = Flashowane Urządzenia
+flash-view-description = Koppel uw USB-schijven niet af zolang het proces loopt.
+flash-view-title = Schijven worden geflasht
 
 # Summary View
-flash-again = Ponów Flashowanie
-flashing-completed = Flashowanie Zakończone
+flashing-completed = Flashen voltooid
+flashing-completed-with-errors = Flashen voltooid, maar met fouten
+flash-again = Opnieuw flashen
 
 # Error View
-critical-error = Wystąpił Krytyczny Błąd
+critical-error = Er is een kritieke fout opgetreden
 
 # Misc
-cancel = Anuluj
-close = Zamknij
-done = Zakończ
-next = Następny
-open = Otwórz
-task-finished = Zakończono
+cancel = Annuleren
+close = Sluiten
+done = Klaar
+next = Volgende
+open = Openen
+task-finished = Voltooid
 
 # Events
-error = błąd: {$why}
-partial-flash = {$number} z {$total} urządzeń z pomyślnie ukończonym flashowaniem
-successful-flash = Flashowanie {$total} urządzeń zakończone pomyślnie
-win-isos-not-supported = Windows ISOs nie są aktualnie wspierane
+error = Foutmelding: {$why}
+partial-flash = {$number} van {$total} opstartschijven gemaakt
+successful-flash = {$total} opstartschijven gemaakt
+win-isos-not-supported = ISO-bestanden van Windows worden momenteel niet ondersteund
 
 # Errors
-iso-open-failed = Nie udało się otworzyć ISO
-no-value-found = nie wykryto wartości
+iso-open-failed = Het ISO-bestand kan niet worden geopend
+no-value-found = geen waarde aangetroffen
