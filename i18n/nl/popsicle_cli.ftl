@@ -1,5 +1,5 @@
 question = Weet u zeker dat u '{$image_path}' naar de volgende schijven wilt flashen?
-  <#-- Ja of Nee -->
+
 yn = j/N
 y = j
 
