@@ -56,6 +56,7 @@ fn set_hash_widget(state: &State, ui: &GtkUi) {
         Some(2) => "SHA256",
         Some(3) => "SHA1",
         Some(4) => "MD5",
+        Some(5) => "BLAKE2b",
         _ => return,
     };
 

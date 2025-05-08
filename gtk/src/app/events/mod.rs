@@ -1,6 +1,7 @@
 use crate::flash::{FlashError, FlashRequest};
 use crate::hash::hasher;
 
+use blake2::Blake2b512;
 use crossbeam_channel::{Receiver, Sender};
 use dbus_udisks2::{DiskDevice, Disks, UDisks2};
 use md5::Md5;
@@ -50,6 +51,7 @@ pub fn background_thread(events_tx: Sender<UiEvent>, events_rx: Receiver<Backgro
                         "SHA256" => hasher::<Sha256>(&path),
                         "SHA1" => hasher::<Sha1>(&path),
                         "SHA512" => hasher::<Sha512>(&path),
+                        "BLAKE2b" => hasher::<Blake2b512>(&path),
                         _ => Err(io::Error::new(
                             io::ErrorKind::InvalidInput,
                             "hash kind not supported",

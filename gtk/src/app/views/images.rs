@@ -60,6 +60,7 @@ impl ImageView {
             ..append_text("SHA256");
             ..append_text("SHA1");
             ..append_text("MD5");
+            ..append_text("BLAKE2b");
             ..set_active(Some(0));
             ..set_sensitive(false);
         };
