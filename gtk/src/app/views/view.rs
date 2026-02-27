@@ -16,14 +16,14 @@ impl View {
         description: &str,
         configure_panel: F,
     ) -> View {
-        let icon = Image::from_icon_name(Some(icon), gtk::IconSize::Dialog);
+        let icon = Image::from_icon_name(Some(icon), gtk::IconSize::Dnd);
         icon.set_valign(Align::Start);
 
         let topic = cascade! {
             Label::new(Some(topic));
             ..set_halign(Align::Start);
             ..style_context().add_class("h2");
-            ..set_margin_bottom(6);
+            ..set_margin_bottom(12);
         };
 
         let description = cascade! {
@@ -31,7 +31,7 @@ impl View {
             ..set_line_wrap(true);
             ..set_xalign(0.0);
             ..style_context().add_class("desc");
-            ..set_margin_bottom(6);
+            ..set_margin_bottom(12);
         };
 
         let left_panel = cascade! {
@@ -50,7 +50,7 @@ impl View {
 
         View {
             container: cascade! {
-                gtk::Box::new(Orientation::Horizontal, 12);
+                gtk::Box::new(Orientation::Horizontal, 18);
                 ..pack_start(&left_panel, false, false, 0);
                 ..pack_start(&right_panel, true, true, 0);
             },

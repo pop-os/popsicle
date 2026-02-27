@@ -39,7 +39,7 @@ impl Content {
             ..add(&summary_view.view.container);
             ..add(&error_view.view.container);
             ..set_visible_child(&image_view.view.container);
-            ..set_border_width(12);
+            ..set_border_width(24);
         };
 
         Content { container, image_view, devices_view, flash_view, summary_view, error_view }

@@ -12,12 +12,14 @@ impl Header {
         let back = cascade! {
             Button::with_label(&fl!("cancel"));
             ..style_context().add_class("back");
+            ..style_context().add_class("header-btn");
         };
 
         let next = cascade! {
             Button::with_label(&fl!("next"));
             ..set_sensitive(false);
             ..style_context().add_class(&STYLE_CLASS_SUGGESTED_ACTION);
+            ..style_context().add_class("header-btn");
         };
 
         // Returns the header and all of it's state

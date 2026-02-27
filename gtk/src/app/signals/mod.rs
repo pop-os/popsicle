@@ -61,10 +61,11 @@ impl App {
         let ui = self.ui.clone();
 
         let mut last_device_refresh = Instant::now();
-        let mut flashing_devices: Vec<(gtk::ProgressBar, gtk::Label)> = Vec::new();
+        let mut flashing_devices: Vec<(gtk::ProgressBar, gtk::Label, gtk::Label)> = Vec::new();
         let flash_status = Arc::new(Atomic::new(FlashStatus::Inactive));
         let mut flash_handles = None;
         let mut tasks = None;
+        let mut flash_start_time: Option<Instant> = None;
 
         glib::timeout_add_local(Duration::from_millis(16), move || {
             match state.ui_event_rx.try_recv() {
@@ -77,7 +78,7 @@ impl App {
                     });
                     ui.content.image_view.set_hash_sensitive(true);
 
-                    ui.content.image_view.chooser_container.set_visible_child_name("chooser");
+                    ui.content.image_view.chooser_container.set_visible_child_name("selected");
                 }
                 Ok(UiEvent::SetImageLabel(path)) => {
                     if let Ok(file) = File::open(&path) {
@@ -134,6 +135,16 @@ impl App {
                         summary_grid.foreach(|w| summary_grid.remove(w));
                         let mut destinations = Vec::new();
 
+                        // Reset overall progress
+                        ui.content.flash_view.overall_bar.set_fraction(0.0);
+                        ui.content.flash_view.overall_label.set_label(
+                            &fl!("overall-progress", percent = 0),
+                        );
+                        ui.content.flash_view.elapsed_label.set_label(
+                            &fl!("elapsed-time", time = "0:00"),
+                        );
+                        flash_start_time = Some(Instant::now());
+
                         let selected_devices = state.selected_devices.borrow_mut();
                         for (id, device) in selected_devices.iter().enumerate() {
                             let id = id as i32;
@@ -149,9 +160,16 @@ impl App {
                                 ..style_context().add_class("bold");
                             };
 
+                            let percent_label = cascade! {
+                                gtk::Label::new(Some("0%"));
+                                ..set_halign(gtk::Align::End);
+                                ..set_width_chars(5);
+                            };
+
                             let bar_label = cascade! {
                                 gtk::Label::new(None);
                                 ..set_halign(gtk::Align::Center);
+                                ..style_context().add_class("caption");
                             };
 
                             let bar_container = cascade! {
@@ -160,10 +178,16 @@ impl App {
                                 ..add(&bar_label);
                             };
 
-                            summary_grid.attach(&label, 0, id, 1, 1);
-                            summary_grid.attach(&bar_container, 1, id, 1, 1);
+                            let bar_row = cascade! {
+                                gtk::Box::new(gtk::Orientation::Horizontal, 8);
+                                ..pack_start(&bar_container, true, true, 0);
+                                ..pack_start(&percent_label, false, false, 0);
+                            };
 
-                            flashing_devices.push((pbar, bar_label));
+                            summary_grid.attach(&label, 0, id, 1, 1);
+                            summary_grid.attach(&bar_row, 1, id, 1, 1);
+
+                            flashing_devices.push((pbar, bar_label, percent_label));
                             destinations.push(device.clone());
                         }
 
@@ -204,8 +228,10 @@ impl App {
                             let length = state.image_size.load(Ordering::SeqCst);
                             let tasks = tasks.as_mut().expect("no flash task");
                             let mut previous = tasks.previous.lock().expect("mutex lock");
+                            let mut total_progress = 0.0f64;
+                            let ndevices = flashing_devices.len();
 
-                            for (id, (pbar, label)) in flashing_devices.iter().enumerate() {
+                            for (id, (pbar, label, percent_label)) in flashing_devices.iter().enumerate() {
                                 let prev_values = &mut previous[id];
                                 let progress = &tasks.progress[id];
                                 let finished = &tasks.finished[id];
@@ -220,6 +246,10 @@ impl App {
                                 };
 
                                 pbar.set_fraction(value);
+                                total_progress += value;
+
+                                let pct = (value * 100.0) as u32;
+                                percent_label.set_label(&format!("{}%", pct));
 
                                 if task_is_finished {
                                     label.set_label(&fl!("task-finished"));
@@ -239,6 +269,24 @@ impl App {
                                         bytesize::to_string(per_second, true)
                                     ));
                                 }
+                            }
+
+                            // Update overall progress bar
+                            let overall = if ndevices > 0 { total_progress / ndevices as f64 } else { 0.0 };
+                            ui.content.flash_view.overall_bar.set_fraction(overall);
+                            ui.content.flash_view.overall_label.set_label(
+                                &fl!("overall-progress", percent = { (overall * 100.0) as i64 }),
+                            );
+
+                            // Update elapsed time
+                            if let Some(start) = flash_start_time {
+                                let elapsed = now.duration_since(start);
+                                let secs = elapsed.as_secs();
+                                let mins = secs / 60;
+                                let secs = secs % 60;
+                                ui.content.flash_view.elapsed_label.set_label(
+                                    &fl!("elapsed-time", time = format!("{}:{:02}", mins, secs)),
+                                );
                             }
 
                             drop(previous);
@@ -290,10 +338,25 @@ impl App {
                                 ui.switch_to(&state, ActiveView::Summary);
                                 let list = &ui.content.summary_view.list;
                                 let description = &ui.content.summary_view.view.description;
+                                let result_container = &ui.content.summary_view.result_container;
+
+                                // Clear previous results
+                                result_container.foreach(|w| result_container.remove(w));
+                                result_container.style_context().remove_class("success-accent");
+                                result_container.style_context().remove_class("error-accent");
 
                                 if result.is_ok() && errors.is_empty() {
                                     let desc = fl!("successful-flash", total = ntasks);
                                     description.set_text(&desc);
+                                    result_container.style_context().add_class("success-accent");
+
+                                    let success_label = cascade! {
+                                        gtk::Label::new(Some(&desc));
+                                        ..style_context().add_class("h2");
+                                        ..set_halign(gtk::Align::Start);
+                                    };
+                                    result_container.add(&success_label);
+                                    result_container.show_all();
                                     list.hide();
                                 } else {
                                     ui.content
@@ -315,16 +378,17 @@ impl App {
                                     description.set_markup(&desc);
 
                                     for (device, why) in errors {
-                                        let device =
+                                        let device_label =
                                             gtk::Label::new(Some(&misc::device_label(&device)));
-                                        let why =
+                                        let why_label =
                                             gtk::Label::new(Some(format!("{}", why).as_str()));
-                                        why.style_context().add_class("bold");
+                                        why_label.style_context().add_class("bold");
 
                                         let container = cascade! {
                                             gtk::Box::new(gtk::Orientation::Horizontal, 6);
-                                            ..pack_start(&device, false, false, 0);
-                                            ..pack_start(&why, true, true, 0);
+                                            ..pack_start(&device_label, false, false, 0);
+                                            ..pack_start(&why_label, true, true, 0);
+                                            ..style_context().add_class("error-accent");
                                         };
 
                                         let row = cascade! {

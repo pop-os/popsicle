@@ -11,6 +11,9 @@ pub struct ImageView {
     pub check: Button,
     pub chooser_container: Stack,
     pub chooser: Button,
+    pub change_button: Button,
+    pub drop_zone: Box,
+    pub drop_zone_event_box: EventBox,
     pub image_path: Label,
     pub hash: ComboBoxText,
     pub hash_label: Entry,
@@ -18,25 +21,75 @@ pub struct ImageView {
 
 impl ImageView {
     pub fn new() -> ImageView {
+        // Drop zone: unselected state with icon and instructional label
+        let drop_icon = Image::from_icon_name(Some("document-open-symbolic"), IconSize::Dnd);
+        drop_icon.set_opacity(0.4);
+
+        let drop_label = cascade! {
+            Label::new(Some(&fl!("choose-image-button")));
+            ..style_context().add_class("h2");
+            ..set_opacity(0.6);
+        };
+
+        let drop_sublabel = cascade! {
+            Label::new(Some(&fl!("image-view-description-drop")));
+            ..style_context().add_class("subtitle");
+        };
+
+        let drop_zone = cascade! {
+            Box::new(Orientation::Vertical, 8);
+            ..set_halign(Align::Center);
+            ..set_valign(Align::Center);
+            ..add(&drop_icon);
+            ..add(&drop_label);
+            ..add(&drop_sublabel);
+            ..style_context().add_class("drop-zone");
+        };
+
+        let drop_zone_event_box = cascade! {
+            EventBox::new();
+            ..add(&drop_zone);
+        };
+
+        // Drop zone: selected state with file info and change button
+        let file_icon = Image::from_icon_name(Some("application-x-cd-image"), IconSize::Dnd);
+
+        let image_path = cascade! {
+            Label::new(Some(&format!("<b>{}</b>", fl!("no-image-selected"))));
+            ..set_use_markup(true);
+            ..set_justify(Justification::Left);
+            ..set_ellipsize(EllipsizeMode::End);
+            ..set_halign(Align::Start);
+        };
+
+        let change_button = cascade! {
+            Button::with_label(&fl!("change-image-button"));
+            ..style_context().add_class("link-button");
+            ..set_halign(Align::Start);
+        };
+
+        let file_info_box = cascade! {
+            Box::new(Orientation::Vertical, 4);
+            ..set_valign(Align::Center);
+            ..add(&image_path);
+            ..add(&change_button);
+        };
+
+        let drop_zone_selected = cascade! {
+            Box::new(Orientation::Horizontal, 12);
+            ..set_halign(Align::Fill);
+            ..set_valign(Align::Center);
+            ..add(&file_icon);
+            ..add(&file_info_box);
+            ..style_context().add_class("drop-zone-selected");
+        };
+
+        // Chooser is still used for opening file dialog
         let chooser = cascade! {
             Button::with_label(&fl!("choose-image-button"));
             ..set_halign(Align::Center);
-            ..set_margin_bottom(6);
-        };
-
-        let image_label = format!("<b>{}</b>", fl!("no-image-selected"));
-
-        let image_path = cascade! {
-            Label::new(Some(&image_label));
-            ..set_use_markup(true);
-            ..set_justify(Justification::Center);
-            ..set_ellipsize(EllipsizeMode::End);
-        };
-
-        let button_box = cascade! {
-            Box::new(Orientation::Vertical, 0);
-            ..pack_start(&chooser, false, false, 0);
-            ..pack_start(&image_path, false, false, 0);
+            ..set_no_show_all(true);
+            ..hide();
         };
 
         let spinner = Spinner::new();
@@ -103,11 +156,13 @@ impl ImageView {
             ..pack_start(&combo_container, true, true, 0);
             ..pack_start(&check, false, false, 0);
             ..set_border_width(6);
+            ..style_context().add_class("hash-row");
         };
 
         let chooser_container = cascade! {
             Stack::new();
-            ..add_named(&button_box, "chooser");
+            ..add_named(&drop_zone_event_box, "chooser");
+            ..add_named(&drop_zone_selected, "selected");
             ..add_named(&spinner_box, "checksum");
             ..set_visible_child_name("chooser");
             ..set_margin_top(12);
@@ -124,7 +179,18 @@ impl ImageView {
             },
         );
 
-        ImageView { view, check, chooser_container, chooser, image_path, hash, hash_label }
+        ImageView {
+            view,
+            check,
+            chooser_container,
+            chooser,
+            change_button,
+            drop_zone,
+            drop_zone_event_box,
+            image_path,
+            hash,
+            hash_label,
+        }
     }
 
     pub fn set_hash_sensitive(&self, sensitive: bool) {
@@ -160,5 +226,6 @@ impl ImageView {
         };
 
         self.image_path.set_markup(&label);
+        self.chooser_container.set_visible_child_name("selected");
     }
 }

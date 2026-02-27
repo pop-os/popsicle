@@ -68,7 +68,7 @@ impl GtkUi {
             // Set the title of the window.
             ..set_title("Popsicle");
             // The default size of the window to create.
-            ..set_default_size(500, 250);
+            ..set_default_size(700, 500);
             ..add(&content.container);
         };
 

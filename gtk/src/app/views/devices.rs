@@ -32,26 +32,38 @@ impl DevicesView {
         let list_ = list.clone();
         let select_all = cascade! {
             gtk::CheckButton::with_label(&fl!("select-all"));
-            ..set_margin_start(4);
-            ..set_margin_bottom(3);
-            ..connect_toggled(move |all| {
-                let state = all.is_active();
+            ..set_margin_start(8);
+            ..set_margin_bottom(8);
+        };
 
-                for row in list_.children() {
-                    if let Ok(row) = row.downcast::<gtk::ListBoxRow>() {
-                        if let Some(widget) = row.children().first() {
-                            if let Some(button) = widget.downcast_ref::<gtk::CheckButton>() {
-                                button.set_active(button.get_sensitive() && state);
+        let select_all_box = cascade! {
+            gtk::Box::new(gtk::Orientation::Vertical, 0);
+            ..add(&select_all);
+            ..style_context().add_class("select-all-box");
+        };
+
+        select_all.connect_toggled(move |all| {
+            let state = all.is_active();
+
+            for row in list_.children() {
+                if let Ok(row) = row.downcast::<gtk::ListBoxRow>() {
+                    if let Some(widget) = row.children().first() {
+                        if let Some(check_box) = widget.downcast_ref::<gtk::Box>() {
+                            // Find the CheckButton inside the card box
+                            for child in check_box.children() {
+                                if let Some(button) = child.downcast_ref::<gtk::CheckButton>() {
+                                    button.set_active(button.get_sensitive() && state);
+                                }
                             }
                         }
                     }
                 }
-            });
-        };
+            }
+        });
 
         let list_box = cascade! {
             gtk::Box::new(gtk::Orientation::Vertical, 0);
-            ..add(&select_all);
+            ..add(&select_all_box);
             ..add(&list);
         };
 
@@ -80,7 +92,18 @@ impl DevicesView {
             .into_iter()
             .filter_map(|row| row.downcast::<gtk::ListBoxRow>().ok())
             .filter_map(|row| row.children().first().cloned())
-            .filter_map(|row| row.downcast::<gtk::CheckButton>().ok())
+            .filter_map(|widget| {
+                // The widget is now a Box containing a CheckButton
+                if let Some(container) = widget.downcast_ref::<gtk::Box>() {
+                    for child in container.children() {
+                        if let Ok(button) = child.downcast::<gtk::CheckButton>() {
+                            return Some(button);
+                        }
+                    }
+                }
+                // Fallback: try direct downcast for backward compat
+                widget.downcast::<gtk::CheckButton>().ok()
+            })
     }
 
     pub fn is_active_ids(&self) -> impl Iterator<Item = usize> {
@@ -100,23 +123,41 @@ impl DevicesView {
             let label = &misc::device_label(device);
 
             let size_str = bytesize::to_string(device.parent.size, true);
-            let name = if valid_size {
-                format!("<b>{}</b>\n{}", label, size_str)
+
+            let name_label = cascade! {
+                gtk::Label::new(None);
+                ..set_markup(&format!("<b>{}</b>", label));
+                ..set_halign(gtk::Align::Start);
+            };
+
+            let size_label = if valid_size {
+                cascade! {
+                    gtk::Label::new(Some(&size_str));
+                    ..style_context().add_class("subtitle");
+                    ..set_halign(gtk::Align::Start);
+                }
             } else {
                 let too_small = fl!("device-too-small");
-                format!("<b>{}</b>\n{}: <b>{}</b>", label, size_str, too_small)
+                cascade! {
+                    gtk::Label::new(None);
+                    ..set_markup(&format!("{}: <b>{}</b>", size_str, too_small));
+                    ..set_halign(gtk::Align::Start);
+                }
+            };
+
+            let info_box = cascade! {
+                gtk::Box::new(gtk::Orientation::Vertical, 2);
+                ..add(&name_label);
+                ..add(&size_label);
             };
 
             let view_ready = self.view_ready.clone();
             let nselected = nselected.clone();
 
-            let row = cascade! {
+            let check_button = cascade! {
                 gtk::CheckButton::new();
                 ..set_sensitive(valid_size);
-                ..add(&cascade! {
-                    gtk::Label::new(Some(name.as_str()));
-                    ..set_use_markup(true);
-                });
+                ..set_valign(gtk::Align::Center);
                 ..connect_toggled(move |button| {
                     if button.is_active() {
                         nselected.set(nselected.get() + 1);
@@ -127,7 +168,17 @@ impl DevicesView {
                     (*view_ready.borrow())(nselected.get() != 0);
                 });
             };
-            self.list.insert(&row, -1);
+
+            let card_class = if valid_size { "device-card" } else { "device-card-disabled" };
+
+            let card = cascade! {
+                gtk::Box::new(gtk::Orientation::Horizontal, 12);
+                ..add(&check_button);
+                ..add(&info_box);
+                ..style_context().add_class(card_class);
+            };
+
+            self.list.insert(&card, -1);
         }
 
         self.list.show_all();

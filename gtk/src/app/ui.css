@@ -1,8 +1,168 @@
+/* Typography */
+.h1 {
+    font-size: 1.5em;
+    font-weight: bold;
+}
+
 .h2 {
-	font-size: 1.25em;
-	font-weight: bold;
+    font-size: 1.25em;
+    font-weight: bold;
+}
+
+.subtitle {
+    font-size: 0.9em;
+    color: alpha(currentColor, 0.6);
+}
+
+.caption {
+    font-size: 0.8em;
+    color: alpha(currentColor, 0.5);
 }
 
 .bold {
     font-weight: bold;
+}
+
+.desc {
+    color: alpha(currentColor, 0.7);
+}
+
+/* Drop Zone */
+.drop-zone {
+    border: 2px dashed alpha(currentColor, 0.25);
+    border-radius: 8px;
+    min-height: 150px;
+    padding: 24px;
+    transition: all 200ms ease;
+}
+
+.drop-zone:hover {
+    border-color: @theme_selected_bg_color;
+    background-color: alpha(@theme_selected_bg_color, 0.04);
+}
+
+.drop-zone-active {
+    border-color: @theme_selected_bg_color;
+    border-style: solid;
+    background-color: alpha(@theme_selected_bg_color, 0.08);
+}
+
+.drop-zone-selected {
+    border: 2px solid alpha(currentColor, 0.15);
+    border-radius: 8px;
+    min-height: 150px;
+    padding: 24px;
+}
+
+/* Device Cards */
+.device-card {
+    padding: 12px;
+    border: 1px solid alpha(currentColor, 0.1);
+    border-radius: 6px;
+    margin-bottom: 6px;
+}
+
+.device-card-disabled {
+    padding: 12px;
+    border: 1px solid alpha(currentColor, 0.1);
+    border-radius: 6px;
+    margin-bottom: 6px;
+    background-color: alpha(red, 0.06);
+}
+
+/* Progress */
+.progress-container progressbar trough {
+    min-height: 8px;
+}
+
+.progress-container progressbar progress {
+    min-height: 8px;
+    border-radius: 4px;
+}
+
+.overall-progress progressbar trough {
+    min-height: 14px;
+}
+
+.overall-progress progressbar progress {
+    min-height: 14px;
+    border-radius: 7px;
+    background-color: @theme_selected_bg_color;
+}
+
+/* Summary & Error Accents */
+.success-accent {
+    border-left: 4px solid #2ec27e;
+    padding: 12px;
+    padding-left: 16px;
+    background-color: alpha(#2ec27e, 0.06);
+    border-radius: 0 6px 6px 0;
+}
+
+.error-accent {
+    border-left: 4px solid #e01b24;
+    padding: 12px;
+    padding-left: 16px;
+    background-color: alpha(#e01b24, 0.06);
+    border-radius: 0 6px 6px 0;
+}
+
+/* Buttons */
+.header-btn {
+    padding-left: 16px;
+    padding-right: 16px;
+    min-width: 80px;
+}
+
+/* Frames & Lists */
+.devices list {
+    background: transparent;
+}
+
+.devices row {
+    padding: 0;
+    background: transparent;
+}
+
+.devices row:selected {
+    background: transparent;
+}
+
+/* Hash Row */
+.hash-row {
+    padding: 8px 0;
+}
+
+/* Change button styled as link */
+.link-button {
+    background: none;
+    border: none;
+    color: @theme_selected_bg_color;
+    padding: 4px 8px;
+    min-height: 0;
+}
+
+.link-button:hover {
+    text-decoration: underline;
+}
+
+/* Left/Right Panel */
+.left-panel {
+    margin-right: 6px;
+}
+
+.right-panel {
+    margin-top: 4px;
+}
+
+/* Error View */
+.error-view-desc {
+    padding: 12px;
+}
+
+/* Select All separator */
+.select-all-box {
+    margin-bottom: 8px;
+    border-bottom: 1px solid alpha(currentColor, 0.1);
+    padding-bottom: 8px;
 }

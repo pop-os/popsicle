@@ -3,10 +3,12 @@ app-title = USB Flasher
 # Images View
 cannot-select-directories = File chooser can't select directories
 check-label = Check
+change-image-button = Change Image
 choose-image-button = Choose Image
 generating-checksum = Generating Checksum
 hash-label = Hash:
 image-view-description = Select the .iso or .img that you want to flash. You can also plug your USB drives in now.
+image-view-description-drop = or drag and drop a file here
 image-view-title = Choose an Image
 no-image-selected = No image selected
 none = None
@@ -36,6 +38,8 @@ close = Close
 done = Done
 next = Next
 open = Open
+elapsed-time = Elapsed: {$time}
+overall-progress = Overall: {$percent}%
 task-finished = Complete
 
 # Events
