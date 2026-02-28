@@ -3,7 +3,7 @@ use crate::hash::hasher;
 
 use blake2::Blake2b512;
 use crossbeam_channel::{Receiver, Sender};
-use dbus_udisks2::{DiskDevice, Disks, UDisks2};
+use dbus_udisks2::{DiskDevice, UDisks2};
 use md5::Md5;
 use sha1::Sha1;
 use sha2::Sha256;
@@ -96,14 +96,76 @@ pub fn background_thread(events_tx: Sender<UiEvent>, events_rx: Receiver<Backgro
 
 fn refresh_devices() -> anyhow::Result<Box<[Arc<DiskDevice>]>> {
     let udisks = UDisks2::new()?;
-    let devices = Disks::new(&udisks).devices;
-    let mut devices = devices
-        .into_iter()
-        .filter(|d| d.drive.connection_bus == "usb" || d.drive.connection_bus == "sdio")
-        .filter(|d| d.parent.size != 0)
-        .map(Arc::new)
-        .collect::<Vec<_>>()
-        .into_boxed_slice();
-    devices.sort_by_key(|d| d.drive.id.clone());
-    Ok(devices)
+
+    // Collect all blocks and drives from UDisks2.
+    let blocks: Vec<_> = udisks.get_blocks().collect();
+    let drives: Vec<_> = udisks.get_drives().collect();
+
+    let mut devices = Vec::new();
+
+    // Build a lookup of drive by path.
+    let drive_map: std::collections::HashMap<&str, &dbus_udisks2::Drive> =
+        drives.iter().map(|d| (d.path.as_str(), d)).collect();
+
+    // Find all "parent" blocks (blocks with a partition table) that belong to a USB/SDIO drive.
+    // Also handle unpartitioned drives (single block, no partition table).
+    // Group blocks by their device path prefix to pair parents with their partitions.
+
+    // Separate parent blocks (with partition table) from partition blocks.
+    let mut parent_blocks: Vec<&dbus_udisks2::Block> = Vec::new();
+    let mut partition_blocks: Vec<&dbus_udisks2::Block> = Vec::new();
+
+    for block in &blocks {
+        // Skip blocks not associated with a USB/SDIO drive.
+        if let Some(drive) = drive_map.get(block.drive.as_str()) {
+            if drive.connection_bus != "usb" && drive.connection_bus != "sdio" {
+                continue;
+            }
+        } else {
+            continue;
+        }
+
+        if block.table.is_some() {
+            parent_blocks.push(block);
+        } else if block.partition.is_some() {
+            partition_blocks.push(block);
+        } else if block.size != 0 {
+            // Unpartitioned block (no table, no partition) — treat as standalone parent.
+            parent_blocks.push(block);
+        }
+    }
+
+    // For each parent block, find its child partitions and build a DiskDevice.
+    for parent in &parent_blocks {
+        if parent.size == 0 {
+            continue;
+        }
+
+        let drive = match drive_map.get(parent.drive.as_str()) {
+            Some(d) => (*d).clone(),
+            None => continue,
+        };
+
+        // Find partitions that belong to this parent block (their table path matches parent's dbus path).
+        let mut partitions: Vec<_> = partition_blocks
+            .iter()
+            .filter(|p| {
+                p.partition
+                    .as_ref()
+                    .map_or(false, |part| part.table == parent.path)
+            })
+            .map(|p| (*p).clone())
+            .collect();
+
+        partitions.sort_unstable_by_key(|p| p.partition.as_ref().unwrap().offset);
+
+        devices.push(Arc::new(DiskDevice {
+            drive,
+            parent: (*parent).clone(),
+            partitions,
+        }));
+    }
+
+    devices.sort_by_key(|d| d.parent.preferred_device.clone());
+    Ok(devices.into_boxed_slice())
 }
