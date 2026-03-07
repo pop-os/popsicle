@@ -1,6 +1,6 @@
 # Popsicle
 
-Popsicle is a Linux utility for flashing multiple USB devices in parallel, written in [Rust](https://www.rust-lang.org/en-US/).
+Popsicle is a Linux utility for flashing multiple USB devices in parallel, written in [Rust](https://www.rust-lang.org/).
 
 ## Build Dependencies
 
