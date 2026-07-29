@@ -1,7 +1,7 @@
-app-title = USB Brännare
+app-title = USB-Brännare
 
 # Images View
-cannot-select-directories = Filväljaren kan inte välja en mappar
+cannot-select-directories = Filväljaren kan inte välja mappar
 check-label = Kontrollera
 choose-image-button = Välj fil
 generating-checksum = Genererar kontrollsumma
