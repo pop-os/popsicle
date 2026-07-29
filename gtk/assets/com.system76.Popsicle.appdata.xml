@@ -10,14 +10,21 @@
   <url type="bugtracker">https://github.com/pop-os/popsicle</url>
   <name>Popsicle</name>
   <summary>Flash multiple USB devices in parallel</summary>
+  <summary xml:lang="uk">Паралельний запис на кілька USB-носіїв</summary>
   <description>
     <p>Write an ISO or other image to multiple USB devices all at once. Easily preparing a bunch of flash drives of your favorite OS with just a couple of clicks.</p>
+    <p xml:lang="uk">Записуйте ISO або інші образи на декілька USB-носіїв одночасно. Легко підготуйте цілу партію флешок із вашою улюбленою ОС усього за кілька кліків.</p>
     <ul>
       <li>Supports USB 2 and 3 devices</li>
+      <li xml:lang="uk">Підтримка пристроїв USB 2 й USB 3</li>
       <li>Use USB hubs for massively parallel writing</li>
+      <li xml:lang="uk">Використання USB-концентраторів для масового паралельного запису</li>
       <li>Verify your image with the SHA256 or MD5 checksum</li>
+      <li xml:lang="uk">Перевірка образу за допомогою контрольної суми SHA256 або MD5</li>
       <li>Check the progress, speed, and success of each device while flashing</li>
+      <li xml:lang="uk">Відстеження прогресу, швидкості й статусу запису для кожного пристрою</li>
       <li>Open ISO or IMG files from the app, or straight from your file manager</li>
+      <li xml:lang="uk">Відкриття файлів ISO чи IMG із самої програми або безпосередньо з вашого файлового менеджера</li>
     </ul>
   </description>
   <categories>
