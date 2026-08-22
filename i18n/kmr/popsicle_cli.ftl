@@ -1,7 +1,7 @@
 question = Tu bawer î ku tu dixwazî '{$image_path}' li ser van dîskan binivîsî?
 
-yn = y/N
-y = y
+yn = E/N
+y = e
 
 # Arguments
 arg-image = WÊNE
