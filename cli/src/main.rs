@@ -44,7 +44,7 @@ fn main() {
         .about(env!("CARGO_PKG_DESCRIPTION"))
         .version(env!("CARGO_PKG_VERSION"))
         .arg(Arg::new(&**ARG_IMAGE).help(&fl!("arg-image-desc")).required(true))
-        .arg(Arg::new(&**ARG_DISKS).help(&fl!("arg-disks-desc")))
+        .arg(Arg::new(&**ARG_DISKS).help(&fl!("arg-disks-desc")).num_args(1..))
         .arg(
             Arg::new("all")
                 .help(&fl!("arg-all-desc"))
