@@ -1,2 +1,5 @@
 usr/bin/popsicle
 usr/share/man/man1
+usr/share/applications/com.system76.Popsicle.desktop
+usr/share/metainfo/com.system76.Popsicle.appdata.xml
+usr/share/icons/hicolor/

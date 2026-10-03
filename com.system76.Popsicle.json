@@ -1,7 +1,7 @@
 {
     "app-id" : "com.system76.Popsicle",
     "runtime" : "org.freedesktop.Platform",
-    "runtime-version" : "22.08",
+    "runtime-version" : "24.08",
     "sdk" : "org.freedesktop.Sdk",
     "sdk-extensions" : [
         "org.freedesktop.Sdk.Extension.rust-stable"
@@ -16,9 +16,10 @@
         "--share=ipc",
         "--socket=fallback-x11",
         "--socket=wayland",
+        "--device=dri",
         "--system-talk-name=org.freedesktop.UDisks2"
     ],
-    "command" : "popsicle-gtk",
+    "command" : "popsicle",
     "cleanup" : [
         "/share/icons/hicolor/512x512@2x"
     ],
