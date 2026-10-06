@@ -13,8 +13,13 @@ hash-label = Hash:
 image-view-description = Select the .iso or .img that you want to flash. You can also plug your USB drives in now.
 image-view-title = Choose an image
 no-image-selected = No image selected
+image-selected = Image selected
 none = None
 warning = Warning:
+release-to-use-image = Release to use this image
+choose-a-file = or choose a file
+drop-iso-here = Drop ISO here
+drop-iso-file-here = Drop an ISO file here
 
 # Devices View
 device-too-small = Device too small
