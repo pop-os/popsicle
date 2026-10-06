@@ -89,20 +89,20 @@ impl ImagesView {
         .symbolic(true);
 
         let drop_title = widget::text::heading(if self.dragging {
-            "Drop ISO here"
+            fl!("drop-iso-here")
         } else if image_selected {
-            self.image_name.as_deref().unwrap_or("Image selected")
+            self.image_name.clone().unwrap_or(fl!("image-selected"))
         } else {
-            "Drop an ISO file here"
+            fl!("drop-iso-file-here")
         })
         .align_x(Alignment::Center);
 
         let drop_description = widget::text::caption(if self.dragging {
-            "Release to use this image"
+            fl!("release-to-use-image")
         } else if image_selected {
-            self.image_size.as_deref().unwrap_or("")
+            self.image_size.as_deref().unwrap_or("").to_string()
         } else {
-            "or choose a file below"
+            fl!("choose-a-file")
         })
         .align_x(Alignment::Center);
 
@@ -164,16 +164,21 @@ impl ImagesView {
         let hash_check_button = widget::button::standard(fl!("check-label"))
             .on_press_maybe((!self.hash_input.is_empty()).then_some(Message::CheckHash));
 
+        let show_hash_input = self.selected_hash > 0;
+
         let hash_row = widget::row([])
             .push(hash_label)
-            .push(widget::space::horizontal())
             .push(hash_dropdown)
-            .push(hash_check_button)
+            .push(widget::space::horizontal())
+            .push_maybe(show_hash_input.then(|| hash_check_button))
             .spacing(spacing().space_xs)
             .align_y(Alignment::Center);
 
-        let hash_content =
-            widget::column([]).push(hash_row).push(hash_text_input).spacing(spacing().space_xs);
+        let hash_content = widget::column([])
+            .push_maybe(show_hash_input.then(|| hash_text_input))
+            .push(hash_row)
+            .align_x(Alignment::Center)
+            .spacing(spacing().space_xs);
 
         let hash_section = widget::container(hash_content)
             .width(Length::Fill)
@@ -185,9 +190,9 @@ impl ImagesView {
             .push(drop_area)
             .push_maybe(image_selected.then(|| hash_section))
             .align_x(Alignment::Center)
-            .spacing(spacing().space_m)
+            .spacing(spacing().space_xs)
             .apply(widget::scrollable)
-            .spacing(spacing().space_xxs)
+            .spacing(spacing().space_xs)
             .into()
     }
 
@@ -198,11 +203,9 @@ impl ImagesView {
             .on_press_maybe(can_press.then(|| app::Message::Next))
             .into();
 
-        let cancel = widget::button::standard(fl!("cancel")).on_press(app::Message::Cancel).into();
-
         let spacer = widget::space::horizontal().into();
 
-        let row = widget::row(vec![spacer, cancel, next])
+        let row = widget::row(vec![spacer, next])
             .spacing(spacing().space_xs)
             .padding(spacing().space_xs)
             .into();
@@ -260,9 +263,7 @@ impl ImagesView {
                 self.set_image(&path, size, None);
             }
 
-            Message::PickCancelled => {
-                todo!("Use a toaster to inform the user");
-            }
+            Message::PickCancelled => {}
 
             Message::PickFailed => {
                 todo!("Use a toaster to inform the user");
