@@ -1,7 +1,11 @@
 use cosmic::{
     Theme,
-    iced::{Border, Color, widget::text_input},
-    widget,
+    iced::{Border, Color},
+    theme::TextInput,
+    widget::{
+        self,
+        text_input::{Appearance, StyleSheet},
+    },
 };
 
 use crate::hash::HashResult;
@@ -25,26 +29,22 @@ pub fn drag_area_active(theme: &cosmic::prelude::Theme) -> widget::popover::Styl
     style
 }
 
-pub fn hash_input_style(
-    result: Option<HashResult>,
-) -> impl Fn(&Theme, text_input::Status) -> text_input::Style {
-    move |theme, status| {
-        let mut style = <Theme as text_input::Catalog>::style(
-            theme,
-            &cosmic::style::iced::TextInput::Default,
-            status,
-        );
-
-        style.value = match result {
-            Some(HashResult::Match) => theme.cosmic().success.base.into(),
-
-            Some(HashResult::Mismatch | HashResult::Error) => {
-                theme.cosmic().destructive.base.into()
-            }
-
-            _ => style.value,
+pub fn colored_text_input(result: HashResult) -> TextInput {
+    let color = move |theme: &cosmic::Theme, appearance: Appearance| {
+        let cosmic = theme.cosmic();
+        let text_color: Option<Color> = match result {
+            HashResult::Checking => return appearance,
+            HashResult::Match => Some(cosmic.success_color().into()),
+            HashResult::Mismatch | HashResult::Error => Some(cosmic.destructive_color().into()),
         };
+        Appearance { text_color, ..appearance }
+    };
 
-        style
+    TextInput::Custom {
+        active: Box::new(move |t| color(t, t.active(&TextInput::Default))),
+        error: Box::new(move |t| color(t, t.error(&TextInput::Default))),
+        hovered: Box::new(move |t| color(t, t.hovered(&TextInput::Default))),
+        focused: Box::new(move |t| color(t, t.focused(&TextInput::Default))),
+        disabled: Box::new(move |t| color(t, t.disabled(&TextInput::Default))),
     }
 }
