@@ -3,6 +3,8 @@ use std::{cell::RefCell, sync::Arc};
 use cosmic::{Element, widget};
 use dbus_udisks2::DiskDevice;
 
+use crate::app::ActiveView;
+
 #[derive(Debug, Default)]
 pub struct DevicesView {
     pub available_devices: RefCell<Box<[Arc<DiskDevice>]>>,
@@ -15,6 +17,10 @@ pub enum Message {}
 impl DevicesView {
     pub fn view<'a>(&self) -> impl Into<Element<'a, Message>> {
         widget::text("Devices...")
+    }
+
+    pub fn footer(&self, view: &ActiveView) -> Option<Element<'_, crate::app::Message>> {
+        None
     }
 
     pub fn devices_selected(&self) -> bool {

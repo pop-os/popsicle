@@ -9,6 +9,7 @@ use crate::app::Flags;
 
 mod app;
 mod config;
+mod hash;
 mod i18n;
 mod views;
 
@@ -30,8 +31,7 @@ fn main() -> cosmic::iced::Result {
 
     // Settings for configuring the application window and iced runtime.
     let settings = cosmic::app::Settings::default()
-        .size_limits(cosmic::iced::Limits::NONE.min_width(470.0).min_height(310.0))
-        .size(iced::Size::new(470.0, 310.0));
+        .size_limits(cosmic::iced::Limits::NONE.min_width(470.0).min_height(310.0));
 
     let mut flags = Flags { iso_argument: None };
 
