@@ -10,8 +10,7 @@ use crate::views::summary::{self, SummaryView};
 use cosmic::app::context_drawer;
 use cosmic::cosmic_config::{self, CosmicConfigEntry};
 use cosmic::iced::alignment::{Horizontal, Vertical};
-use cosmic::iced::font::Weight;
-use cosmic::iced::{Font, Length, Subscription};
+use cosmic::iced::{Length, Subscription};
 use cosmic::prelude::*;
 use cosmic::widget::{self, about::About, menu};
 use std::collections::HashMap;
@@ -132,11 +131,6 @@ impl cosmic::Application for AppModel {
             error: ErrorView,
         };
 
-        // Prepare window
-        app.core.window.show_close = false;
-        app.core.window.show_maximize = false;
-        app.core.window.show_minimize = false;
-
         // Create a startup command that sets the window title.
         let command = app.update_title();
 
@@ -158,18 +152,14 @@ impl cosmic::Application for AppModel {
         })
     }
 
-    /// Elements to pack at the start of the header bar.
-    fn header_start(&self) -> Vec<Element<'_, Self::Message>> {
-        vec![self.cancel()]
-    }
-
-    fn header_center(&self) -> Vec<Element<'_, Self::Message>> {
-        let title = widget::text("Popsicle").font(Font { weight: Weight::Bold, ..Font::DEFAULT });
-        vec![title.into()]
-    }
-
-    fn header_end(&self) -> Vec<Element<'_, Self::Message>> {
-        vec![self.next()]
+    fn footer(&self) -> Option<Element<'_, Self::Message>> {
+        match self.view {
+            ActiveView::Images => self.images.footer(&self.view),
+            ActiveView::Devices => self.devices.footer(&self.view),
+            ActiveView::Flashing => self.flashing.footer(&self.view),
+            ActiveView::Summary => self.summary.footer(&self.view),
+            ActiveView::Error => self.error.footer(&self.view),
+        }
     }
 
     /// Describes the interface based on the current state of the application model.
@@ -244,7 +234,11 @@ impl cosmic::Application for AppModel {
                     eprintln!("failed to open {url:?}: {err}");
                 }
             },
-            Message::Images(message) => self.images.update(message),
+            Message::Images(message) => {
+                if let Some(task) = self.images.update(message) {
+                    return task.map(|action| action.map(Message::Images));
+                }
+            }
             Message::Devices(_message) => todo!(),
             Message::Flashing(_message) => todo!(),
             Message::Summary(_message) => todo!(),
@@ -273,19 +267,6 @@ impl AppModel {
         } else {
             Task::none()
         }
-    }
-
-    /// Handles the next action
-    pub fn next<'a>(&self) -> Element<'a, Message> {
-        let can_press = self.view == ActiveView::Images && self.images.image_selected()
-            || self.view == ActiveView::Devices && self.devices.devices_selected();
-        widget::button::suggested(fl!("next"))
-            .on_press_maybe(can_press.then(|| Message::Next))
-            .into()
-    }
-
-    pub fn cancel<'a>(&self) -> Element<'a, Message> {
-        widget::button::standard(fl!("cancel")).on_press(Message::Cancel).into()
     }
 }
 

@@ -1,12 +1,17 @@
 use std::{cell::RefCell, fs::File, path::PathBuf};
 
 use cosmic::{
-    Element,
+    Element, Task,
+    dialog::{ashpd::url::Url, file_chooser},
     iced::Alignment,
-    widget::{self, image::Handle},
+    theme::spacing,
+    widget,
 };
 
-use crate::fl;
+use crate::{
+    app::{self, ActiveView},
+    fl,
+};
 
 pub struct ImagesView {
     image: RefCell<Option<File>>,
@@ -25,6 +30,10 @@ pub enum Message {
     SetHash(usize),
     HashInput(String),
     CheckHash,
+    ChooseImage,
+    FilePicked(Vec<Url>),
+    PickCancelled,
+    PickFailed,
 }
 
 impl ImagesView {
@@ -50,15 +59,13 @@ impl ImagesView {
 
     pub fn view<'a>(&'a self) -> impl Into<Element<'a, Message>> {
         let spacing = cosmic::theme::spacing();
-        let bytes = include_bytes!("../../resources/images/application-x-cd-image.png");
-        let handle = Handle::from_bytes(bytes.to_vec());
-        let icon = widget::image(handle).height(50).into();
-        let title = widget::text::heading(fl!("image-view-title")).into();
+        let title = widget::text::title2(fl!("image-view-title")).into();
         let description = widget::text::body(fl!("image-view-description")).into();
         let instructions = widget::column(vec![title, description]).into();
-        let header = widget::row(vec![icon, instructions]).spacing(spacing.space_s).into();
 
-        let choose_image_button = widget::button::standard(fl!("choose-image-button")).into();
+        let choose_image_button = widget::button::standard(fl!("choose-image-button"))
+            .on_press(Message::ChooseImage)
+            .into();
         let image_name_caption = widget::text::caption_heading(
             self.image_name.clone().unwrap_or(fl!("no-image-selected")),
         )
@@ -69,8 +76,6 @@ impl ImagesView {
             .align_x(Alignment::Center)
             .spacing(spacing.space_xs)
             .into();
-
-        let spacer = widget::space::vertical().into();
 
         let hash_label = widget::text(fl!("hash-label")).into();
 
@@ -93,29 +98,69 @@ impl ImagesView {
             .on_press_maybe(hash_check_button_enabled.then(|| Message::CheckHash))
             .into();
 
+        let hash_spacer = widget::space::horizontal().into();
+
         let hash_row =
-            widget::row(vec![hash_label, hash_combo_box, hash_text_input, hash_check_button])
+            widget::row(vec![hash_label, hash_combo_box, hash_spacer, hash_check_button])
                 .spacing(spacing.space_xxs)
                 .align_y(Alignment::Center)
-                .padding(spacing.space_s)
                 .into();
 
-        widget::column(vec![header, content, spacer, hash_row])
+        let hash_col =
+            widget::column(vec![hash_row, hash_text_input]).spacing(spacing.space_xxs).into();
+
+        widget::column(vec![instructions, content, hash_col])
             .align_x(Alignment::Center)
-            .spacing(spacing.space_s)
+            .spacing(spacing.space_m)
     }
 
-    pub fn update(&mut self, message: Message) {
+    pub fn footer(&self, view: &ActiveView) -> Option<Element<'_, app::Message>> {
+        let can_press = *view == ActiveView::Images && self.image.borrow().is_some();
+        let next = widget::button::suggested(fl!("next"))
+            .on_press_maybe(can_press.then(|| app::Message::Next))
+            .into();
+
+        let cancel = widget::button::standard(fl!("cancel")).on_press(app::Message::Cancel).into();
+        let spacer = widget::space::horizontal().into();
+        let row = widget::row(vec![spacer, cancel, next])
+            .spacing(spacing().space_xs)
+            .padding(spacing().space_xs)
+            .into();
+        Some(row)
+    }
+
+    pub fn update(&mut self, message: Message) -> Option<Task<cosmic::Action<Message>>> {
         match message {
             Message::SetImage { path, size, warning } => self.set_image(&path, size, warning),
             Message::SetHash(idx) => self.selected_hash = idx,
             Message::HashInput(text) => self.hash_input = text,
             Message::CheckHash => todo!(),
+            Message::ChooseImage => {
+                let task = cosmic::task::future(async {
+                    let dialog = file_chooser::open::Dialog::new().title("Choose a file");
+                    match dialog.open_file().await {
+                        Ok(response) => Message::FilePicked(response.0.uris().to_vec().clone()),
+                        Err(file_chooser::Error::Cancelled) => Message::PickCancelled,
+                        Err(why) => {
+                            eprintln!("{why:?}");
+                            Message::PickFailed
+                        }
+                    }
+                });
+                return Some(task);
+            }
+            Message::FilePicked(urls) => {
+                let Some(path) = urls.first().and_then(|url| url.to_file_path().ok()) else {
+                    eprintln!("picked URI is not a local file: {urls:?}");
+                    return None;
+                };
+                let size = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+                self.set_image(&path, size, None)
+            }
+            Message::PickCancelled => todo!("Use a toaster to inform the user"),
+            Message::PickFailed => todo!("Use a toaster to inform the user"),
         }
-    }
-
-    pub fn image_selected(&self) -> bool {
-        self.image.borrow().is_some()
+        None
     }
 
     pub fn set_image(&mut self, path: &PathBuf, size: u64, warning: Option<String>) {
