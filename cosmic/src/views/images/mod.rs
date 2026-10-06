@@ -8,11 +8,15 @@ use std::{
 use blake2::Blake2b512;
 use cosmic::{
     Apply, Element, Task,
-    dialog::{ashpd::url::Url, file_chooser},
+    dialog::{
+        ashpd::url::Url,
+        file_chooser::{self, FileFilter},
+    },
     iced::{Alignment, Length},
     theme::spacing,
     widget::{self},
 };
+use iso9660::ISO9660;
 use md5::Md5;
 use sha1::Sha1;
 use sha2::{Sha256, Sha512};
@@ -239,12 +243,8 @@ impl ImagesView {
 
             Some(HashResult::Match) => {}
 
-            Some(HashResult::Mismatch) => {
-                hash_text_input = hash_text_input.error(fl!("hash-mismatch"));
-            }
-
-            Some(HashResult::Error) => {
-                hash_text_input = hash_text_input.error(fl!("hash-error"));
+            Some(HashResult::Mismatch | HashResult::Error) => {
+                hash_text_input = hash_text_input.error("");
             }
 
             None => {}
@@ -329,7 +329,7 @@ impl ImagesView {
 
             Message::DropFailed => {
                 self.dragging = false;
-                self.error = Some("Could not read the dropped file.".into());
+                self.error = Some(fl!("could-not-read-dropped-file"));
             }
 
             Message::DragEntered => {
@@ -391,7 +391,9 @@ impl ImagesView {
 
     fn choose_image(&self) -> Option<Task<cosmic::Action<Message>>> {
         let task = cosmic::task::future(async {
-            let dialog = file_chooser::open::Dialog::new().title("Choose a file");
+            let dialog = file_chooser::open::Dialog::new().title(fl!("choose-file")).filter(
+                FileFilter::new(&fl!("disk-images")).glob("*.[Ii][Ss][Oo]").glob("*.[Ii][Mm][Gg]"),
+            );
 
             match dialog.open_file().await {
                 Ok(response) => Message::FilePicked(response.0.uris().to_vec()),
@@ -449,6 +451,11 @@ impl ImagesView {
 
         match File::open(path) {
             Ok(file) => {
+                if is_windows_iso(&file) {
+                    self.error = Some(fl!("win-isos-not-supported"));
+                    return;
+                }
+
                 self.image.file.replace(file);
             }
 
@@ -475,4 +482,10 @@ async fn calculate_hash(path: &Path, algorithm: usize) -> std::io::Result<String
             Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "No hash algorithm selected"))
         }
     }
+}
+
+fn is_windows_iso(file: &File) -> bool {
+    ISO9660::new(file)
+        .map(|fs| fs.publisher_identifier() == "MICROSOFT CORPORATION")
+        .unwrap_or(false)
 }

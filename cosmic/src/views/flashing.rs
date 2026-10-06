@@ -32,7 +32,7 @@ use popsicle::{Progress, Task as CopyTask};
 
 use crate::{app::ActiveView, fl, views::devices::device_label};
 
-/// Result of a flashing run, consumed by the summary view.
+/// Result of a flashing run.
 #[derive(Debug, Clone)]
 pub struct FlashOutcome {
     /// Set when the run as a whole failed (image unreadable, no drive could be opened, ...).
@@ -57,7 +57,6 @@ pub enum Message {
     Finished { generation: u64, outcome: Result<FlashOutcome, String> },
 }
 
-/// State shared with the blocking worker. Plain atomics, no `atomic`/`bytemuck` crates needed.
 struct Shared {
     progress: Vec<AtomicU64>,
     finished: Vec<AtomicBool>,
@@ -73,7 +72,6 @@ impl Progress for DeviceProgress {
     type Device = ();
 
     fn message(&mut self, _device: &(), kind: &str, message: &str) {
-        // "E" = error. ("S"/"V" are seek/verify notices, only sent when verification is on.)
         if kind == "E" {
             self.shared.errors.lock().unwrap()[self.id] = Some(message.to_string());
         }
@@ -122,7 +120,6 @@ impl Run {
                 (bytes as f64 / self.image_size as f64).min(1.0) as f32
             };
 
-            // Rolling ~3 second window, like popsicle's GTK label.
             state.samples.push_back((now, bytes));
             while state.samples.len() > 2
                 && now.duration_since(state.samples[0].0) > Duration::from_secs(3)
@@ -144,13 +141,12 @@ impl Run {
 #[derive(Default)]
 pub struct FlashingView {
     run: Option<Run>,
-    /// Bumped on every start so a late `Finished` from a cancelled run is ignored.
     generation: u64,
     outcome: Option<Result<FlashOutcome, String>>,
 }
 
 impl FlashingView {
-    /// Begin flashing `image` to `devices`. Call when entering the view.
+    /// Begin flashing `image` to `devices`.
     pub fn start(
         &mut self,
         image: PathBuf,
@@ -332,7 +328,6 @@ fn write_all(
         }
     }
 
-    // Open each drive; a drive that fails to open is reported but doesn't sink the others.
     let mut task = CopyTask::new(source.into(), false);
     let mut opened = 0;
 

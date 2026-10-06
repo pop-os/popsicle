@@ -7,7 +7,6 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use crate::app::Flags;
 
 mod app;
-mod config;
 mod hash;
 mod i18n;
 mod views;
