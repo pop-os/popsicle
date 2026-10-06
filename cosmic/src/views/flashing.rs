@@ -351,7 +351,6 @@ fn write_all(
 
     anyhow::ensure!(opened > 0, "none of the selected drives could be opened");
 
-    // Heap-allocated: no need for popsicle's 10 MiB thread stack.
     let mut bucket = vec![0u8; 64 * 1024];
 
     match executor::block_on(Abortable::new(task.process(&mut bucket), registration)) {
