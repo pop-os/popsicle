@@ -32,7 +32,7 @@ pub mod style;
 pub struct ImageEntry {
     file: Option<File>,
     path: Option<PathBuf>,
-    pub size: u64,
+    size: u64,
 }
 
 impl ImageEntry {
@@ -58,7 +58,7 @@ impl ImageEntry {
 }
 
 pub struct ImagesView {
-    pub image: ImageEntry,
+    image: ImageEntry,
     error: Option<String>,
     hashes: Vec<String>,
     selected_hash: usize,
@@ -103,6 +103,14 @@ impl ImagesView {
             dragging: false,
             hash_result: None,
         }
+    }
+
+    pub fn image_path(&self) -> Option<&Path> {
+        self.image.path.as_deref()
+    }
+
+    pub fn image_size(&self) -> u64 {
+        self.image.size
     }
 
     pub fn view<'a>(&'a self) -> Element<'a, Message> {
