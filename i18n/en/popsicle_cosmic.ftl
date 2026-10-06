@@ -8,11 +8,9 @@ cannot-select-directories = File chooser can't select directories
 check-label = Check
 choose-image-button = Choose image
 change-image-button = Change image
-generating-checksum = Generating Checksum
 hash-label = Hash:
 image-view-description = Select the .iso or .img that you want to flash. You can also plug your USB drives in now.
 image-view-title = Choose an image
-no-image-selected = No image selected
 image-selected = Image selected
 none = None
 warning = Warning:
@@ -20,10 +18,9 @@ release-to-use-image = Release to use this image
 choose-a-file = or choose a file
 drop-iso-here = Drop ISO here
 drop-iso-file-here = Drop an ISO file here
-hash-checking = Checking…
-hash-match = Checksum matches
-hash-mismatch = Checksum does not match
-hash-error = An error ocurred while verifying the image
+choose-file = Choose a file
+disk-images = Disk images
+could-not-read-dropped-file = Could not read the dropped file
 
 # Devices View
 device-too-small = Device too small

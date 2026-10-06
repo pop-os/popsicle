@@ -38,7 +38,6 @@ pub enum Message {
 }
 
 impl DevicesView {
-    /// Call when the image changes or when navigating to this view.
     pub fn set_image_size(&mut self, size: u64) {
         self.image_size = size;
         // Drop selections that no longer fit the new image.
@@ -58,7 +57,6 @@ impl DevicesView {
         !self.selected.is_empty()
     }
 
-    /// For the flashing view / flash request.
     pub fn selected_devices(&self) -> Vec<Arc<DiskDevice>> {
         self.available_devices
             .iter()
@@ -71,12 +69,10 @@ impl DevicesView {
         self.selected.clear();
     }
 
-    /// Only include this in the app's subscription while the Devices view is active.
     pub fn subscription(&self) -> Subscription<Message> {
         cosmic::iced::time::every(Duration::from_secs(1)).map(|_| Message::Refresh)
     }
 
-    /// Kick off a refresh right away (call when entering the view).
     pub fn refresh(&mut self) -> Task<cosmic::Action<Message>> {
         if self.refreshing {
             return Task::none();
@@ -112,7 +108,6 @@ impl DevicesView {
                                 .any(|(a, b)| key(a) != key(b));
 
                         if changed {
-                            // Forget selections for devices that were unplugged.
                             let present: HashSet<_> = devices.iter().map(|d| key(d)).collect();
                             self.selected.retain(|k| present.contains(k));
                             self.available_devices = devices;
@@ -248,7 +243,6 @@ pub fn device_label(device: &DiskDevice) -> String {
     }
 }
 
-/// Blocking: talks to udisks2 over D-Bus. Same filters as popsicle's `refresh_devices`.
 fn fetch_devices() -> Result<Box<[Arc<DiskDevice>]>, String> {
     let udisks = UDisks2::new().map_err(|error| error.to_string())?;
 

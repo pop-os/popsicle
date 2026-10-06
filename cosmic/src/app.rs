@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 
-use crate::config::Config;
 use crate::fl;
 use crate::views::devices::{self, DevicesView};
 use crate::views::error::{self, ErrorView};
@@ -79,7 +78,7 @@ impl cosmic::Application for AppModel {
     type Message = Message;
 
     /// Unique identifier in RDNN (reverse domain name notation) format.
-    const APP_ID: &'static str = "dev.mmurphy.Test";
+    const APP_ID: &'static str = "com.system76.Popsicle";
 
     fn core(&self) -> &cosmic::Core {
         &self.core
@@ -90,10 +89,14 @@ impl cosmic::Application for AppModel {
     }
 
     /// Initializes the application with any given flags and startup commands.
-    fn init(
-        core: cosmic::Core,
-        _flags: Self::Flags,
-    ) -> (Self, Task<cosmic::Action<Self::Message>>) {
+    fn init(core: cosmic::Core, flags: Self::Flags) -> (Self, Task<cosmic::Action<Self::Message>>) {
+        let open_image = match flags.iso_argument {
+            Some(path) => {
+                cosmic::task::message(Message::Images(images::Message::FileDropped(path)))
+            }
+            None => Task::none(),
+        };
+
         // Create the about widget
         let about = About::default()
             .name(fl!("app-title"))
@@ -116,8 +119,8 @@ impl cosmic::Application for AppModel {
             error: ErrorView::default(),
         };
 
-        // Create a startup command that sets the window title.
-        let command = app.update_title();
+        // Create a startup command that sets the window title and opens optional image file.
+        let command = Task::batch([app.update_title(), open_image]);
 
         (app, command)
     }
