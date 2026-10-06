@@ -1,5 +1,4 @@
 use std::{
-    cell::RefCell,
     fs::File,
     path::{Path, PathBuf},
 };
@@ -29,11 +28,37 @@ use crate::{
 pub mod dnd;
 pub mod style;
 
+#[derive(Debug, Default)]
+pub struct ImageEntry {
+    file: Option<File>,
+    path: Option<PathBuf>,
+    pub size: u64,
+}
+
+impl ImageEntry {
+    pub fn is_loaded(&self) -> bool {
+        self.file.is_some() && self.path.is_some() && self.size > 0
+    }
+
+    pub fn name(&self) -> Option<String> {
+        let Some(path) = &self.path else {
+            return None;
+        };
+
+        let Some(file_name) = path.file_name() else {
+            return None;
+        };
+
+        Some(file_name.to_string_lossy().to_string())
+    }
+
+    pub fn size_str(&self) -> String {
+        bytesize::to_string(self.size, true)
+    }
+}
+
 pub struct ImagesView {
-    image: RefCell<Option<File>>,
-    image_path: Option<PathBuf>,
-    image_name: Option<String>,
-    image_size: Option<String>,
+    pub image: ImageEntry,
     error: Option<String>,
     hashes: Vec<String>,
     selected_hash: usize,
@@ -44,7 +69,6 @@ pub struct ImagesView {
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    SetImage { path: PathBuf, size: u64, warning: Option<String> },
     SetHash(usize),
     HashInput(String),
     CheckHash,
@@ -64,10 +88,7 @@ pub enum Message {
 impl ImagesView {
     pub fn new() -> Self {
         Self {
-            image: RefCell::new(None),
-            image_path: None,
-            image_name: None,
-            image_size: None,
+            image: ImageEntry::default(),
             error: None,
             hashes: vec![
                 fl!("none"),
@@ -85,7 +106,7 @@ impl ImagesView {
     }
 
     pub fn view<'a>(&'a self) -> Element<'a, Message> {
-        let image_selected = self.image.borrow().is_some();
+        let image_selected = self.image.is_loaded();
 
         widget::column([])
             .push(self.instructions())
@@ -124,7 +145,7 @@ impl ImagesView {
         let drop_title = widget::text::heading(if self.dragging {
             fl!("drop-iso-here")
         } else if image_selected {
-            self.image_name.clone().unwrap_or(fl!("image-selected"))
+            self.image.name().unwrap_or(fl!("image-selected"))
         } else {
             fl!("drop-iso-file-here")
         })
@@ -133,7 +154,7 @@ impl ImagesView {
         let drop_description = widget::text::caption(if self.dragging {
             fl!("release-to-use-image")
         } else if image_selected {
-            self.image_size.as_deref().unwrap_or("").to_string()
+            self.image.size_str()
         } else {
             fl!("choose-a-file")
         })
@@ -251,7 +272,7 @@ impl ImagesView {
     }
 
     pub fn footer(&self, view: &ActiveView) -> Option<Element<'_, app::Message>> {
-        let can_press = *view == ActiveView::Images && self.image.borrow().is_some();
+        let can_press = *view == ActiveView::Images && self.image.is_loaded();
 
         let next = widget::button::suggested(fl!("next"))
             .on_press_maybe(can_press.then_some(app::Message::Next))
@@ -269,8 +290,6 @@ impl ImagesView {
 
     pub fn update(&mut self, message: Message) -> Option<Task<cosmic::Action<Message>>> {
         match message {
-            Message::SetImage { path, size, warning } => self.set_image(&path, size, warning),
-
             Message::SetHash(idx) => {
                 self.selected_hash = idx;
                 self.hash_result = None;
@@ -322,7 +341,7 @@ impl ImagesView {
     }
 
     fn check_hash(&mut self) -> Option<Task<cosmic::Action<Message>>> {
-        let path = self.image_path.clone()?;
+        let path = self.image.path.clone()?;
 
         let expected = self.hash_input.trim().to_ascii_lowercase();
 
@@ -415,27 +434,14 @@ impl ImagesView {
         self.hash_result = None;
         self.error = None;
 
-        let size_str = bytesize::to_string(size, true);
-
-        match path.file_name() {
-            Some(name) => {
-                self.image_name = Some(name.to_string_lossy().to_string());
-                self.image_size = Some(size_str);
-            }
-
-            None => {
-                self.error = Some(fl!("cannot-select-directories"));
-                return;
-            }
-        }
-
         if let Some(warning) = warning {
             self.error = Some(warning);
+            return;
         }
 
         match File::open(path) {
             Ok(file) => {
-                self.image.replace(Some(file));
+                self.image.file.replace(file);
             }
 
             Err(_) => {
@@ -444,7 +450,8 @@ impl ImagesView {
             }
         }
 
-        self.image_path = Some(path.clone());
+        self.image.size = size;
+        self.image.path = Some(path.clone());
     }
 }
 

@@ -54,7 +54,6 @@ pub enum Message {
     Summary(summary::Message),
     Error(error::Message),
     Next,
-    Cancel,
 }
 
 pub struct Flags {
@@ -186,7 +185,7 @@ impl cosmic::Application for AppModel {
     fn view(&self) -> Element<'_, Self::Message> {
         let view: Element<'_, Self::Message> = match self.view {
             ActiveView::Images => self.images.view().map(Message::Images),
-            ActiveView::Devices => self.devices.view().into().map(Message::Devices),
+            ActiveView::Devices => self.devices.view().map(Message::Devices),
             ActiveView::Flashing => self.flashing.view().into().map(Message::Flashing),
             ActiveView::Summary => self.summary.view().into().map(Message::Summary),
             ActiveView::Error => self.error.view().into().map(Message::Error),
@@ -209,8 +208,7 @@ impl cosmic::Application for AppModel {
     /// stopped and started conditionally based on application state, or persist
     /// indefinitely.
     fn subscription(&self) -> Subscription<Self::Message> {
-        // Add subscriptions which are always active.
-        let subscriptions = vec![
+        let mut subscriptions = vec![
             // Watch for application configuration changes.
             self.core().watch_config::<Config>(Self::APP_ID).map(|update| {
                 for why in update.errors {
@@ -220,6 +218,11 @@ impl cosmic::Application for AppModel {
                 Message::UpdateConfig(update.config)
             }),
         ];
+
+        // Poll for USB drives only while the device picker is on screen.
+        if self.view == ActiveView::Devices {
+            subscriptions.push(self.devices.subscription().map(Message::Devices));
+        }
 
         Subscription::batch(subscriptions)
     }
@@ -256,18 +259,23 @@ impl cosmic::Application for AppModel {
                     return task.map(|action| action.map(Message::Images));
                 }
             }
-            Message::Devices(_message) => todo!(),
+            Message::Devices(message) => {
+                if let Some(task) = self.devices.update(message) {
+                    return task.map(|action| action.map(Message::Devices));
+                }
+            }
             Message::Flashing(_message) => todo!(),
             Message::Summary(_message) => todo!(),
             Message::Error(_message) => todo!(),
             Message::Next => match self.view {
-                ActiveView::Images => self.view = ActiveView::Devices,
+                ActiveView::Images => {
+                    self.view = ActiveView::Devices;
+                    self.devices.set_image_size(self.images.image.size);
+
+                    return self.devices.refresh().map(|action| action.map(Message::Devices));
+                }
                 ActiveView::Devices => self.view = ActiveView::Flashing,
                 _ => return cosmic::iced::exit(),
-            },
-            Message::Cancel => match self.view {
-                ActiveView::Images => return cosmic::iced::exit(),
-                _ => self.view = ActiveView::Images,
             },
         }
         Task::none()

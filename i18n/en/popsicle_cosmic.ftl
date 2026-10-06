@@ -30,6 +30,7 @@ device-too-small = Device too small
 devices-view-description = Flashing will erase all data on the selected drives.
 devices-view-title = Select Drives
 select-all = Select all
+no-devices-found = No devices were found
 
 # Flashing View
 flash-view-description = Do not unplug devices while they are being flashed.
