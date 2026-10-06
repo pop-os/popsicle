@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 use cosmic::{
     Apply, Element,
     iced::{Alignment, Length},

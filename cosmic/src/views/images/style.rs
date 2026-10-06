@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 use cosmic::{
     iced::{Border, Color},
     theme::TextInput,

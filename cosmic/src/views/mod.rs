@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 pub mod devices;
 pub mod error;
 pub mod flashing;
