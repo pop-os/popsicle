@@ -106,23 +106,17 @@ impl ImagesView {
         })
         .align_x(Alignment::Center);
 
+        let choose_image_label =
+            if image_selected { fl!("change-image-button") } else { fl!("choose-image-button") };
+
         let choose_image_button =
-            widget::button::standard(fl!("choose-image-button")).on_press(Message::ChooseImage);
-
-        let clear_image_button =
-            widget::button::standard(fl!("clear-image-button")).on_press(Message::ClearImage);
-
-        let action_row = widget::row([])
-            .push(choose_image_button)
-            .push_maybe(image_selected.then_some(clear_image_button))
-            .spacing(spacing().space_xs)
-            .align_y(Alignment::Center);
+            widget::button::standard(choose_image_label).on_press(Message::ChooseImage);
 
         let image_content = widget::column([])
             .push(drop_icon)
             .push(drop_title)
             .push(drop_description)
-            .push(action_row)
+            .push(choose_image_button)
             .align_x(Alignment::Center)
             .spacing(spacing().space_xs);
 
