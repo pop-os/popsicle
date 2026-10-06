@@ -342,9 +342,7 @@ impl ImagesView {
 
             Message::PickCancelled => {}
 
-            Message::PickFailed => {
-                todo!("Use a toaster to inform the user");
-            }
+            Message::PickFailed => {}
         }
 
         None
