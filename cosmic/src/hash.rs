@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 use digest::Digest;
 use hex_view::HexView;
 use std::io;

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 use std::{borrow::Cow, path::PathBuf};
 
 use cosmic::{dialog::ashpd::url::Url, iced::clipboard::mime::AllowedMimeTypes};

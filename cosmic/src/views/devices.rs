@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 use std::{collections::HashSet, sync::Arc, time::Duration};
 
 use cosmic::{
