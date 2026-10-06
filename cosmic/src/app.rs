@@ -8,7 +8,6 @@ use crate::views::flashing::{self, FlashingView};
 use crate::views::images::{self, ImagesView};
 use crate::views::summary::{self, SummaryView};
 use cosmic::app::context_drawer;
-use cosmic::cosmic_config::{self, CosmicConfigEntry};
 use cosmic::iced::alignment::{Horizontal, Vertical};
 use cosmic::iced::{Length, Subscription};
 use cosmic::prelude::*;
@@ -31,8 +30,6 @@ pub struct AppModel {
     about: About,
     /// Key bindings for the application's menu bar.
     key_binds: HashMap<menu::KeyBind, MenuAction>,
-    /// Configuration data that persists between application runs.
-    config: Config,
     /// Currently active view.
     view: ActiveView,
     images: ImagesView,
@@ -47,7 +44,6 @@ pub struct AppModel {
 pub enum Message {
     LaunchUrl(String),
     ToggleContextPage(ContextPage),
-    UpdateConfig(Config),
     Images(images::Message),
     Devices(devices::Message),
     Flashing(flashing::Message),
@@ -112,19 +108,6 @@ impl cosmic::Application for AppModel {
             context_page: ContextPage::default(),
             about,
             key_binds: HashMap::new(),
-            // Optional configuration file for an application.
-            config: cosmic_config::Config::new(Self::APP_ID, Config::VERSION)
-                .map(|context| match Config::get_entry(&context) {
-                    Ok(config) => config,
-                    Err((errors, config)) => {
-                        for why in errors {
-                            tracing::error!(%why, "error loading app config");
-                        }
-
-                        config
-                    }
-                })
-                .unwrap_or_default(),
             view: ActiveView::Images,
             images: ImagesView::new(),
             devices: DevicesView::default(),
@@ -210,16 +193,7 @@ impl cosmic::Application for AppModel {
     /// stopped and started conditionally based on application state, or persist
     /// indefinitely.
     fn subscription(&self) -> Subscription<Self::Message> {
-        let mut subscriptions = vec![
-            // Watch for application configuration changes.
-            self.core().watch_config::<Config>(Self::APP_ID).map(|update| {
-                for why in update.errors {
-                    tracing::error!(?why, "app config error");
-                }
-
-                Message::UpdateConfig(update.config)
-            }),
-        ];
+        let mut subscriptions = vec![];
 
         // Poll for USB drives only while the device picker is on screen.
         if self.view == ActiveView::Devices {
@@ -248,10 +222,6 @@ impl cosmic::Application for AppModel {
                     self.context_page = context_page;
                     self.core.window.show_context = true;
                 }
-            }
-
-            Message::UpdateConfig(config) => {
-                self.config = config;
             }
 
             Message::LaunchUrl(url) => match open::that_detached(&url) {
