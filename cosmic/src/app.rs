@@ -54,6 +54,7 @@ pub enum Message {
     Summary(summary::Message),
     Error(error::Message),
     Next,
+    Back,
     Restart,
 }
 
@@ -128,8 +129,8 @@ impl cosmic::Application for AppModel {
             images: ImagesView::new(),
             devices: DevicesView::default(),
             flashing: FlashingView::default(),
-            summary: SummaryView,
-            error: ErrorView,
+            summary: SummaryView::default(),
+            error: ErrorView::default(),
         };
 
         // Create a startup command that sets the window title.
@@ -188,8 +189,8 @@ impl cosmic::Application for AppModel {
             ActiveView::Images => self.images.view().map(Message::Images),
             ActiveView::Devices => self.devices.view().map(Message::Devices),
             ActiveView::Flashing => self.flashing.view().map(Message::Flashing),
-            ActiveView::Summary => self.summary.view().into().map(Message::Summary),
-            ActiveView::Error => self.error.view().into().map(Message::Error),
+            ActiveView::Summary => self.summary.view().map(Message::Summary),
+            ActiveView::Error => self.error.view().map(Message::Error),
         };
 
         widget::container(view)
@@ -272,13 +273,20 @@ impl cosmic::Application for AppModel {
             Message::Flashing(message) => {
                 self.flashing.update(message);
 
-                if let Some(_outcome) = self.flashing.take_outcome() {
-                    // self.summary.set_outcome(outcome);
-                    self.view = ActiveView::Summary;
+                match self.flashing.take_outcome() {
+                    Some(Ok(outcome)) => {
+                        self.summary.set_outcome(outcome);
+                        self.view = ActiveView::Summary;
+                    }
+                    Some(Err(why)) => {
+                        self.error.set_error(why);
+                        self.view = ActiveView::Error;
+                    }
+                    None => {}
                 }
             }
-            Message::Summary(_message) => todo!(),
-            Message::Error(_message) => todo!(),
+            Message::Summary(message) => match message {},
+            Message::Error(message) => match message {},
             Message::Next => match self.view {
                 ActiveView::Images => {
                     self.view = ActiveView::Devices;
@@ -300,6 +308,11 @@ impl cosmic::Application for AppModel {
                 }
                 _ => return cosmic::iced::exit(),
             },
+            Message::Back => {
+                if self.view == ActiveView::Devices {
+                    self.view = ActiveView::Images;
+                }
+            }
             Message::Restart => {
                 self.flashing.cancel();
                 self.devices.reset();
