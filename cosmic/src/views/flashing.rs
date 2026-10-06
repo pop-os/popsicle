@@ -45,14 +45,14 @@ impl FlashOutcome {
     }
 
     pub fn succeeded(&self) -> usize {
-        self.total - self.failed.len()
+        if self.error.is_some() { 0 } else { self.total - self.failed.len() }
     }
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {
     Tick,
-    Finished { generation: u64, outcome: FlashOutcome },
+    Finished { generation: u64, outcome: Result<FlashOutcome, String> },
 }
 
 /// State shared with the blocking worker. Plain atomics, no `atomic`/`bytemuck` crates needed.
@@ -144,7 +144,7 @@ pub struct FlashingView {
     run: Option<Run>,
     /// Bumped on every start so a late `Finished` from a cancelled run is ignored.
     generation: u64,
-    outcome: Option<FlashOutcome>,
+    outcome: Option<Result<FlashOutcome, String>>,
 }
 
 impl FlashingView {
@@ -182,11 +182,8 @@ impl FlashingView {
             let outcome =
                 tokio::task::spawn_blocking(move || flash(&image, &devices, &shared, registration))
                     .await
-                    .unwrap_or_else(|error| FlashOutcome {
-                        error: Some(error.to_string()),
-                        total: count,
-                        failed: Vec::new(),
-                    });
+                    .map_err(|error| format!("the flashing thread failed: {error}"))
+                    .and_then(|result| result);
 
             Message::Finished { generation, outcome }
         })
@@ -201,7 +198,7 @@ impl FlashingView {
     }
 
     /// Set once a run completes; the app moves to the summary view when this is `Some`.
-    pub fn take_outcome(&mut self) -> Option<FlashOutcome> {
+    pub fn take_outcome(&mut self) -> Option<Result<FlashOutcome, String>> {
         self.outcome.take()
     }
 
@@ -297,15 +294,15 @@ fn device_row<'a>(device: &DiskDevice, state: &DeviceState) -> Element<'a, Messa
         .into()
 }
 
-// ---- blocking worker --------------------------------------------------------------------
-
 fn flash(
     image: &Path,
     devices: &[Arc<DiskDevice>],
     shared: &Arc<Shared>,
     registration: AbortRegistration,
-) -> FlashOutcome {
-    let error = write_all(image, devices, shared, registration).err().map(|e| format!("{e:#}"));
+) -> Result<FlashOutcome, String> {
+    let copy = write_all(image, devices, shared, registration).map_err(|e| format!("{e:#}"));
+
+    let error = copy.err().map(|e| format!("{e:#}"));
 
     let errors = shared.errors.lock().unwrap();
     let failed = devices
@@ -314,7 +311,7 @@ fn flash(
         .filter_map(|(device, error)| error.clone().map(|error| (device.clone(), error)))
         .collect();
 
-    FlashOutcome { error, total: devices.len(), failed }
+    Ok(FlashOutcome { error, total: devices.len(), failed })
 }
 
 fn write_all(

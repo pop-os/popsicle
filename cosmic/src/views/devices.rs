@@ -216,14 +216,16 @@ impl DevicesView {
     pub fn footer(&self, view: &ActiveView) -> Option<Element<'_, crate::app::Message>> {
         let can_press = *view == ActiveView::Devices && self.devices_selected();
 
-        let next = widget::button::suggested(fl!("next"))
-            .on_press_maybe(can_press.then_some(crate::app::Message::Next))
-            .into();
+        let back = widget::button::standard(fl!("back")).on_press(crate::app::Message::Back);
 
-        let spacer = widget::space::horizontal().into();
+        let next = widget::button::suggested(fl!("next"))
+            .on_press_maybe(can_press.then_some(crate::app::Message::Next));
 
         Some(
-            widget::row(vec![spacer, next])
+            widget::row([])
+                .push(back)
+                .push(widget::space::horizontal())
+                .push(next)
                 .spacing(spacing().space_xs)
                 .padding(spacing().space_xs)
                 .into(),

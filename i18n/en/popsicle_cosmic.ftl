@@ -49,6 +49,7 @@ cancel = Cancel
 close = Close
 done = Done
 next = Next
+back = Back
 open = Open
 task-finished = Complete
 
