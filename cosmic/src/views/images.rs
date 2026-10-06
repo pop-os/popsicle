@@ -1,16 +1,25 @@
-use std::{cell::RefCell, fs::File, path::PathBuf};
+use std::{
+    cell::RefCell,
+    fs::File,
+    path::{Path, PathBuf},
+};
 
+use blake2::Blake2b512;
 use cosmic::{
     Apply, Element, Task,
     dialog::{ashpd::url::Url, file_chooser},
-    iced::{Alignment, Border, Color, Length, clipboard::mime::AllowedMimeTypes},
+    iced::{Alignment, Border, Color, Length, Theme, clipboard::mime::AllowedMimeTypes},
     theme::spacing,
     widget,
 };
+use md5::Md5;
+use sha1::Sha1;
+use sha2::{Sha256, Sha512};
 
 use crate::{
     app::{self, ActiveView},
     fl,
+    hash::{HashResult, hasher},
 };
 
 pub struct ImagesView {
@@ -23,6 +32,7 @@ pub struct ImagesView {
     selected_hash: usize,
     hash_input: String,
     dragging: bool,
+    hash_result: Option<HashResult>,
 }
 
 #[derive(Debug, Clone)]
@@ -32,7 +42,7 @@ pub enum Message {
     HashInput(String),
     CheckHash,
     ChooseImage,
-    ClearImage,
+    HashCalculated { expected: String, result: Result<String, String> },
 
     FileDropped(PathBuf),
     DropFailed,
@@ -63,6 +73,7 @@ impl ImagesView {
             selected_hash: 0,
             hash_input: String::new(),
             dragging: false,
+            hash_result: None,
         }
     }
 
@@ -161,8 +172,12 @@ impl ImagesView {
                 hash_text_input.on_input(Message::HashInput).on_paste(Message::HashInput);
         }
 
+        let hash_check_enabled = !self.hash_input.trim().is_empty()
+            && self.selected_hash > 0
+            && !matches!(self.hash_result, Some(HashResult::Checking));
+
         let hash_check_button = widget::button::standard(fl!("check-label"))
-            .on_press_maybe((!self.hash_input.is_empty()).then_some(Message::CheckHash));
+            .on_press_maybe(hash_check_enabled.then_some(Message::CheckHash));
 
         let show_hash_input = self.selected_hash > 0;
 
@@ -170,13 +185,28 @@ impl ImagesView {
             .push(hash_label)
             .push(hash_dropdown)
             .push(widget::space::horizontal())
-            .push_maybe(show_hash_input.then(|| hash_check_button))
+            .push_maybe(show_hash_input.then_some(hash_check_button))
             .spacing(spacing().space_xs)
             .align_y(Alignment::Center);
 
+        let hash_result = self.hash_result.map(|result| match result {
+            HashResult::Checking => widget::text::body(fl!("hash-checking")),
+            HashResult::Match => {
+                widget::text::body(fl!("hash-match")).class(cosmic::style::Text::Accent)
+            }
+            HashResult::Mismatch => widget::text::body(fl!("hash-mismatch"))
+                .class(cosmic::style::Text::Color(Color::from_rgb(0.9, 0.3, 0.3))),
+            HashResult::Error => widget::text::body(fl!("hash-error"))
+                .class(cosmic::style::Text::Color(Color::from_rgb(0.9, 0.3, 0.3))),
+        });
+
+        let error_message = self.error.as_ref().map(|error| widget::text::caption(error));
+
         let hash_content = widget::column([])
-            .push_maybe(show_hash_input.then(|| hash_text_input))
+            .push_maybe(show_hash_input.then_some(hash_text_input))
             .push(hash_row)
+            .push_maybe(hash_result)
+            .push_maybe(error_message)
             .align_x(Alignment::Center)
             .spacing(spacing().space_xs);
 
@@ -188,7 +218,7 @@ impl ImagesView {
         widget::column([])
             .push(instructions)
             .push(drop_area)
-            .push_maybe(image_selected.then(|| hash_section))
+            .push_maybe(image_selected.then_some(hash_section))
             .align_x(Alignment::Center)
             .spacing(spacing().space_xs)
             .apply(widget::scrollable)
@@ -200,7 +230,7 @@ impl ImagesView {
         let can_press = *view == ActiveView::Images && self.image.borrow().is_some();
 
         let next = widget::button::suggested(fl!("next"))
-            .on_press_maybe(can_press.then(|| app::Message::Next))
+            .on_press_maybe(can_press.then_some(app::Message::Next))
             .into();
 
         let spacer = widget::space::horizontal().into();
@@ -219,13 +249,61 @@ impl ImagesView {
 
             Message::SetHash(idx) => {
                 self.selected_hash = idx;
+                self.hash_result = None;
             }
 
             Message::HashInput(text) => {
                 self.hash_input = text;
+                self.hash_result = None;
             }
 
-            Message::CheckHash => todo!(),
+            Message::CheckHash => {
+                let Some(path) = self.image_path.clone() else {
+                    return None;
+                };
+
+                let expected = self.hash_input.trim().to_ascii_lowercase();
+                let algorithm = self.selected_hash;
+
+                if expected.is_empty() || algorithm == 0 {
+                    return None;
+                }
+
+                self.hash_result = Some(HashResult::Checking);
+
+                let task = cosmic::task::future(async move {
+                    let result =
+                        calculate_hash(&path, algorithm).await.map_err(|error| error.to_string());
+
+                    Message::HashCalculated { expected, result }
+                })
+                .map(cosmic::Action::App);
+
+                return Some(task);
+            }
+
+            Message::HashCalculated { expected, result } => {
+                eprintln!("Received HashCalculated");
+
+                match result {
+                    Ok(actual) => {
+                        eprintln!("Actual:   {actual}");
+                        eprintln!("Expected: {expected}");
+
+                        self.hash_result = Some(if actual.eq_ignore_ascii_case(&expected) {
+                            HashResult::Match
+                        } else {
+                            HashResult::Mismatch
+                        });
+                    }
+
+                    Err(error) => {
+                        eprintln!("Hash calculation failed: {error}");
+                        self.error = Some(error);
+                        self.hash_result = Some(HashResult::Error);
+                    }
+                }
+            }
 
             Message::ChooseImage => {
                 let task = cosmic::task::future(async {
@@ -243,13 +321,6 @@ impl ImagesView {
                 .map(cosmic::Action::App);
 
                 return Some(task);
-            }
-
-            Message::ClearImage => {
-                self.image = RefCell::new(None);
-                self.image_name = None;
-                self.image_path = None;
-                self.image_size = None;
             }
 
             Message::FilePicked(urls) => {
@@ -308,7 +379,9 @@ impl ImagesView {
         self.set_image(&path, size, None);
     }
 
-    pub fn set_image(&mut self, path: &PathBuf, size: u64, warning: Option<String>) {
+    fn set_image(&mut self, path: &PathBuf, size: u64, warning: Option<String>) {
+        self.hash_result = None;
+
         let size_str = bytesize::to_string(size, true);
 
         match path.file_name() {
@@ -385,6 +458,19 @@ impl TryFrom<(Vec<u8>, String)> for DroppedFiles {
         };
 
         Ok(Self { paths })
+    }
+}
+
+async fn calculate_hash(path: &Path, algorithm: usize) -> std::io::Result<String> {
+    match algorithm {
+        1 => hasher::<Sha512>(path).await,
+        2 => hasher::<Sha256>(path).await,
+        3 => hasher::<Sha1>(path).await,
+        4 => hasher::<Md5>(path).await,
+        5 => hasher::<Blake2b512>(path).await,
+        _ => {
+            Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "No hash algorithm selected"))
+        }
     }
 }
 
