@@ -2,6 +2,7 @@
 
 use std::path::PathBuf;
 
+use cosmic::iced;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::app::Flags;
@@ -29,7 +30,8 @@ fn main() -> cosmic::iced::Result {
 
     // Settings for configuring the application window and iced runtime.
     let settings = cosmic::app::Settings::default()
-        .size_limits(cosmic::iced::Limits::NONE.min_width(360.0).min_height(180.0));
+        .size_limits(cosmic::iced::Limits::NONE.min_width(470.0).min_height(310.0))
+        .size(iced::Size::new(470.0, 310.0));
 
     let mut flags = Flags { iso_argument: None };
 

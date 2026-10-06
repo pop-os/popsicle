@@ -125,7 +125,7 @@ impl cosmic::Application for AppModel {
                 })
                 .unwrap_or_default(),
             view: ActiveView::Images,
-            images: ImagesView::default(),
+            images: ImagesView::new(),
             devices: DevicesView::default(),
             flashing: FlashingView,
             summary: SummaryView,
@@ -160,15 +160,7 @@ impl cosmic::Application for AppModel {
 
     /// Elements to pack at the start of the header bar.
     fn header_start(&self) -> Vec<Element<'_, Self::Message>> {
-        let menu_bar = menu::bar(vec![menu::Tree::with_children(
-            menu::root(fl!("view")).apply(Element::from),
-            menu::items(
-                &self.key_binds,
-                vec![menu::Item::Button(fl!("about"), None, MenuAction::About)],
-            ),
-        )]);
-
-        vec![self.cancel(), menu_bar.into()]
+        vec![self.cancel()]
     }
 
     fn header_center(&self) -> Vec<Element<'_, Self::Message>> {
@@ -252,7 +244,7 @@ impl cosmic::Application for AppModel {
                     eprintln!("failed to open {url:?}: {err}");
                 }
             },
-            Message::Images(_message) => todo!(),
+            Message::Images(message) => self.images.update(message),
             Message::Devices(_message) => todo!(),
             Message::Flashing(_message) => todo!(),
             Message::Summary(_message) => todo!(),
