@@ -2,7 +2,6 @@
 
 use std::path::PathBuf;
 
-use cosmic::iced;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::app::Flags;

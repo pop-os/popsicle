@@ -20,6 +20,10 @@ release-to-use-image = Release to use this image
 choose-a-file = or choose a file
 drop-iso-here = Drop ISO here
 drop-iso-file-here = Drop an ISO file here
+hash-checking = Checking…
+hash-match = Checksum matches
+hash-mismatch = Checksum does not match
+hash-error = An error ocurred while verifying the image
 
 # Devices View
 device-too-small = Device too small
