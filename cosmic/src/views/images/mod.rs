@@ -10,7 +10,7 @@ use cosmic::{
     dialog::{ashpd::url::Url, file_chooser},
     iced::{Alignment, Length},
     theme::spacing,
-    widget,
+    widget::{self},
 };
 use md5::Md5;
 use sha1::Sha1;
@@ -22,7 +22,7 @@ use crate::{
     hash::{HashResult, hasher},
     views::images::{
         dnd::DroppedFiles,
-        style::{drag_area_active, hash_input_style},
+        style::{colored_text_input, drag_area_active},
     },
 };
 
@@ -191,6 +191,10 @@ impl ImagesView {
 
         let mut hash_text_input = widget::text_input("", &self.hash_input).width(Length::Fill);
 
+        if let Some(hash_result) = self.hash_result {
+            hash_text_input = hash_text_input.style(colored_text_input(hash_result));
+        }
+
         if show_hash_input {
             hash_text_input =
                 hash_text_input.on_input(Message::HashInput).on_paste(Message::HashInput);
@@ -202,16 +206,7 @@ impl ImagesView {
                     .trailing_icon(widget::indeterminate_circular().size(16.0).into());
             }
 
-            Some(HashResult::Match) => {
-                hash_text_input = hash_text_input.trailing_icon(
-                    widget::icon::from_name("object-select-symbolic")
-                        .size(16)
-                        .symbolic(true)
-                        .apply(widget::container)
-                        .padding(8)
-                        .into(),
-                );
-            }
+            Some(HashResult::Match) => {}
 
             Some(HashResult::Mismatch) => {
                 hash_text_input = hash_text_input.error(fl!("hash-mismatch"));
