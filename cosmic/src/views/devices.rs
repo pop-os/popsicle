@@ -231,7 +231,7 @@ impl DevicesView {
     }
 }
 
-fn device_label(device: &DiskDevice) -> String {
+pub fn device_label(device: &DiskDevice) -> String {
     if device.drive.vendor.is_empty() {
         format!("{} ({})", device.drive.model, device.parent.preferred_device.display())
     } else {

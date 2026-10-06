@@ -15,7 +15,7 @@ use cosmic::prelude::*;
 use cosmic::widget::menu::{ItemHeight, ItemWidth};
 use cosmic::widget::{self, about::About, menu};
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 const REPOSITORY: &str = env!("CARGO_PKG_REPOSITORY");
 const APP_ICON: &[u8] = include_bytes!("../resources/icons/hicolor/scalable/apps/icon.svg");
@@ -54,6 +54,7 @@ pub enum Message {
     Summary(summary::Message),
     Error(error::Message),
     Next,
+    Restart,
 }
 
 pub struct Flags {
@@ -126,7 +127,7 @@ impl cosmic::Application for AppModel {
             view: ActiveView::Images,
             images: ImagesView::new(),
             devices: DevicesView::default(),
-            flashing: FlashingView,
+            flashing: FlashingView::default(),
             summary: SummaryView,
             error: ErrorView,
         };
@@ -186,7 +187,7 @@ impl cosmic::Application for AppModel {
         let view: Element<'_, Self::Message> = match self.view {
             ActiveView::Images => self.images.view().map(Message::Images),
             ActiveView::Devices => self.devices.view().map(Message::Devices),
-            ActiveView::Flashing => self.flashing.view().into().map(Message::Flashing),
+            ActiveView::Flashing => self.flashing.view().map(Message::Flashing),
             ActiveView::Summary => self.summary.view().into().map(Message::Summary),
             ActiveView::Error => self.error.view().into().map(Message::Error),
         };
@@ -222,6 +223,10 @@ impl cosmic::Application for AppModel {
         // Poll for USB drives only while the device picker is on screen.
         if self.view == ActiveView::Devices {
             subscriptions.push(self.devices.subscription().map(Message::Devices));
+        }
+
+        if self.view == ActiveView::Flashing {
+            subscriptions.push(self.flashing.subscription().map(Message::Flashing));
         }
 
         Subscription::batch(subscriptions)
@@ -264,19 +269,42 @@ impl cosmic::Application for AppModel {
                     return task.map(|action| action.map(Message::Devices));
                 }
             }
-            Message::Flashing(_message) => todo!(),
+            Message::Flashing(message) => {
+                self.flashing.update(message);
+
+                if let Some(_outcome) = self.flashing.take_outcome() {
+                    // self.summary.set_outcome(outcome);
+                    self.view = ActiveView::Summary;
+                }
+            }
             Message::Summary(_message) => todo!(),
             Message::Error(_message) => todo!(),
             Message::Next => match self.view {
                 ActiveView::Images => {
                     self.view = ActiveView::Devices;
-                    self.devices.set_image_size(self.images.image.size);
+                    self.devices.set_image_size(self.images.image_size());
 
                     return self.devices.refresh().map(|action| action.map(Message::Devices));
                 }
-                ActiveView::Devices => self.view = ActiveView::Flashing,
+                ActiveView::Devices => {
+                    let Some(path) = self.images.image_path().map(Path::to_path_buf) else {
+                        return Task::none();
+                    };
+
+                    self.view = ActiveView::Flashing;
+
+                    return self
+                        .flashing
+                        .start(path, self.images.image_size(), self.devices.selected_devices())
+                        .map(|action| action.map(Message::Flashing));
+                }
                 _ => return cosmic::iced::exit(),
             },
+            Message::Restart => {
+                self.flashing.cancel();
+                self.devices.reset();
+                self.view = ActiveView::Images;
+            }
         }
         Task::none()
     }
