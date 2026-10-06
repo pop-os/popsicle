@@ -6,7 +6,8 @@ view = View
 # Images View
 cannot-select-directories = File chooser can't select directories
 check-label = Check
-choose-image-button = Choose Image
+choose-image-button = Choose image
+clear-image-button = Clear image
 generating-checksum = Generating Checksum
 hash-label = Hash:
 image-view-description = Select the .iso or .img that you want to flash. You can also plug your USB drives in now.
