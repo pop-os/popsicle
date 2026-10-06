@@ -168,7 +168,7 @@ impl cosmic::Application for AppModel {
     /// events received by widgets will be passed to the update method.
     fn view(&self) -> Element<'_, Self::Message> {
         let view: Element<'_, Self::Message> = match self.view {
-            ActiveView::Images => self.images.view().into().map(Message::Images),
+            ActiveView::Images => self.images.view().map(Message::Images),
             ActiveView::Devices => self.devices.view().into().map(Message::Devices),
             ActiveView::Flashing => self.flashing.view().into().map(Message::Flashing),
             ActiveView::Summary => self.summary.view().into().map(Message::Summary),
