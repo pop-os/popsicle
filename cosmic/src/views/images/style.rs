@@ -1,5 +1,4 @@
 use cosmic::{
-    Theme,
     iced::{Border, Color},
     theme::TextInput,
     widget::{
