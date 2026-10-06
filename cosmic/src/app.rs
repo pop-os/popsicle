@@ -12,6 +12,7 @@ use cosmic::cosmic_config::{self, CosmicConfigEntry};
 use cosmic::iced::alignment::{Horizontal, Vertical};
 use cosmic::iced::{Length, Subscription};
 use cosmic::prelude::*;
+use cosmic::widget::menu::{ItemHeight, ItemWidth};
 use cosmic::widget::{self, about::About, menu};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -135,6 +136,22 @@ impl cosmic::Application for AppModel {
         let command = app.update_title();
 
         (app, command)
+    }
+
+    /// Elements to pack at the start of the header bar.
+    fn header_start(&self) -> Vec<Element<'_, Self::Message>> {
+        let menu_bar = menu::bar(vec![menu::Tree::with_children(
+            menu::root(fl!("view")).apply(Element::from),
+            menu::items(
+                &self.key_binds,
+                vec![menu::Item::Button(fl!("about"), None, MenuAction::About)],
+            ),
+        )])
+        .item_height(ItemHeight::Dynamic(40))
+        .item_width(ItemWidth::Uniform(360))
+        .spacing(4.0);
+
+        vec![menu_bar.into()]
     }
 
     /// Display a context drawer if the context page is requested.

@@ -8,7 +8,7 @@ use blake2::Blake2b512;
 use cosmic::{
     Apply, Element, Task,
     dialog::{ashpd::url::Url, file_chooser},
-    iced::{Alignment, Border, Color, Length, Theme, clipboard::mime::AllowedMimeTypes},
+    iced::{Alignment, Length},
     theme::spacing,
     widget,
 };
@@ -20,7 +20,14 @@ use crate::{
     app::{self, ActiveView},
     fl,
     hash::{HashResult, hasher},
+    views::images::{
+        dnd::DroppedFiles,
+        style::{drag_area_active, hash_input_style},
+    },
 };
+
+pub mod dnd;
+pub mod style;
 
 pub struct ImagesView {
     image: RefCell<Option<File>>,
@@ -78,17 +85,32 @@ impl ImagesView {
     }
 
     pub fn view<'a>(&'a self) -> Element<'a, Message> {
+        let image_selected = self.image.borrow().is_some();
+
+        widget::column([])
+            .push(self.instructions())
+            .push(self.image_drop_area(image_selected))
+            .push_maybe(image_selected.then(|| self.hash_section()))
+            .align_x(Alignment::Center)
+            .spacing(spacing().space_xs)
+            .apply(widget::scrollable)
+            .spacing(spacing().space_xs)
+            .into()
+    }
+
+    fn instructions(&self) -> Element<'_, Message> {
         let title = widget::text::title2(fl!("image-view-title"));
         let description = widget::text::body(fl!("image-view-description"));
 
-        let instructions = widget::column([])
+        widget::column([])
             .push(title)
             .push(description)
             .width(Length::Fill)
-            .spacing(spacing().space_xxs);
+            .spacing(spacing().space_xxs)
+            .into()
+    }
 
-        let image_selected = self.image.borrow().is_some();
-
+    fn image_drop_area(&self, image_selected: bool) -> Element<'_, Message> {
         let drop_icon = widget::icon::from_name(if self.dragging {
             "document-save-symbolic"
         } else if image_selected {
@@ -143,33 +165,63 @@ impl ImagesView {
             drop_container = drop_container.style(drag_area_active);
         }
 
-        let drop_area =
-            widget::DndDestination::for_data::<DroppedFiles>(drop_container, |data, _action| {
-                let Some(data) = data else {
-                    return Message::DropFailed;
-                };
+        widget::DndDestination::for_data::<DroppedFiles>(drop_container, |data, _action| {
+            let Some(data) = data else {
+                return Message::DropFailed;
+            };
 
-                let Some(path) = data.paths.into_iter().next() else {
-                    return Message::DropFailed;
-                };
+            let Some(path) = data.paths.into_iter().next() else {
+                return Message::DropFailed;
+            };
 
-                Message::FileDropped(path)
-            })
-            .on_enter(|_, _, _| Message::DragEntered)
-            .on_leave(|| Message::DragLeft);
+            Message::FileDropped(path)
+        })
+        .on_enter(|_, _, _| Message::DragEntered)
+        .on_leave(|| Message::DragLeft)
+        .into()
+    }
 
+    fn hash_section(&self) -> Element<'_, Message> {
         let hash_label = widget::text::body(fl!("hash-label")).font(cosmic::font::bold());
 
         let hash_dropdown =
             widget::dropdown(&self.hashes, Some(self.selected_hash), Message::SetHash);
 
-        let hash_input_active = self.selected_hash > 0;
+        let show_hash_input = self.selected_hash > 0;
 
         let mut hash_text_input = widget::text_input("", &self.hash_input).width(Length::Fill);
 
-        if hash_input_active {
+        if show_hash_input {
             hash_text_input =
                 hash_text_input.on_input(Message::HashInput).on_paste(Message::HashInput);
+        }
+
+        match self.hash_result {
+            Some(HashResult::Checking) => {
+                hash_text_input = hash_text_input
+                    .trailing_icon(widget::indeterminate_circular().size(16.0).into());
+            }
+
+            Some(HashResult::Match) => {
+                hash_text_input = hash_text_input.trailing_icon(
+                    widget::icon::from_name("object-select-symbolic")
+                        .size(16)
+                        .symbolic(true)
+                        .apply(widget::container)
+                        .padding(8)
+                        .into(),
+                );
+            }
+
+            Some(HashResult::Mismatch) => {
+                hash_text_input = hash_text_input.error(fl!("hash-mismatch"));
+            }
+
+            Some(HashResult::Error) => {
+                hash_text_input = hash_text_input.error(fl!("hash-error"));
+            }
+
+            None => {}
         }
 
         let hash_check_enabled = !self.hash_input.trim().is_empty()
@@ -179,8 +231,6 @@ impl ImagesView {
         let hash_check_button = widget::button::standard(fl!("check-label"))
             .on_press_maybe(hash_check_enabled.then_some(Message::CheckHash));
 
-        let show_hash_input = self.selected_hash > 0;
-
         let hash_row = widget::row([])
             .push(hash_label)
             .push(hash_dropdown)
@@ -189,40 +239,19 @@ impl ImagesView {
             .spacing(spacing().space_xs)
             .align_y(Alignment::Center);
 
-        let hash_result = self.hash_result.map(|result| match result {
-            HashResult::Checking => widget::text::body(fl!("hash-checking")),
-            HashResult::Match => {
-                widget::text::body(fl!("hash-match")).class(cosmic::style::Text::Accent)
-            }
-            HashResult::Mismatch => widget::text::body(fl!("hash-mismatch"))
-                .class(cosmic::style::Text::Color(Color::from_rgb(0.9, 0.3, 0.3))),
-            HashResult::Error => widget::text::body(fl!("hash-error"))
-                .class(cosmic::style::Text::Color(Color::from_rgb(0.9, 0.3, 0.3))),
-        });
-
         let error_message = self.error.as_ref().map(|error| widget::text::caption(error));
 
         let hash_content = widget::column([])
             .push_maybe(show_hash_input.then_some(hash_text_input))
             .push(hash_row)
-            .push_maybe(hash_result)
             .push_maybe(error_message)
             .align_x(Alignment::Center)
             .spacing(spacing().space_xs);
 
-        let hash_section = widget::container(hash_content)
+        widget::container(hash_content)
             .width(Length::Fill)
             .padding(spacing().space_m)
-            .class(cosmic::theme::Container::Card);
-
-        widget::column([])
-            .push(instructions)
-            .push(drop_area)
-            .push_maybe(image_selected.then_some(hash_section))
-            .align_x(Alignment::Center)
-            .spacing(spacing().space_xs)
-            .apply(widget::scrollable)
-            .spacing(spacing().space_xs)
+            .class(cosmic::theme::Container::Card)
             .into()
     }
 
@@ -257,87 +286,16 @@ impl ImagesView {
                 self.hash_result = None;
             }
 
-            Message::CheckHash => {
-                let Some(path) = self.image_path.clone() else {
-                    return None;
-                };
-
-                let expected = self.hash_input.trim().to_ascii_lowercase();
-                let algorithm = self.selected_hash;
-
-                if expected.is_empty() || algorithm == 0 {
-                    return None;
-                }
-
-                self.hash_result = Some(HashResult::Checking);
-
-                let task = cosmic::task::future(async move {
-                    let result =
-                        calculate_hash(&path, algorithm).await.map_err(|error| error.to_string());
-
-                    Message::HashCalculated { expected, result }
-                })
-                .map(cosmic::Action::App);
-
-                return Some(task);
-            }
+            Message::CheckHash => return self.check_hash(),
 
             Message::HashCalculated { expected, result } => {
-                eprintln!("Received HashCalculated");
-
-                match result {
-                    Ok(actual) => {
-                        eprintln!("Actual:   {actual}");
-                        eprintln!("Expected: {expected}");
-
-                        self.hash_result = Some(if actual.eq_ignore_ascii_case(&expected) {
-                            HashResult::Match
-                        } else {
-                            HashResult::Mismatch
-                        });
-                    }
-
-                    Err(error) => {
-                        eprintln!("Hash calculation failed: {error}");
-                        self.error = Some(error);
-                        self.hash_result = Some(HashResult::Error);
-                    }
-                }
+                self.hash_calculated(expected, result);
             }
 
-            Message::ChooseImage => {
-                let task = cosmic::task::future(async {
-                    let dialog = file_chooser::open::Dialog::new().title("Choose a file");
-
-                    match dialog.open_file().await {
-                        Ok(response) => Message::FilePicked(response.0.uris().to_vec()),
-                        Err(file_chooser::Error::Cancelled) => Message::PickCancelled,
-                        Err(why) => {
-                            eprintln!("{why:?}");
-                            Message::PickFailed
-                        }
-                    }
-                })
-                .map(cosmic::Action::App);
-
-                return Some(task);
-            }
+            Message::ChooseImage => return self.choose_image(),
 
             Message::FilePicked(urls) => {
-                let Some(path) = urls.first().and_then(|url| url.to_file_path().ok()) else {
-                    eprintln!("picked URI is not a local file: {urls:?}");
-                    return None;
-                };
-
-                let size = std::fs::metadata(&path).map(|metadata| metadata.len()).unwrap_or(0);
-
-                self.set_image(&path, size, None);
-            }
-
-            Message::PickCancelled => {}
-
-            Message::PickFailed => {
-                todo!("Use a toaster to inform the user");
+                self.file_picked(urls);
             }
 
             Message::FileDropped(path) => {
@@ -357,9 +315,87 @@ impl ImagesView {
             Message::DragLeft => {
                 self.dragging = false;
             }
+
+            Message::PickCancelled => {}
+
+            Message::PickFailed => {
+                todo!("Use a toaster to inform the user");
+            }
         }
 
         None
+    }
+
+    fn check_hash(&mut self) -> Option<Task<cosmic::Action<Message>>> {
+        let path = self.image_path.clone()?;
+
+        let expected = self.hash_input.trim().to_ascii_lowercase();
+
+        let algorithm = self.selected_hash;
+
+        if expected.is_empty() || algorithm == 0 {
+            return None;
+        }
+
+        self.hash_result = Some(HashResult::Checking);
+
+        let task = cosmic::task::future(async move {
+            let result = calculate_hash(&path, algorithm).await.map_err(|error| error.to_string());
+
+            Message::HashCalculated { expected, result }
+        })
+        .map(cosmic::Action::App);
+
+        Some(task)
+    }
+
+    fn hash_calculated(&mut self, expected: String, result: Result<String, String>) {
+        match result {
+            Ok(actual) => {
+                self.hash_result = Some(if actual.eq_ignore_ascii_case(&expected) {
+                    HashResult::Match
+                } else {
+                    HashResult::Mismatch
+                });
+            }
+
+            Err(error) => {
+                eprintln!("hash calculation failed: {error}");
+                self.error = Some(error);
+                self.hash_result = Some(HashResult::Error);
+            }
+        }
+    }
+
+    fn choose_image(&self) -> Option<Task<cosmic::Action<Message>>> {
+        let task = cosmic::task::future(async {
+            let dialog = file_chooser::open::Dialog::new().title("Choose a file");
+
+            match dialog.open_file().await {
+                Ok(response) => Message::FilePicked(response.0.uris().to_vec()),
+
+                Err(file_chooser::Error::Cancelled) => Message::PickCancelled,
+
+                Err(why) => {
+                    eprintln!("{why:?}");
+                    Message::PickFailed
+                }
+            }
+        })
+        .map(cosmic::Action::App);
+
+        Some(task)
+    }
+
+    fn file_picked(&mut self, urls: Vec<Url>) {
+        let Some(path) = urls.first().and_then(|url| url.to_file_path().ok()) else {
+            eprintln!("picked URI is not a local file: {urls:?}");
+            return;
+        };
+
+        let size = std::fs::metadata(&path).map(|metadata| metadata.len()).unwrap_or(0);
+
+        self.set_image(&path, size, None);
     }
 
     fn load_file(&mut self, path: PathBuf) {
@@ -370,6 +406,7 @@ impl ImagesView {
 
         let size = match std::fs::metadata(&path) {
             Ok(metadata) => metadata.len(),
+
             Err(error) => {
                 self.error = Some(error.to_string());
                 return;
@@ -381,6 +418,7 @@ impl ImagesView {
 
     fn set_image(&mut self, path: &PathBuf, size: u64, warning: Option<String>) {
         self.hash_result = None;
+        self.error = None;
 
         let size_str = bytesize::to_string(size, true);
 
@@ -389,8 +427,10 @@ impl ImagesView {
                 self.image_name = Some(name.to_string_lossy().to_string());
                 self.image_size = Some(size_str);
             }
+
             None => {
                 self.error = Some(fl!("cannot-select-directories"));
+                return;
             }
         }
 
@@ -398,66 +438,18 @@ impl ImagesView {
             self.error = Some(warning);
         }
 
-        if let Ok(file) = File::open(path) {
-            self.image.replace(Some(file));
-        } else {
-            self.error = Some(fl!("iso-open-failed"));
+        match File::open(path) {
+            Ok(file) => {
+                self.image.replace(Some(file));
+            }
+
+            Err(_) => {
+                self.error = Some(fl!("iso-open-failed"));
+                return;
+            }
         }
 
         self.image_path = Some(path.clone());
-    }
-}
-
-#[derive(Clone, Debug)]
-struct DroppedFiles {
-    paths: Vec<PathBuf>,
-}
-
-impl AllowedMimeTypes for DroppedFiles {
-    fn allowed() -> std::borrow::Cow<'static, [String]> {
-        std::borrow::Cow::Owned(vec![
-            "x-special/gnome-copied-files".to_string(),
-            "text/uri-list".to_string(),
-        ])
-    }
-}
-
-impl TryFrom<(Vec<u8>, String)> for DroppedFiles {
-    type Error = String;
-
-    fn try_from((data, mime): (Vec<u8>, String)) -> Result<Self, Self::Error> {
-        let text = std::str::from_utf8(&data).map_err(|error| error.to_string())?;
-        let mut lines = text.lines();
-
-        let paths = match mime.as_str() {
-            "text/uri-list" => lines
-                .filter(|line| !line.is_empty() && !line.starts_with('#'))
-                .map(parse_file_url)
-                .collect::<Result<Vec<_>, _>>()?,
-
-            "x-special/gnome-copied-files" => {
-                let operation =
-                    lines.next().ok_or_else(|| "missing clipboard operation".to_string())?;
-
-                match operation {
-                    "copy" | "cut" => {}
-                    _ => {
-                        return Err(format!("unsupported clipboard operation {operation:?}"));
-                    }
-                }
-
-                lines
-                    .filter(|line| !line.is_empty() && !line.starts_with('#'))
-                    .map(parse_file_url)
-                    .collect::<Result<Vec<_>, _>>()?
-            }
-
-            _ => {
-                return Err(format!("unsupported MIME type {mime:?}"));
-            }
-        };
-
-        Ok(Self { paths })
     }
 }
 
@@ -468,31 +460,9 @@ async fn calculate_hash(path: &Path, algorithm: usize) -> std::io::Result<String
         3 => hasher::<Sha1>(path).await,
         4 => hasher::<Md5>(path).await,
         5 => hasher::<Blake2b512>(path).await,
+
         _ => {
             Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "No hash algorithm selected"))
         }
     }
-}
-
-fn parse_file_url(line: &str) -> Result<PathBuf, String> {
-    let url = Url::parse(line).map_err(|error| error.to_string())?;
-
-    url.to_file_path().map_err(|_| format!("invalid file URL {url:?}"))
-}
-
-fn drag_area_active(theme: &cosmic::prelude::Theme) -> widget::popover::Style {
-    let mut style = widget::container::Style::default();
-    let cosmic = theme.cosmic();
-
-    let mut background = cosmic.accent_color();
-    background.alpha = 0.2;
-
-    style.background = Some(Color::from(background).into());
-    style.border = Border {
-        color: cosmic.accent_color().into(),
-        width: 1.0,
-        radius: cosmic.radius_s().into(),
-    };
-
-    style
 }
