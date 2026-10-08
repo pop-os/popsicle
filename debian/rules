@@ -1,24 +1,18 @@
 #!/usr/bin/make -f
 
-export VENDORED ?= 1
-CLEAN ?= 1
+DESTDIR = debian/tmp
 
 %:
 	dh $@
 
-override_dh_auto_build:
-	env CARGO_HOME="$$(pwd)/target/cargo" \
-	just
+override_dh_shlibdeps:
+	dh_shlibdeps --dpkg-shlibdeps-params=--ignore-missing-info
 
 override_dh_auto_clean:
-ifeq ($(CLEAN),1)
-	just clean
-endif
-ifeq ($(VENDORED),1)
-	if ! ischroot; then \
-		just vendor; \
-	fi
-endif
+	ischroot || (just distclean && just vendor)
 
-override_dh_auto_install:
-	just rootdir=debian/tmp prefix=/usr install
+override_dh_auto_build:
+	just build-vendored
+
+override_dh_install:
+	just rootdir=$(DESTDIR) prefix=/usr install

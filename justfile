@@ -16,18 +16,22 @@ default: all
 
 all: cli ui
 
-cli: (cargo::build-release '--manifest-path' 'cli/Cargo.toml')
+cli: (cargo::build-release '--manifest-path' 'cli/Cargo.toml') manpage
+
+manpage:
     help2man --no-info {{target-dir / 'release' / bin}} > {{target-dir / 'release' / bin}}.1.partial || { rm -f {{target-dir / 'release' / bin}}.1.partial; exit 1; }
     gzip -c {{target-dir / 'release' / bin}}.1.partial > {{target-dir / 'release' / bin}}.1.gz || { rm -f {{target-dir / 'release' / bin}}.1.gz {{target-dir / 'release' / bin}}.1.partial; exit 1; }
     rm {{target-dir / 'release' / bin}}.1.partial
 
 ui: (cargo::build-release '--manifest-path' 'ui/Cargo.toml')
 
-build-debug *args: (cargo::build-debug args)
+build-debug *args: (cargo::build-debug '--workspace' args)
 
-build-release *args: (cargo::build-release args)
+build-release *args: (build-debug '--release' args) manpage
 
-build-vendored *args: (cargo::build-vendored args)
+build-vendored *args: cargo::vendor-extract
+    LOCKSTEP_XML_PATH="${PWD}/vendor/atspi-common/xml" cargo build --workspace --release --frozen --offline {{args}}
+    just manpage
 
 check *args: (cargo::check args)
 
@@ -46,11 +50,11 @@ flatpak-install:
 cargo-sources:
     flatpak-cargo-generator Cargo.lock -o cargo-sources.json
 
-install-cli: cli
+install-cli:
     install -Dm0755 {{target-dir / 'release' / bin}} {{base-dir / 'bin' / bin}}
     install -Dm0644 {{target-dir / 'release' / (bin + '.1.gz')}} {{base-dir / 'share' / 'man' / 'man1' / (bin + '.1.gz')}}
 
-install-ui: ui
+install-ui:
     install -Dm0755 {{target-dir / 'release' / ui-bin}} {{base-dir / 'bin' / ui-bin}}
     install -Dm0644 ui/target/xdgen/app.desktop {{base-dir / 'share' / 'applications' / desktop}}
     install -Dm0644 ui/target/xdgen/app.metainfo.xml {{base-dir / 'share' / 'metainfo' / appdata}}
