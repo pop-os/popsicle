@@ -30,19 +30,16 @@
   <icon type="remote" height="512" width="512">https://raw.githubusercontent.com/pop-os/popsicle/master/resources/icons/hicolor/512x512/apps/com.system76.Popsicle.png</icon>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/pop-os/popsicle/master/screenshots/screenshot-01.png</image>
+      <image>https://raw.githubusercontent.com/pop-os/popsicle/master/screenshots/screenshot-01-light.png</image>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/pop-os/popsicle/master/screenshots/screenshot-02.png</image>
+      <image>https://raw.githubusercontent.com/pop-os/popsicle/master/screenshots/screenshot-02-light.png</image>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/pop-os/popsicle/master/screenshots/screenshot-03.png</image>
+      <image>https://raw.githubusercontent.com/pop-os/popsicle/master/screenshots/screenshot-03-light.png</image>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/pop-os/popsicle/master/screenshots/screenshot-04.png</image>
-    </screenshot>
-    <screenshot>
-      <image>https://raw.githubusercontent.com/pop-os/popsicle/master/screenshots/screenshot-05.png</image>
+      <image>https://raw.githubusercontent.com/pop-os/popsicle/master/screenshots/screenshot-05-light.png</image>
     </screenshot>
   </screenshots>
   <provides>

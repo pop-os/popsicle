@@ -20,24 +20,38 @@ For those who need to vendor Cargo's crate dependencies which are fetched from [
 
 ### Image Selection
 
-![Image Selection](./screenshots/screenshot-01.png)
+<!-- dark mode -->
+<img src="./screenshots/screenshot-01-dark.png#gh-dark-mode-only" alt="Image Selection">
+<!-- light mode -->
+<img src="./screenshots/screenshot-01-light.png#gh-light-mode-only" alt="Image Selection">
 
 ### Device Selection
 
-![Device Selection](./screenshots/screenshot-02.png)
+<!-- dark mode -->
+<img src="./screenshots/screenshot-02-dark.png#gh-dark-mode-only" alt="Device Selection">
+<!-- light mode -->
+<img src="./screenshots/screenshot-02-light.png#gh-light-mode-only" alt="Device Selection">
 
 The list will also dynamically refresh as devices are added and removed
 
-![GIF Demo](./screenshots/device-monitoring.gif)
+<!-- dark mode -->
+<img src="./screenshots/device-monitoring-dark.gif#gh-dark-mode-only" alt="Device monitoring">
+<!-- light mode -->
+<img src="./screenshots/device-monitoring-light.gif#gh-light-mode-only" alt="Device monitoring">
 
 ### Device Flashing
 
-![Flashing Devices](./screenshots/screenshot-03.png)
-![Flashing Devices](./screenshots/screenshot-04.png)
+<!-- dark mode -->
+<img src="./screenshots/screenshot-03-dark.png#gh-dark-mode-only" alt="Flashing Devices">
+<!-- light mode -->
+<img src="./screenshots/screenshot-03-light.png#gh-light-mode-only" alt="Flashing Devices">
 
 ### Summary
 
-![Summary](./screenshots/screenshot-05.png)
+<!-- dark mode -->
+<img src="./screenshots/screenshot-05-dark.png#gh-dark-mode-only" alt="Summary">
+<!-- light mode -->
+<img src="./screenshots/screenshot-05-light.png#gh-light-mode-only" alt="Summary">
 
 ## Translators
 
