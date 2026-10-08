@@ -1,5 +1,5 @@
 app-title = USB 镜像刷入
-about = About
+about = About { $app }...
 repository = Repository
 view = View
 
@@ -50,3 +50,17 @@ win-isos-not-supported = 目前不支持 Windows 的 ISO
 # Errors
 iso-open-failed = 无法打开 ISO
 no-value-found = 没有发现值
+
+app-description = Flash multiple USB devices in parallel
+support = Support
+change-image-button = Change image
+image-selected = Image selected
+release-to-use-image = Release to use this image
+choose-a-file = or choose a file
+drop-iso-here = Drop ISO here
+drop-iso-file-here = Drop an ISO file here
+choose-file = Choose a file
+disk-images = Disk images
+could-not-read-dropped-file = Could not read the dropped file
+no-devices-found = No devices were found
+back = Back

@@ -1,5 +1,5 @@
 app-title = USBイメージ書き込み
-about = About
+about = About { $app }...
 repository = Repository
 view = View
 
@@ -50,3 +50,17 @@ win-isos-not-supported = WindowsのISOファイルは現在サポートされて
 # Errors
 iso-open-failed = ISOを開くことに失敗しました
 no-value-found = 値が見つかりませんでした
+
+app-description = Flash multiple USB devices in parallel
+support = Support
+change-image-button = Change image
+image-selected = Image selected
+release-to-use-image = Release to use this image
+choose-a-file = or choose a file
+drop-iso-here = Drop ISO here
+drop-iso-file-here = Drop an ISO file here
+choose-file = Choose a file
+disk-images = Disk images
+could-not-read-dropped-file = Could not read the dropped file
+no-devices-found = No devices were found
+back = Back

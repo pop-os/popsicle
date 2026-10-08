@@ -1,5 +1,5 @@
 app-title = USB 플레시기
-about = About
+about = About { $app }...
 repository = Repository
 view = View
 
@@ -51,3 +51,17 @@ win-isos-not-supported = 윈도우즈 iso파일은 지원하지 않습니다
 iso-open-failed = iso를 열지 못했습니다
 no-value-found = 값이 미지정 입니다
 #with the above translation, there is a VScode visual bug. 값 will different from vscode and from an external editor. the vscode visuals are wrong
+
+app-description = Flash multiple USB devices in parallel
+support = Support
+change-image-button = Change image
+image-selected = Image selected
+release-to-use-image = Release to use this image
+choose-a-file = or choose a file
+drop-iso-here = Drop ISO here
+drop-iso-file-here = Drop an ISO file here
+choose-file = Choose a file
+disk-images = Disk images
+could-not-read-dropped-file = Could not read the dropped file
+no-devices-found = No devices were found
+back = Back
