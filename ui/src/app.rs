@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-2.0-only
 
 use crate::fl;
 use crate::views::devices::{self, DevicesView};
@@ -16,7 +16,10 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 const REPOSITORY: &str = env!("CARGO_PKG_REPOSITORY");
-const APP_ICON: &[u8] = include_bytes!("../../resources/icons/hicolor/scalable/apps/icon.svg");
+const ISSUES_URL: &str = "https://github.com/pop-os/popsicle/issues";
+const LICENSE_URL: &str = "https://spdx.org/licenses/GPL-2.0-only.html";
+const APP_ICON: &[u8] =
+    include_bytes!("../../resources/icons/hicolor/512x512@2x/apps/com.system76.Popsicle.png");
 
 /// The application model stores app-specific state used to describe its interface and
 /// drive its logic.
@@ -99,11 +102,15 @@ impl cosmic::Application for AppModel {
 
         // Create the about widget
         let about = About::default()
-            .name(fl!("app-title"))
-            .icon(widget::icon::from_svg_bytes(APP_ICON))
+            .name("Popsicle")
+            .icon(widget::icon::from_raster_bytes(APP_ICON))
             .version(env!("CARGO_PKG_VERSION"))
-            .links([(fl!("repository"), REPOSITORY)])
-            .license(env!("CARGO_PKG_LICENSE"));
+            .author("System76")
+            .comments(fl!("app-description"))
+            .developers([("System76", "info@system76.com")])
+            .links([(fl!("repository"), REPOSITORY), (fl!("support"), ISSUES_URL)])
+            .license(env!("CARGO_PKG_LICENSE"))
+            .license_url(LICENSE_URL);
 
         // Construct the app model with the runtime's core.
         let mut app = AppModel {

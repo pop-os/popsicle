@@ -3,7 +3,7 @@
 <component type="desktop-application">
   <id>com.system76.Popsicle</id>
   <metadata_license>CC0-1.0</metadata_license>
-  <project_license>MIT</project_license>
+  <project_license>GPL-2.0-only</project_license>
   <developer_name>System76</developer_name>
   <update_contact>michael@system76.com</update_contact>
   <url type="homepage">https://github.com/pop-os/popsicle</url>

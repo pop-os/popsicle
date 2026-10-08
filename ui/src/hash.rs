@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-2.0-only
 
 use digest::Digest;
 use hex_view::HexView;
