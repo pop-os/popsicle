@@ -1,15 +1,14 @@
 version: 1
 
 project:
-  name: com.github.pop-os.popsicle
+  name: com.system76.Popsicle
   version_command: git describe --tags
 
 build:
   script:
     commands:
-      # unfortunately, no out-of-source builds are possible (yet)
       - pushd "$PROJECT_ROOT"
-      - make install DESTDIR="$(readlink -f "$BUILD_DIR"/AppDir)" prefix=/usr
+      - just rootdir="$(readlink -f "$BUILD_DIR"/AppDir)" prefix=/usr install
       - popd
 
 scripts:
@@ -21,5 +20,3 @@ appimage:
   linuxdeploy:
     environment:
       UPD_INFO: 'gh-releases-zsync|pop-os|popsicle|latest|Popsicle_USB_Flasher-*x86_64.AppImage.zsync'
-    plugins:
-      - gtk

@@ -1,7 +1,9 @@
 {
     "app-id" : "com.system76.Popsicle",
     "runtime" : "org.freedesktop.Platform",
-    "runtime-version" : "22.08",
+    "runtime-version" : "26.08",
+    "base": "com.system76.Cosmic.BaseApp",
+    "base-version": "stable",
     "sdk" : "org.freedesktop.Sdk",
     "sdk-extensions" : [
         "org.freedesktop.Sdk.Extension.rust-stable"
@@ -16,9 +18,11 @@
         "--share=ipc",
         "--socket=fallback-x11",
         "--socket=wayland",
-        "--system-talk-name=org.freedesktop.UDisks2"
+        "--system-talk-name=org.freedesktop.UDisks2",
+        "--talk-name=com.system76.CosmicSettingsDaemon",
+        "--filesystem=xdg-config/cosmic:rw"
     ],
-    "command" : "popsicle-gtk",
+    "command" : "popsicle-ui",
     "cleanup" : [
         "/share/icons/hicolor/512x512@2x"
     ],
@@ -31,11 +35,16 @@
                     "type" : "dir",
                     "path" : "."
                 },
-                "generated-sources.json"
+                "cargo-sources.json"
             ],
             "build-commands" : [
-                "make",
-                "make install prefix=/app"
+                "cargo build --release --manifest-path cli/Cargo.toml",
+                "cargo build --release --manifest-path ui/Cargo.toml",
+                "install -Dm755 target/release/popsicle /app/bin/popsicle",
+                "install -Dm755 target/release/popsicle-ui /app/bin/popsicle-ui",
+                "install -Dm644 ui/target/xdgen/app.desktop /app/share/applications/com.system76.Popsicle.desktop",
+                "install -Dm644 ui/target/xdgen/app.metainfo.xml /app/share/metainfo/com.system76.Popsicle.appdata.xml",
+                "cd resources/icons/hicolor && find . -type f -exec sh -c 'install -Dm644 \"$1\" \"/app/share/icons/hicolor/${1#./}\"' sh {} \\;"
             ]
         }
     ]

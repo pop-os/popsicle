@@ -16,7 +16,7 @@ name = "popsicle"
 path = "src/lib.rs"
 
 [workspace]
-members = ["cli", "gtk", "cosmic"]
+members = ["cli", "ui"]
 
 [dependencies]
 anyhow = "1.0.79"

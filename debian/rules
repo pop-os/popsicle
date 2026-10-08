@@ -8,17 +8,17 @@ CLEAN ?= 1
 
 override_dh_auto_build:
 	env CARGO_HOME="$$(pwd)/target/cargo" \
-	dh_auto_build
+	just
 
 override_dh_auto_clean:
 ifeq ($(CLEAN),1)
-	make clean
+	just clean
 endif
 ifeq ($(VENDORED),1)
 	if ! ischroot; then \
-		make vendor; \
+		just vendor; \
 	fi
 endif
 
 override_dh_auto_install:
-	dh_auto_install -- prefix=/usr
+	just rootdir=debian/tmp prefix=/usr install
