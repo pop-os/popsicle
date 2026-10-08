@@ -1,3 +1,5 @@
+mod cargo 'cargo.just'
+
 default_prefix := '/usr/local'
 prefix := default_prefix
 rootdir := env('DESTDIR', '')
@@ -14,14 +16,26 @@ default: all
 
 all: cli ui
 
-cli:
-    cargo build --manifest-path cli/Cargo.toml --release
+cli: (cargo::build-release '--manifest-path' 'cli/Cargo.toml')
     help2man --no-info {{target-dir / 'release' / bin}} > {{target-dir / 'release' / bin}}.1.partial || { rm -f {{target-dir / 'release' / bin}}.1.partial; exit 1; }
     gzip -c {{target-dir / 'release' / bin}}.1.partial > {{target-dir / 'release' / bin}}.1.gz || { rm -f {{target-dir / 'release' / bin}}.1.gz {{target-dir / 'release' / bin}}.1.partial; exit 1; }
     rm {{target-dir / 'release' / bin}}.1.partial
 
-ui:
-    cd ui && cargo build --release
+ui: (cargo::build-release '--manifest-path' 'ui/Cargo.toml')
+
+build-debug *args: (cargo::build-debug args)
+
+build-release *args: (cargo::build-release args)
+
+build-vendored *args: (cargo::build-vendored args)
+
+check *args: (cargo::check args)
+
+check-json: cargo::check-json
+
+run *args: (cargo::run args)
+
+test *args: (cargo::test args)
 
 flatpak:
     flatpak-builder --force-clean build/flatpak com.system76.Popsicle.json
@@ -52,18 +66,11 @@ uninstall-ui:
 
 uninstall: uninstall-cli uninstall-ui
 
-clean:
-    cargo clean
+clean: cargo::clean
 
-distclean: clean
-    rm -rf .cargo vendor vendor.tar
+distclean: cargo::clean-dist
 
-vendor:
-    mkdir -p .cargo
-    cargo vendor --locked | head -n -1 > .cargo/config
-    echo 'directory = "vendor"' >> .cargo/config
-    tar pcf vendor.tar vendor
-    rm -rf vendor
+vendor: cargo::vendor
 
 update:
     cargo update
