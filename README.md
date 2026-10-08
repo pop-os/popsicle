@@ -4,40 +4,54 @@ Popsicle is a Linux utility for flashing multiple USB devices in parallel, writt
 
 ## Build Dependencies
 
-If building the GTK front end, you will be required to install the development dependencies for GTK and D-Bus, usually named `libgtk-3-dev` and `libdbus-1-dev`, respectively. No other dependencies are required to build the CLI or GTK front ends, besides Rust's `cargo` utility.
+Building the COSMIC front end requires the D-Bus development files, usually named `libdbus-1-dev`, in addition to Rust's `cargo` utility.
 
-For those who need to vendor Cargo's crate dependencies which are fetched from [Crates.io](https://crates.io/), you will need to install [cargo-vendor](https://github.com/alexcrichton/cargo-vendor), and then run `make vendor`.
+For those who need to vendor Cargo's crate dependencies which are fetched from [Crates.io](https://crates.io/), you will need to install [cargo-vendor](https://github.com/alexcrichton/cargo-vendor), and then run `just vendor`.
 
 ## Installation Instructions
 
- A makefile is included for simply building and installing all required files into the system. You may either build both the CLI and GTK workspace, just the CLI workspace, or just the GTK workspace.
+ A [justfile](https://github.com/casey/just) is included for simply building and installing all required files into the system. You may either build both the CLI and COSMIC UI workspace, just the CLI workspace, or just the UI workspace.
 
-- `make cli && sudo make install-cli` will build and install just the CLI workspace
-- `make gtk && sudo make install-gtk` will build and install just the GTK workspace
-- `make && sudo make install` will build and install both the CLI and GTK workspaces
+- `just cli && sudo just install-cli` will build and install just the CLI workspace
+- `just ui && sudo just install-ui` will build and install just the COSMIC UI workspace
+- `just && sudo just install` will build and install both the CLI and COSMIC UI workspaces
 
 ## Screenshots
 
 ### Image Selection
 
-![Image Selection](./screenshots/screenshot-01.png)
+<!-- dark mode -->
+<img src="./screenshots/screenshot-01-dark.png#gh-dark-mode-only" alt="Image Selection">
+<!-- light mode -->
+<img src="./screenshots/screenshot-01-light.png#gh-light-mode-only" alt="Image Selection">
 
 ### Device Selection
 
-![Device Selection](./screenshots/screenshot-02.png)
+<!-- dark mode -->
+<img src="./screenshots/screenshot-02-dark.png#gh-dark-mode-only" alt="Device Selection">
+<!-- light mode -->
+<img src="./screenshots/screenshot-02-light.png#gh-light-mode-only" alt="Device Selection">
 
 The list will also dynamically refresh as devices are added and removed
 
-![GIF Demo](./screenshots/device-monitoring.gif)
+<!-- dark mode -->
+<img src="./screenshots/device-monitoring-dark.gif#gh-dark-mode-only" alt="Device monitoring">
+<!-- light mode -->
+<img src="./screenshots/device-monitoring-light.gif#gh-light-mode-only" alt="Device monitoring">
 
 ### Device Flashing
 
-![Flashing Devices](./screenshots/screenshot-03.png)
-![Flashing Devices](./screenshots/screenshot-04.png)
+<!-- dark mode -->
+<img src="./screenshots/screenshot-03-dark.png#gh-dark-mode-only" alt="Flashing Devices">
+<!-- light mode -->
+<img src="./screenshots/screenshot-03-light.png#gh-light-mode-only" alt="Flashing Devices">
 
 ### Summary
 
-![Summary](./screenshots/screenshot-05.png)
+<!-- dark mode -->
+<img src="./screenshots/screenshot-05-dark.png#gh-dark-mode-only" alt="Summary">
+<!-- light mode -->
+<img src="./screenshots/screenshot-05-light.png#gh-light-mode-only" alt="Summary">
 
 ## Translators
 
@@ -48,4 +62,3 @@ i18n(eo): Add Esperanto language support
 ```
 
 Translation files can be found [here](./i18n/). We are using [Project Fluent](https://projectfluent.org) for our translations, which should be easier than working with gettext.
-

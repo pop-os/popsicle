@@ -8,15 +8,15 @@ authors = [
 ]
 license = "MIT"
 readme = "README.md"
-edition = "2021"
-rust-version = "1.70.0"
+edition = "2024"
+rust-version = "1.94.0"
 
 [lib]
 name = "popsicle"
 path = "src/lib.rs"
 
 [workspace]
-members = ["cli", "gtk"]
+members = ["cli", "ui"]
 
 [dependencies]
 anyhow = "1.0.79"
@@ -33,4 +33,3 @@ serde = { version = "1.0.194", features = ["derive"] }
 srmw = "0.1.1"
 thiserror = "1.0.56"
 usb-disk-probe = "0.2.0"
-
