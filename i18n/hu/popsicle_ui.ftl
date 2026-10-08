@@ -1,5 +1,5 @@
 app-title = USB lemezkép író
-about = About
+about = About { $app }...
 repository = Repository
 view = View
 
@@ -49,3 +49,18 @@ win-isos-not-supported = Windows lemezképek jelenleg nincsenek támogatva
 # Errors
 iso-open-failed = Nem sikerült a lemezkép kiírása
 no-value-found = nincs érték
+
+app-description = Flash multiple USB devices in parallel
+support = Support
+change-image-button = Change image
+image-selected = Image selected
+release-to-use-image = Release to use this image
+choose-a-file = or choose a file
+drop-iso-here = Drop ISO here
+drop-iso-file-here = Drop an ISO file here
+choose-file = Choose a file
+disk-images = Disk images
+could-not-read-dropped-file = Could not read the dropped file
+no-devices-found = No devices were found
+flashing-completed-with-errors = Flashing Completed with Errors
+back = Back
