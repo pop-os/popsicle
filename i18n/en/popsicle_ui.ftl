@@ -1,6 +1,6 @@
 app-title = USB Flasher
 app-description = Flash multiple USB devices in parallel
-about = About
+about = About { $app }...
 repository = Repository
 support = Support
 view = View
