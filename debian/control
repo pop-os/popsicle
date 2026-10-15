@@ -21,6 +21,8 @@ Description: USB Flasher
 
 Package: popsicle-ui
 Architecture: amd64 arm64
+Breaks: popsicle-gtk
+Replaces: popsicle-gtk
 Depends:
   ${misc:Depends},
   ${shlib:Depends}
