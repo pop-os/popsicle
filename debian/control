@@ -7,8 +7,10 @@ Build-Depends:
   cargo,
   help2man,
   just,
-  libclang-dev,
-  libdbus-1-dev
+  libdbus-1-dev,
+  libxkbcommon-dev,
+  libwayland-dev,
+  pkg-config,
 Standards-Version: 4.1.1
 Homepage: https://github.com/pop-os/popsicle
 
