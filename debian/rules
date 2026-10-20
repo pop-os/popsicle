@@ -14,5 +14,5 @@ override_dh_auto_clean:
 override_dh_auto_build:
 	test -e vendor.tar && just build-vendored || just build
 
-override_dh_install:
+override_dh_auto_install:
 	just rootdir=$(DESTDIR) prefix=/usr install
