@@ -8,7 +8,7 @@ fn main() {
         env::var("CARGO_PKG_NAME").unwrap(),
     )
     .unwrap();
-    let app = App::new(FluentString("app-title"))
+    let app = App::new(FluentString("app-name"))
         .comment(FluentString("app-comment"))
         .keywords(FluentString("app-keywords"));
 

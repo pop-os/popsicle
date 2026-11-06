@@ -34,15 +34,13 @@ fn main() -> cosmic::iced::Result {
     let mut flags = Flags { iso_argument: None };
 
     // Checks if an ISO argument was provided.
-    if let Some(iso_argument) = std::env::args().nth(1) {
-        let path = PathBuf::from(iso_argument);
-        if path.extension().map_or(false, |ext| {
-            let lower_ext = ext.to_str().expect("Could not convert CStr to Str").to_lowercase();
-            lower_ext == "iso" || lower_ext == "img"
-        }) && path.exists()
-        {
-            flags.iso_argument = Some(path);
-        }
+    if let Some(path) = std::env::args_os().nth(1).map(PathBuf::from)
+        && path
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("iso") || ext.eq_ignore_ascii_case("img"))
+        && path.exists()
+    {
+        flags.iso_argument = Some(path);
     }
 
     // Starts the application's event loop with `()` as the application's flags.
