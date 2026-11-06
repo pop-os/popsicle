@@ -212,6 +212,7 @@ impl ImagesView {
 
             Message::FileDropped(path)
         })
+        .on_file_transfer(Message::FileTransfer)
         .on_enter(|_, _, _| Message::DragEntered)
         .on_leave(|| Message::DragLeft)
         .into()
@@ -322,6 +323,21 @@ impl ImagesView {
             Message::FileDropped(path) => {
                 self.dragging = false;
                 self.load_file(path);
+            }
+
+            Message::FileTransfer(key) => {
+                self.dragging = false;
+
+                return Some(cosmic::command::file_transfer_receive(key).map(|result| {
+                    cosmic::Action::App(match result.map(|paths| paths.into_iter().next()) {
+                        Ok(Some(path)) => Message::FileDropped(path.into()),
+                        Ok(None) => Message::DropFailed,
+                        Err(why) => {
+                            eprintln!("failed to receive the dropped file: {why}");
+                            Message::DropFailed
+                        }
+                    })
+                }));
             }
 
             Message::DropFailed => {
