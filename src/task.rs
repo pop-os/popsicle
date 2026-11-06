@@ -1,5 +1,6 @@
 use anyhow::Context;
-use async_std::{fs::File, prelude::*};
+use async_fs::File;
+use futures::{StreamExt, io::AsyncSeekExt};
 use srmw::*;
 use std::{collections::HashMap, io::SeekFrom, time::Instant};
 

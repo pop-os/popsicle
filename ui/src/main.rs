@@ -36,7 +36,7 @@ fn main() -> cosmic::iced::Result {
     // Checks if an ISO argument was provided.
     if let Some(iso_argument) = std::env::args().nth(1) {
         let path = PathBuf::from(iso_argument);
-        if path.extension().map_or(false, |ext| {
+        if path.extension().is_some_and(|ext| {
             let lower_ext = ext.to_str().expect("Could not convert CStr to Str").to_lowercase();
             lower_ext == "iso" || lower_ext == "img"
         }) && path.exists()

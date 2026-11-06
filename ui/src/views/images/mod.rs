@@ -1,25 +1,22 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
-use std::{
-    fs::File,
-    path::{Path, PathBuf},
-};
-
 use blake2::Blake2b512;
 use cosmic::{
     Apply, Element, Task,
-    dialog::{
-        ashpd::url::Url,
-        file_chooser::{self, FileFilter},
-    },
+    dialog::file_chooser::{self, FileFilter},
     iced::{Alignment, Length},
     theme::spacing,
-    widget::{self},
+    widget,
 };
 use iso9660::ISO9660;
 use md5::Md5;
 use sha1::Sha1;
 use sha2::{Sha256, Sha512};
+use std::{
+    fs::File,
+    path::{Path, PathBuf},
+};
+use url::Url;
 
 use crate::{
     app::{self, ActiveView},
@@ -51,15 +48,13 @@ impl ImageEntry {
             return None;
         };
 
-        let Some(file_name) = path.file_name() else {
-            return None;
-        };
+        let file_name = path.file_name()?;
 
         Some(file_name.to_string_lossy().to_string())
     }
 
     pub fn size_str(&self) -> String {
-        bytesize::to_string(self.size, true)
+        bytesize::ByteSize(self.size).display().si().to_string()
     }
 }
 
@@ -86,7 +81,7 @@ pub enum Message {
     DragEntered,
     DragLeft,
 
-    FilePicked(Vec<Url>),
+    FilePicked(Url),
     PickCancelled,
     PickFailed,
 }
@@ -122,7 +117,7 @@ impl ImagesView {
     pub fn view<'a>(&'a self) -> Element<'a, Message> {
         let image_selected = self.image.is_loaded();
 
-        widget::column([])
+        widget::column::with_capacity(3)
             .push(self.instructions())
             .push(self.image_drop_area(image_selected))
             .push_maybe(image_selected.then(|| self.hash_section()))
@@ -137,12 +132,7 @@ impl ImagesView {
         let title = widget::text::title2(fl!("image-view-title"));
         let description = widget::text::body(fl!("image-view-description"));
 
-        widget::column([])
-            .push(title)
-            .push(description)
-            .width(Length::Fill)
-            .spacing(spacing().space_xxs)
-            .into()
+        widget::column!(title, description).width(Length::Fill).spacing(spacing().space_xxs).into()
     }
 
     fn image_drop_area(&self, image_selected: bool) -> Element<'_, Message> {
@@ -180,13 +170,10 @@ impl ImagesView {
         let choose_image_button =
             widget::button::standard(choose_image_label).on_press(Message::ChooseImage);
 
-        let image_content = widget::column([])
-            .push(drop_icon)
-            .push(drop_title)
-            .push(drop_description)
-            .push(choose_image_button)
-            .align_x(Alignment::Center)
-            .spacing(spacing().space_xs);
+        let image_content =
+            widget::column!(drop_icon, drop_title, drop_description, choose_image_button)
+                .align_x(Alignment::Center)
+                .spacing(spacing().space_xs);
 
         let mut drop_container = widget::container(image_content)
             .width(Length::Fill)
@@ -257,7 +244,7 @@ impl ImagesView {
         let hash_check_button = widget::button::standard(fl!("check-label"))
             .on_press_maybe(hash_check_enabled.then_some(Message::CheckHash));
 
-        let hash_row = widget::row([])
+        let hash_row = widget::row::with_capacity(4)
             .push(hash_label)
             .push(hash_dropdown)
             .push(widget::space::horizontal())
@@ -265,12 +252,10 @@ impl ImagesView {
             .spacing(spacing().space_xs)
             .align_y(Alignment::Center);
 
-        let error_message = self.error.as_ref().map(|error| widget::text::caption(error));
-
-        let hash_content = widget::column([])
+        let hash_content = widget::column::with_capacity(3)
             .push_maybe(show_hash_input.then_some(hash_text_input))
             .push(hash_row)
-            .push_maybe(error_message)
+            .push_maybe(self.error.as_ref().map(widget::text::caption))
             .align_x(Alignment::Center)
             .spacing(spacing().space_xs);
 
@@ -285,12 +270,9 @@ impl ImagesView {
         let can_press = *view == ActiveView::Images && self.image.is_loaded();
 
         let next = widget::button::suggested(fl!("next"))
-            .on_press_maybe(can_press.then_some(app::Message::Next))
-            .into();
+            .on_press_maybe(can_press.then_some(app::Message::Next));
 
-        let spacer = widget::space::horizontal().into();
-
-        let row = widget::row(vec![spacer, next])
+        let row = widget::row!(widget::space::horizontal(), next)
             .spacing(spacing().space_xs)
             .padding(spacing().space_xs)
             .into();
@@ -318,8 +300,8 @@ impl ImagesView {
 
             Message::ChooseImage => return self.choose_image(),
 
-            Message::FilePicked(urls) => {
-                self.file_picked(urls);
+            Message::FilePicked(url) => {
+                self.file_picked(url);
             }
 
             Message::FileDropped(path) => {
@@ -396,7 +378,7 @@ impl ImagesView {
             );
 
             match dialog.open_file().await {
-                Ok(response) => Message::FilePicked(response.0.uris().to_vec()),
+                Ok(response) => Message::FilePicked(response.url().to_owned()),
 
                 Err(file_chooser::Error::Cancelled) => Message::PickCancelled,
 
@@ -411,9 +393,9 @@ impl ImagesView {
         Some(task)
     }
 
-    fn file_picked(&mut self, urls: Vec<Url>) {
-        let Some(path) = urls.first().and_then(|url| url.to_file_path().ok()) else {
-            eprintln!("picked URI is not a local file: {urls:?}");
+    fn file_picked(&mut self, url: Url) {
+        let Some(path) = url.to_file_path().ok() else {
+            eprintln!("picked URI is not a local file: {url:?}");
             return;
         };
 

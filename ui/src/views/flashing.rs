@@ -3,7 +3,6 @@
 use std::{
     collections::{HashMap, VecDeque},
     fs::File,
-    os::fd::FromRawFd,
     path::{Path, PathBuf},
     sync::{
         Arc, Mutex,
@@ -19,18 +18,18 @@ use cosmic::{
     theme::spacing,
     widget,
 };
-use dbus::{
-    arg::{OwnedFd, RefArg, Variant},
-    blocking::{Connection, Proxy},
-};
-use dbus_udisks2::DiskDevice;
 use futures::{
     executor,
     future::{AbortHandle, AbortRegistration, Abortable},
 };
 use popsicle::{Progress, Task as CopyTask};
+use udisks2::{Client, zbus::Variant};
 
-use crate::{app::ActiveView, fl, views::devices::device_label};
+use crate::{
+    app::ActiveView,
+    fl,
+    views::devices::{self, DiskDevice},
+};
 
 /// Result of a flashing run.
 #[derive(Debug, Clone)]
@@ -177,11 +176,7 @@ impl FlashingView {
         });
 
         cosmic::task::future(async move {
-            let outcome =
-                tokio::task::spawn_blocking(move || flash(&image, &devices, &shared, registration))
-                    .await
-                    .map_err(|error| format!("the flashing thread failed: {error}"))
-                    .and_then(|result| result);
+            let outcome = flash(&image, &devices, &shared, registration).await;
 
             Message::Finished { generation, outcome }
         })
@@ -227,26 +222,19 @@ impl FlashingView {
     pub fn view(&self) -> Element<'_, Message> {
         let space = spacing();
 
-        let header = widget::column([])
-            .push(widget::text::title2(fl!("flash-view-title")))
-            .push(widget::text::body(fl!("flash-view-description")))
-            .width(Length::Fill)
-            .spacing(space.space_xxs);
+        let header = widget::column!(
+            widget::text::title2(fl!("flash-view-title")),
+            widget::text::body(fl!("flash-view-description")),
+        )
+        .width(Length::Fill)
+        .spacing(space.space_xxs);
 
-        let mut list = widget::column([]).spacing(space.space_xs);
+        let list = widget::column(self.run.as_ref().into_iter().flat_map(|run| {
+            run.devices.iter().zip(&run.states).map(|(device, state)| device_row(device, state))
+        }))
+        .spacing(space.space_xs);
 
-        if let Some(run) = &self.run {
-            for (device, state) in run.devices.iter().zip(&run.states) {
-                list = list.push(device_row(device, state));
-            }
-        }
-
-        widget::column([])
-            .push(header)
-            .push(list)
-            .spacing(space.space_s)
-            .apply(widget::scrollable)
-            .into()
+        widget::column!(header, list).spacing(space.space_s).apply(widget::scrollable).into()
     }
 
     pub fn footer(&self, view: &ActiveView) -> Option<Element<'_, crate::app::Message>> {
@@ -258,9 +246,7 @@ impl FlashingView {
             widget::button::destructive(fl!("cancel")).on_press(crate::app::Message::Restart);
 
         Some(
-            widget::row([])
-                .push(widget::space::horizontal())
-                .push(cancel)
+            widget::row!(widget::space::horizontal(), cancel)
                 .spacing(spacing().space_xs)
                 .padding(spacing().space_xs)
                 .into(),
@@ -274,16 +260,17 @@ fn device_row<'a>(device: &DiskDevice, state: &DeviceState) -> Element<'a, Messa
     } else if state.finished {
         fl!("task-finished")
     } else if let Some(speed) = state.speed {
-        format!("{}/s", bytesize::to_string(speed, true))
+        format!("{}/s", bytesize::ByteSize(speed).display().si())
     } else {
         String::new()
     };
 
-    let content = widget::column([])
-        .push(widget::text::heading(device_label(device)))
-        .push(widget::determinate_linear(state.fraction).width(Length::Fill).girth(8.0))
-        .push(widget::text::caption(status))
-        .spacing(spacing().space_xxs);
+    let content = widget::column!(
+        widget::text::heading(device.label.clone()),
+        widget::determinate_linear(state.fraction).width(Length::Fill).girth(8.0),
+        widget::text::caption(status)
+    )
+    .spacing(spacing().space_xxs);
 
     widget::container(content)
         .width(Length::Fill)
@@ -292,13 +279,13 @@ fn device_row<'a>(device: &DiskDevice, state: &DeviceState) -> Element<'a, Messa
         .into()
 }
 
-fn flash(
+async fn flash(
     image: &Path,
     devices: &[Arc<DiskDevice>],
     shared: &Arc<Shared>,
     registration: AbortRegistration,
 ) -> Result<FlashOutcome, String> {
-    let copy = write_all(image, devices, shared, registration).map_err(|e| format!("{e:#}"));
+    let copy = write_all(image, devices, shared, registration).await;
 
     let error = copy.err().map(|e| format!("{e:#}"));
 
@@ -312,19 +299,30 @@ fn flash(
     Ok(FlashOutcome { error, total: devices.len(), failed })
 }
 
-fn write_all(
+async fn partition_paths(client: &Client, dbus_path: &str) -> anyhow::Result<Vec<String>> {
+    let table = client.object(dbus_path)?.partition_table().await?;
+    Ok(client
+        .partitions(&table)
+        .await
+        .iter()
+        .map(|partition| partition.inner().path().as_str().to_owned())
+        .collect())
+}
+
+async fn write_all(
     image: &Path,
     devices: &[Arc<DiskDevice>],
     shared: &Arc<Shared>,
     registration: AbortRegistration,
 ) -> anyhow::Result<()> {
     let source = File::open(image).context("failed to open the image")?;
+    let client = devices::client().await?;
 
     // Unmount everything on the target drives first.
     for device in devices {
-        let _ = udisks_unmount(&device.parent.path);
-        for partition in &device.partitions {
-            let _ = udisks_unmount(&partition.path);
+        let partitions = partition_paths(client, &device.path).await.unwrap_or_default();
+        for path in std::iter::once(&device.path).chain(&partitions) {
+            let _ = udisks_unmount(client, path).await;
         }
     }
 
@@ -332,7 +330,7 @@ fn write_all(
     let mut opened = 0;
 
     for (id, device) in devices.iter().enumerate() {
-        match udisks_open(&device.parent.path) {
+        match udisks_open(client, &device.path).await {
             Ok(file) => {
                 task.subscribe(file.into(), (), DeviceProgress { shared: shared.clone(), id });
                 opened += 1;
@@ -354,39 +352,37 @@ fn write_all(
     }
 }
 
-type UDisksOptions = HashMap<&'static str, Variant<Box<dyn RefArg>>>;
+type UDisksOptions = HashMap<&'static str, Variant<'static>>;
 
-fn udisks_unmount(dbus_path: &str) -> anyhow::Result<()> {
-    let connection = Connection::new_system()?;
-    let dbus_path = ::dbus::strings::Path::new(dbus_path).map_err(anyhow::Error::msg)?;
-    let proxy = Proxy::new("org.freedesktop.UDisks2", dbus_path, Duration::new(25, 0), &connection);
+const DBUS_TIMEOUT: Duration = Duration::from_secs(25);
+
+async fn udisks_unmount(client: &Client, dbus_path: &str) -> anyhow::Result<()> {
+    let object = client.object(dbus_path)?;
+
+    let filesystem = match object.filesystem().await {
+        Ok(filesystem) => filesystem,
+        Err(udisks2::Error::Zbus(udisks2::zbus::Error::InterfaceNotFound)) => return Ok(()),
+        Err(why) => return Err(why.into()),
+    };
 
     let mut options = UDisksOptions::new();
-    options.insert("force", Variant(Box::new(true)));
+    options.insert("force", Variant::from(true));
 
-    let res: Result<(), _> =
-        proxy.method_call("org.freedesktop.UDisks2.Filesystem", "Unmount", (options,));
+    let res = tokio::time::timeout(DBUS_TIMEOUT, filesystem.unmount(options)).await?;
 
-    if let Err(err) = res {
-        if err.name() != Some("org.freedesktop.UDisks2.Error.NotMounted") {
-            return Err(anyhow::Error::new(err));
-        }
+    match res {
+        Ok(()) | Err(udisks2::Error::NotMounted) => Ok(()),
+        Err(err) => Err(anyhow::Error::new(err)),
     }
-
-    Ok(())
 }
 
-fn udisks_open(dbus_path: &str) -> anyhow::Result<File> {
-    let connection = Connection::new_system()?;
-    let dbus_path = ::dbus::strings::Path::new(dbus_path).map_err(anyhow::Error::msg)?;
-    let proxy =
-        Proxy::new("org.freedesktop.UDisks2", &dbus_path, Duration::new(25, 0), &connection);
+async fn udisks_open(client: &Client, dbus_path: &str) -> anyhow::Result<File> {
+    let block = client.object(dbus_path)?.block().await?;
 
     let mut options = UDisksOptions::new();
-    options.insert("flags", Variant(Box::new(libc::O_SYNC)));
+    options.insert("flags", Variant::from(libc::O_SYNC));
 
-    let res: (OwnedFd,) =
-        proxy.method_call("org.freedesktop.UDisks2.Block", "OpenDevice", ("rw", options))?;
+    let fd = tokio::time::timeout(DBUS_TIMEOUT, block.open_device("rw", options)).await??;
 
-    Ok(unsafe { File::from_raw_fd(res.0.into_fd()) })
+    Ok(File::from(std::os::fd::OwnedFd::from(fd)))
 }

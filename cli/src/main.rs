@@ -12,29 +12,26 @@ extern crate fomat_macros;
 mod localize;
 
 use anyhow::Context;
-use async_std::{
-    fs::OpenOptions,
-    os::unix::fs::OpenOptionsExt,
-    path::{Path, PathBuf},
-};
-
-use clap::{builder::Arg, ArgAction, ArgMatches, Command};
+use async_fs::{OpenOptions, unix::OpenOptionsExt};
+use clap::{ArgAction, ArgMatches, Command, builder::Arg};
 use futures::{
     channel::{mpsc, oneshot},
     executor, join,
     prelude::*,
 };
 use i18n_embed::DesktopLanguageRequester;
-use once_cell::sync::Lazy;
 use pbr::{MultiBar, Pipe, ProgressBar, Units};
-use popsicle::{mnt, Progress, Task};
+use popsicle::{Progress, Task, mnt};
 use std::{
     io::{self, Write},
-    process, thread,
+    path::{Path, PathBuf},
+    process,
+    sync::LazyLock,
+    thread,
 };
 
-static ARG_IMAGE: Lazy<String> = Lazy::new(|| fl!("arg-image"));
-static ARG_DISKS: Lazy<String> = Lazy::new(|| fl!("arg-disks"));
+static ARG_IMAGE: LazyLock<String> = LazyLock::new(|| fl!("arg-image"));
+static ARG_DISKS: LazyLock<String> = LazyLock::new(|| fl!("arg-disks"));
 
 fn main() {
     translate();
