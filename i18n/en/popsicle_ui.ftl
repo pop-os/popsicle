@@ -1,4 +1,5 @@
 app-title = USB Flasher
+app-name = Popsicle USB Flasher
 app-description = Flash multiple USB devices in parallel
 about = About { $app }...
 repository = Repository

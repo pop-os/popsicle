@@ -1,4 +1,5 @@
 app-title = Flasheur USB
+app-name = Flasheur USB Popsicle
 about = About { $app }...
 repository = Repository
 view = View
