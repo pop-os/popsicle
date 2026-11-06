@@ -126,6 +126,7 @@ impl ImagesView {
             .push(self.instructions())
             .push(self.image_drop_area(image_selected))
             .push_maybe(image_selected.then(|| self.hash_section()))
+            .push_maybe(self.error.as_deref().map(widget::text::caption))
             .align_x(Alignment::Center)
             .spacing(spacing().space_xs)
             .apply(widget::scrollable)
@@ -265,14 +266,10 @@ impl ImagesView {
             .spacing(spacing().space_xs)
             .align_y(Alignment::Center);
 
-        let error_message = self.error.as_ref().map(|error| widget::text::caption(error));
-
         let hash_content = widget::column([])
             .push_maybe(show_hash_input.then_some(hash_text_input))
             .push(hash_row)
-            .push_maybe(error_message)
             .align_x(Alignment::Center)
-            .spacing(spacing().space_xs);
 
         widget::container(hash_content)
             .width(Length::Fill)
@@ -417,9 +414,7 @@ impl ImagesView {
             return;
         };
 
-        let size = std::fs::metadata(&path).map(|metadata| metadata.len()).unwrap_or(0);
-
-        self.set_image(&path, size, None);
+        self.load_file(path);
     }
 
     fn load_file(&mut self, path: PathBuf) {
