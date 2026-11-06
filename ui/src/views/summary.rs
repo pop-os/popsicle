@@ -7,11 +7,7 @@ use cosmic::{
     widget,
 };
 
-use crate::{
-    app::ActiveView,
-    fl,
-    views::{devices::device_label, flashing::FlashOutcome},
-};
+use crate::{app::ActiveView, fl, views::flashing::FlashOutcome};
 
 #[derive(Debug, Default)]
 pub struct SummaryView {
@@ -28,7 +24,7 @@ impl SummaryView {
 
     pub fn view(&self) -> Element<'_, Message> {
         let Some(outcome) = &self.outcome else {
-            return widget::column([]).into();
+            return widget::space().into();
         };
 
         let space = spacing();
@@ -65,15 +61,16 @@ impl SummaryView {
         let failures = (!outcome.failed.is_empty()).then(|| {
             outcome.failed.iter().fold(widget::list_column(), |list, (device, why)| {
                 list.add(
-                    widget::column([])
-                        .push(widget::text::body(device_label(device)).font(cosmic::font::bold()))
-                        .push(widget::text::caption(why.as_str()))
-                        .spacing(space.space_xxs),
+                    widget::column!(
+                        widget::text::body(device.label.as_str()).font(cosmic::font::bold()),
+                        widget::text::caption(why.as_str()),
+                    )
+                    .spacing(space.space_xxs),
                 )
             })
         });
 
-        widget::column([])
+        widget::column::with_capacity(4)
             .push(icon)
             .push(title)
             .push(widget::text::body(description).align_x(Alignment::Center))
@@ -96,10 +93,7 @@ impl SummaryView {
         let done = widget::button::suggested(fl!("done")).on_press(crate::app::Message::Next);
 
         Some(
-            widget::row([])
-                .push(flash_again)
-                .push(widget::space::horizontal())
-                .push(done)
+            widget::row!(flash_again, widget::space::horizontal(), done)
                 .spacing(spacing().space_xs)
                 .padding(spacing().space_xs)
                 .into(),

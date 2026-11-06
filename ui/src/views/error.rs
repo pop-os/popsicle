@@ -25,15 +25,16 @@ impl ErrorView {
     pub fn view(&self) -> Element<'_, Message> {
         let space = spacing();
 
-        widget::column([])
-            .push(widget::icon::from_name("dialog-error-symbolic").size(64).symbolic(true))
-            .push(widget::text::title2(fl!("critical-error")))
-            .push(widget::text::body(self.description.as_str()).align_x(Alignment::Center))
-            .align_x(Alignment::Center)
-            .spacing(space.space_s)
-            .width(Length::Fill)
-            .apply(widget::scrollable)
-            .into()
+        widget::column!(
+            widget::icon::from_name("dialog-error-symbolic").size(64).symbolic(true),
+            widget::text::title2(fl!("critical-error")),
+            widget::text::body(self.description.as_str()).align_x(Alignment::Center),
+        )
+        .align_x(Alignment::Center)
+        .spacing(space.space_s)
+        .width(Length::Fill)
+        .apply(widget::scrollable)
+        .into()
     }
 
     pub fn footer(&self, view: &ActiveView) -> Option<Element<'_, crate::app::Message>> {
@@ -47,10 +48,7 @@ impl ErrorView {
         let close = widget::button::standard(fl!("close")).on_press(crate::app::Message::Next);
 
         Some(
-            widget::row([])
-                .push(flash_again)
-                .push(widget::space::horizontal())
-                .push(close)
+            widget::row!(flash_again, widget::space::horizontal(), close)
                 .spacing(spacing().space_xs)
                 .padding(spacing().space_xs)
                 .into(),

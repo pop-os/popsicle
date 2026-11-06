@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
+use cosmic::iced::clipboard::mime::AllowedMimeTypes;
 use std::{borrow::Cow, path::PathBuf};
-
-use cosmic::{dialog::ashpd::url::Url, iced::clipboard::mime::AllowedMimeTypes};
+use url::Url;
 
 #[derive(Clone, Debug)]
 pub(crate) struct DroppedFiles {

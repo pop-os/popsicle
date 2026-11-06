@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
-use std::{collections::HashSet, sync::Arc, time::Duration};
+use std::{collections::HashSet, ffi::CStr, sync::Arc, time::Duration};
 
 use cosmic::{
     Apply, Element, Task,
@@ -8,22 +8,29 @@ use cosmic::{
     theme::spacing,
     widget::{self, settings},
 };
-use dbus_udisks2::{DiskDevice, Disks, UDisks2};
+use tokio::sync::OnceCell;
+use udisks2::{Client, zbus::ObjectPath};
 
 use crate::{app::ActiveView, fl};
 
-/// Stable identity for a drive across refreshes. If `drive.id` isn't a `String`
-/// in your dbus-udisks2 version, this is the only place to change.
-type DeviceKey = String;
+static CLIENT: OnceCell<Client> = OnceCell::const_new();
 
-fn key(device: &DiskDevice) -> DeviceKey {
-    device.drive.id.clone()
+pub async fn client() -> udisks2::Result<&'static Client> {
+    CLIENT.get_or_try_init(Client::new).await
+}
+
+#[derive(Debug, Clone)]
+pub struct DiskDevice {
+    pub id: String,
+    pub label: String,
+    pub size: u64,
+    pub path: String,
 }
 
 #[derive(Debug, Default)]
 pub struct DevicesView {
     available_devices: Box<[Arc<DiskDevice>]>,
-    selected: HashSet<DeviceKey>,
+    selected: HashSet<String>,
     image_size: u64,
     refreshing: bool,
     error: Option<String>,
@@ -33,7 +40,7 @@ pub struct DevicesView {
 pub enum Message {
     Refresh,
     Refreshed(Result<Box<[Arc<DiskDevice>]>, String>),
-    Toggle(DeviceKey, bool),
+    Toggle(String, bool),
     SelectAll(bool),
 }
 
@@ -41,15 +48,14 @@ impl DevicesView {
     pub fn set_image_size(&mut self, size: u64) {
         self.image_size = size;
         // Drop selections that no longer fit the new image.
-        let size = self.image_size;
         let too_small: Vec<_> = self
             .available_devices
             .iter()
-            .filter(|device| device.parent.size < size)
-            .map(|device| key(device))
+            .filter(|device| device.size < size)
+            .map(|device| &device.id)
             .collect();
         for key in too_small {
-            self.selected.remove(&key);
+            self.selected.remove(key);
         }
     }
 
@@ -60,7 +66,7 @@ impl DevicesView {
     pub fn selected_devices(&self) -> Vec<Arc<DiskDevice>> {
         self.available_devices
             .iter()
-            .filter(|device| self.selected.contains(&key(device)))
+            .filter(|device| self.selected.contains(&device.id))
             .cloned()
             .collect()
     }
@@ -80,12 +86,7 @@ impl DevicesView {
         self.refreshing = true;
 
         cosmic::task::future(async {
-            let result = tokio::task::spawn_blocking(fetch_devices)
-                .await
-                .map_err(|error| error.to_string())
-                .and_then(|result| result);
-
-            Message::Refreshed(result)
+            Message::Refreshed(fetch_devices().await.map_err(|e| e.to_string()))
         })
         .map(cosmic::Action::App)
     }
@@ -105,10 +106,10 @@ impl DevicesView {
                             || devices
                                 .iter()
                                 .zip(&self.available_devices)
-                                .any(|(a, b)| key(a) != key(b));
+                                .any(|(a, b)| a.id != b.id);
 
                         if changed {
-                            let present: HashSet<_> = devices.iter().map(|d| key(d)).collect();
+                            let present: HashSet<_> = devices.iter().map(|d| &d.id).collect();
                             self.selected.retain(|k| present.contains(k));
                             self.available_devices = devices;
                         }
@@ -130,7 +131,7 @@ impl DevicesView {
 
             Message::SelectAll(on) => {
                 self.selected = if on {
-                    self.selectable().map(|device| key(device)).collect()
+                    self.selectable().map(|device| device.id.clone()).collect()
                 } else {
                     HashSet::new()
                 };
@@ -141,22 +142,23 @@ impl DevicesView {
     }
 
     fn selectable(&self) -> impl Iterator<Item = &Arc<DiskDevice>> {
-        self.available_devices.iter().filter(|d| d.parent.size >= self.image_size)
+        self.available_devices.iter().filter(|d| d.size >= self.image_size)
     }
 
     pub fn view(&self) -> Element<'_, Message> {
         let space = spacing();
 
-        let header = widget::column([])
-            .push(widget::text::title2(fl!("devices-view-title")))
-            .push(widget::text::body(fl!("devices-view-description")))
-            .width(Length::Fill)
-            .spacing(space.space_xxs);
+        let header = widget::column!(
+            widget::text::title2(fl!("devices-view-title")),
+            widget::text::body(fl!("devices-view-description"))
+        )
+        .width(Length::Fill)
+        .spacing(space.space_xxs);
 
-        let content: Element<'_, Message> =
+        let content =
             if self.available_devices.is_empty() { self.empty_state() } else { self.device_list() };
 
-        widget::column([])
+        widget::column::with_capacity(3)
             .push(header)
             .push(content)
             .push_maybe(self.error.as_deref().map(widget::text::caption))
@@ -167,20 +169,21 @@ impl DevicesView {
     }
 
     fn empty_state(&self) -> Element<'_, Message> {
-        widget::column([])
-            .push(widget::icon::from_name("drive-removable-media-symbolic").size(48).symbolic(true))
-            .push(widget::text::heading(fl!("no-devices-found")))
-            .align_x(Alignment::Center)
-            .spacing(spacing().space_xs)
-            .width(Length::Fill)
-            .padding(spacing().space_xl)
-            .into()
+        widget::column!(
+            widget::icon::from_name("drive-removable-media-symbolic").size(48).symbolic(true),
+            widget::text::heading(fl!("no-devices-found"))
+        )
+        .align_x(Alignment::Center)
+        .spacing(spacing().space_xs)
+        .width(Length::Fill)
+        .padding(spacing().space_xl)
+        .into()
     }
 
     fn device_list(&self) -> Element<'_, Message> {
         let selectable = self.selectable().count();
         let selected_selectable =
-            self.selectable().filter(|d| self.selected.contains(&key(d))).count();
+            self.selectable().filter(|d| self.selected.contains(&d.id)).count();
         let all_selected = selectable > 0 && selected_selectable == selectable;
 
         let select_all = settings::item::builder(fl!("select-all"))
@@ -189,19 +192,18 @@ impl DevicesView {
         let mut section = settings::section().add(select_all);
 
         for device in &self.available_devices {
-            let valid = device.parent.size >= self.image_size;
-            let size = bytesize::to_string(device.parent.size, true);
+            let valid = device.size >= self.image_size;
+            let size = bytesize::ByteSize(device.size).display().si().to_string();
             let description =
                 if valid { size } else { format!("{size} · {}", fl!("device-too-small")) };
 
-            let device_key = key(device);
+            let device_key = device.id.clone();
             let checked = self.selected.contains(&device_key);
 
-            let row = settings::item::builder(device_label(device))
-                .description(description)
-                .checkbox_maybe(
+            let row =
+                settings::item::builder(&device.label).description(description).checkbox_maybe(
                     checked,
-                    valid.then(|| move |on: bool| Message::Toggle(device_key.clone(), on)),
+                    valid.then_some(move |on: bool| Message::Toggle(device_key.clone(), on)),
                 );
 
             section = section.add(row);
@@ -219,10 +221,7 @@ impl DevicesView {
             .on_press_maybe(can_press.then_some(crate::app::Message::Next));
 
         Some(
-            widget::row([])
-                .push(back)
-                .push(widget::space::horizontal())
-                .push(next)
+            widget::row!(back, widget::space::horizontal(), next)
                 .spacing(spacing().space_xs)
                 .padding(spacing().space_xs)
                 .into(),
@@ -230,30 +229,42 @@ impl DevicesView {
     }
 }
 
-pub fn device_label(device: &DiskDevice) -> String {
-    if device.drive.vendor.is_empty() {
-        format!("{} ({})", device.drive.model, device.parent.preferred_device.display())
-    } else {
-        format!(
-            "{} {} ({})",
-            device.drive.vendor,
-            device.drive.model,
-            device.parent.preferred_device.display()
-        )
-    }
-}
+async fn fetch_devices() -> Result<Box<[Arc<DiskDevice>]>, udisks2::Error> {
+    let managed = client().await?.object_manager().get_managed_objects().await?;
+    let mut devices = managed
+        .iter()
+        .filter_map(|(path, interfaces)| {
+            // don't iterate over partitions or loopbacks
+            if interfaces.contains_key("org.freedesktop.UDisks2.Partition")
+                || interfaces.contains_key("org.freedesktop.UDisks2.Loop")
+            {
+                return None;
+            }
+            let block = interfaces.get("org.freedesktop.UDisks2.Block")?;
+            let size = block.get("Size").and_then(|s| u64::try_from(s).ok()).filter(|&s| s != 0)?;
+            let drive_path = block.get("Drive").and_then(|d| <&ObjectPath>::try_from(d).ok())?;
+            let drive = managed.get(drive_path)?.get("org.freedesktop.UDisks2.Drive")?;
+            let get_str = |key| <&str>::try_from(drive.get(key)?).ok();
+            if !matches!(get_str("ConnectionBus"), Some("usb" | "sdio")) {
+                return None;
+            }
+            let id = get_str("Id")?;
+            let vendor = get_str("Vendor").unwrap_or_default();
+            let model = get_str("Model").unwrap_or_default();
+            // TODO: upstream will eventually switch to rust strings
+            let bytes =
+                Vec::<u8>::try_from(block.get("PreferredDevice")?.try_clone().ok()?).ok()?;
+            let device = CStr::from_bytes_until_nul(&bytes).ok()?.to_string_lossy();
 
-fn fetch_devices() -> Result<Box<[Arc<DiskDevice>]>, String> {
-    let udisks = UDisks2::new().map_err(|error| error.to_string())?;
-
-    let mut devices = Disks::new(&udisks)
-        .devices
-        .into_iter()
-        .filter(|d| d.drive.connection_bus == "usb" || d.drive.connection_bus == "sdio")
-        .filter(|d| d.parent.size != 0)
-        .map(Arc::new)
+            Some(Arc::new(DiskDevice {
+                id: id.to_owned(),
+                label: format!("{vendor} {model} ({device})").trim_start().to_owned(),
+                size,
+                path: path.as_str().to_owned(),
+            }))
+        })
         .collect::<Vec<_>>();
 
-    devices.sort_by_key(|d| d.drive.id.clone());
+    devices.sort_by(|a, b| a.id.cmp(&b.id));
     Ok(devices.into_boxed_slice())
 }

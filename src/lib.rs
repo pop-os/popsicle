@@ -15,16 +15,13 @@ pub use self::task::{Progress, Task};
 
 use anyhow::Context;
 use as_result::MapResult;
-use async_std::{
-    fs::{self, File, OpenOptions},
-    os::unix::fs::OpenOptionsExt,
-    path::{Path, PathBuf},
-};
+use async_fs::{File, OpenOptions, canonicalize, unix::OpenOptionsExt};
 use futures::{executor, prelude::*};
 use mnt::MountEntry;
 use std::{
     io,
     os::unix::{ffi::OsStrExt, fs::FileTypeExt},
+    path::{Path, PathBuf},
     process::Command,
 };
 use usb_disk_probe::stream::UsbDiskProbe;
@@ -115,7 +112,7 @@ pub async fn disks_from_args<D: Iterator<Item = Box<Path>>>(
     let mut disks = Vec::new();
 
     for disk_arg in disk_args {
-        let canonical_path = fs::canonicalize(&disk_arg)
+        let canonical_path = canonicalize(&disk_arg)
             .await
             .map_err(|why| DiskError::NoDisk { disk: disk_arg.clone(), why })?;
 
@@ -139,7 +136,7 @@ pub async fn disks_from_args<D: Iterator<Item = Box<Path>>>(
                     return Err(DiskError::AlreadyMounted {
                         arg: disk_arg.clone(),
                         source_: PathBuf::from(mount.spec.clone()).into_boxed_path(),
-                        dest: PathBuf::from(mount.file.clone()).into_boxed_path(),
+                        dest: mount.file.clone().into_boxed_path(),
                     });
                 }
             }
@@ -147,7 +144,6 @@ pub async fn disks_from_args<D: Iterator<Item = Box<Path>>>(
 
         let metadata = canonical_path
             .metadata()
-            .await
             .map_err(|why| DiskError::Metadata { arg: disk_arg.clone(), why })?;
 
         if !metadata.file_type().is_block_device() {
