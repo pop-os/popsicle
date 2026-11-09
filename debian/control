@@ -7,7 +7,6 @@ Build-Depends:
   cargo,
   help2man,
   just,
-  libdbus-1-dev,
   libxkbcommon-dev,
   libwayland-dev,
   pkg-config,
