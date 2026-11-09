@@ -210,7 +210,7 @@ impl cosmic::Application for AppModel {
     fn subscription(&self) -> Subscription<Self::Message> {
         let mut subscriptions = vec![];
 
-        // Poll for USB drives only while the device picker is on screen.
+        // Watch for USB drives only while the device picker is on screen.
         if self.view == ActiveView::Devices {
             subscriptions.push(self.devices.subscription().map(Message::Devices));
         }
@@ -250,11 +250,7 @@ impl cosmic::Application for AppModel {
                     return task.map(|action| action.map(Message::Images));
                 }
             }
-            Message::Devices(message) => {
-                if let Some(task) = self.devices.update(message) {
-                    return task.map(|action| action.map(Message::Devices));
-                }
-            }
+            Message::Devices(message) => self.devices.update(message),
             Message::Flashing(message) => {
                 self.flashing.update(message);
 
@@ -276,8 +272,6 @@ impl cosmic::Application for AppModel {
                 ActiveView::Images => {
                     self.view = ActiveView::Devices;
                     self.devices.set_image_size(self.images.image_size());
-
-                    return self.devices.refresh().map(|action| action.map(Message::Devices));
                 }
                 ActiveView::Devices => {
                     let Some(path) = self.images.image_path().map(Path::to_path_buf) else {
