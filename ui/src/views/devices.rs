@@ -3,13 +3,19 @@
 use std::{collections::HashSet, ffi::CStr, sync::Arc, time::Duration};
 
 use cosmic::{
-    Apply, Element, Task,
-    iced::{Alignment, Length, Subscription},
+    Apply, Element,
+    iced::{
+        Alignment, Length, Subscription,
+        futures::{FutureExt, SinkExt, Stream, StreamExt, channel::mpsc::Sender, stream::select},
+    },
     theme::spacing,
     widget::{self, settings},
 };
 use tokio::sync::OnceCell;
-use udisks2::{Client, zbus::ObjectPath};
+use udisks2::{
+    Client,
+    zbus::{MatchRule, MessageStream, ObjectPath, message::Type},
+};
 
 use crate::{app::ActiveView, fl};
 
@@ -32,13 +38,11 @@ pub struct DevicesView {
     available_devices: Box<[Arc<DiskDevice>]>,
     selected: HashSet<String>,
     image_size: u64,
-    refreshing: bool,
     error: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    Refresh,
     Refreshed(Result<Box<[Arc<DiskDevice>]>, String>),
     Toggle(String, bool),
     SelectAll(bool),
@@ -76,50 +80,29 @@ impl DevicesView {
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
-        cosmic::iced::time::every(Duration::from_secs(1)).map(|_| Message::Refresh)
+        Subscription::run(|| cosmic::iced::stream::channel(1, watch))
     }
 
-    pub fn refresh(&mut self) -> Task<cosmic::Action<Message>> {
-        if self.refreshing {
-            return Task::none();
-        }
-        self.refreshing = true;
-
-        cosmic::task::future(async {
-            Message::Refreshed(fetch_devices().await.map_err(|e| e.to_string()))
-        })
-        .map(cosmic::Action::App)
-    }
-
-    pub fn update(&mut self, message: Message) -> Option<Task<cosmic::Action<Message>>> {
+    pub fn update(&mut self, message: Message) {
         match message {
-            Message::Refresh => return Some(self.refresh()),
+            Message::Refreshed(result) => match result {
+                Ok(devices) => {
+                    self.error = None;
 
-            Message::Refreshed(result) => {
-                self.refreshing = false;
+                    let changed = devices.len() != self.available_devices.len()
+                        || devices.iter().zip(&self.available_devices).any(|(a, b)| a.id != b.id);
 
-                match result {
-                    Ok(devices) => {
-                        self.error = None;
-
-                        let changed = devices.len() != self.available_devices.len()
-                            || devices
-                                .iter()
-                                .zip(&self.available_devices)
-                                .any(|(a, b)| a.id != b.id);
-
-                        if changed {
-                            let present: HashSet<_> = devices.iter().map(|d| &d.id).collect();
-                            self.selected.retain(|k| present.contains(k));
-                            self.available_devices = devices;
-                        }
-                    }
-                    Err(error) => {
-                        eprintln!("failed to refresh devices: {error}");
-                        self.error = Some(error);
+                    if changed {
+                        let present: HashSet<_> = devices.iter().map(|d| &d.id).collect();
+                        self.selected.retain(|k| present.contains(k));
+                        self.available_devices = devices;
                     }
                 }
-            }
+                Err(error) => {
+                    eprintln!("failed to refresh devices: {error}");
+                    self.error = Some(error);
+                }
+            },
 
             Message::Toggle(key, on) => {
                 if on {
@@ -137,8 +120,6 @@ impl DevicesView {
                 };
             }
         }
-
-        None
     }
 
     fn selectable(&self) -> impl Iterator<Item = &Arc<DiskDevice>> {
@@ -267,4 +248,53 @@ async fn fetch_devices() -> Result<Box<[Arc<DiskDevice>]>, udisks2::Error> {
 
     devices.sort_by(|a, b| a.id.cmp(&b.id));
     Ok(devices.into_boxed_slice())
+}
+
+async fn changes(client: &Client) -> udisks2::zbus::Result<impl Stream<Item = ()>> {
+    let manager = client.object_manager();
+    let added = manager.receive_interfaces_added().await?.map(|_| ());
+    let removed = manager.receive_interfaces_removed().await?.map(|_| ());
+    let rule = MatchRule::builder()
+        .msg_type(Type::Signal)
+        .interface("org.freedesktop.DBus.Properties")
+        .member("PropertiesChanged")
+        .path_namespace("/org/freedesktop/UDisks2")
+        .arg(0, "org.freedesktop.UDisks2.Block")
+        .build()?;
+    let properties =
+        MessageStream::for_match_rule(rule, manager.inner().connection(), None).await?.map(|_| ());
+
+    Ok(select(select(added, removed), properties))
+}
+
+async fn watch(mut output: Sender<Message>) {
+    loop {
+        let events = match client().await {
+            Ok(client) => changes(client).await.map_err(|e| e.to_string()),
+            Err(e) => Err(e.to_string()),
+        };
+
+        match events {
+            Ok(mut events) => loop {
+                let devices = fetch_devices().await.map_err(|e| e.to_string());
+                if output.send(Message::Refreshed(devices)).await.is_err() {
+                    return;
+                }
+                // wait for changes
+                if events.next().await.is_none() {
+                    break;
+                }
+                // ignore burst of signals on change
+                tokio::time::sleep(Duration::from_millis(250)).await;
+                while events.next().now_or_never().is_some() {}
+            },
+            Err(e) => {
+                if output.send(Message::Refreshed(Err(e))).await.is_err() {
+                    return;
+                }
+            }
+        }
+
+        tokio::time::sleep(Duration::from_secs(2)).await;
+    }
 }
