@@ -34,6 +34,10 @@ no-devices-found = No devices were found
 # Flashing View
 flash-view-description = Do not unplug devices while they are being flashed.
 flash-view-title = Flashing Devices
+dialog-title = Stop writing to the drive?
+dialog-body = The drive may be unusable until you start over.
+stop = Stop
+resume = Resume
 
 # Summary View
 flashing-completed = Flashing Completed

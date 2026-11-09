@@ -7,11 +7,10 @@ use crate::views::flashing::{self, FlashingView};
 use crate::views::images::{self, ImagesView};
 use crate::views::summary::{self, SummaryView};
 use cosmic::app::context_drawer;
-use cosmic::iced::alignment::{Horizontal, Vertical};
-use cosmic::iced::{Length, Subscription};
+use cosmic::iced::{Event, Length, Subscription, event, window};
 use cosmic::prelude::*;
-use cosmic::widget::menu::{ItemHeight, ItemWidth};
-use cosmic::widget::{self, about::About, menu};
+use cosmic::widget::menu::ItemWidth;
+use cosmic::widget::{self, about::About, button, icon, menu};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -39,6 +38,7 @@ pub struct AppModel {
     flashing: FlashingView,
     summary: SummaryView,
     error: ErrorView,
+    show_close_dialog: bool,
 }
 
 /// Messages emitted by the application and its widgets.
@@ -54,6 +54,9 @@ pub enum Message {
     Next,
     Back,
     Restart,
+    CloseRequested,
+    DialogCancel,
+    DialogConfirm,
 }
 
 pub struct Flags {
@@ -103,7 +106,7 @@ impl cosmic::Application for AppModel {
         // Create the about widget
         let about = About::default()
             .name("Popsicle")
-            .icon(widget::icon::from_raster_bytes(APP_ICON))
+            .icon(icon::from_raster_bytes(APP_ICON))
             .version(env!("CARGO_PKG_VERSION"))
             .author("System76")
             .comments(fl!("app-description"))
@@ -124,6 +127,7 @@ impl cosmic::Application for AppModel {
             flashing: FlashingView::default(),
             summary: SummaryView::default(),
             error: ErrorView::default(),
+            show_close_dialog: false,
         };
 
         // Create a startup command that sets the window title and opens optional image file.
@@ -132,11 +136,30 @@ impl cosmic::Application for AppModel {
         (app, command)
     }
 
+    fn on_app_exit(&mut self) -> Option<Self::Message> {
+        Some(Message::CloseRequested)
+    }
+
+    fn dialog(&self) -> Option<Element<'_, Self::Message>> {
+        if !self.show_close_dialog {
+            return None;
+        }
+
+        let dialog = widget::dialog()
+            .title(fl!("dialog-title"))
+            .body(fl!("dialog-body"))
+            .icon(icon::from_name("dialog-warning-symbolic").size(64))
+            .primary_action(button::destructive(fl!("stop")).on_press(Message::DialogConfirm))
+            .secondary_action(button::suggested(fl!("resume")).on_press(Message::DialogCancel));
+
+        Some(dialog.into())
+    }
+
     /// Elements to pack at the start of the header bar.
     fn header_start(&self) -> Vec<Element<'_, Self::Message>> {
         let menu_bar = menu::bar(vec![menu::Tree::with_children(
             widget::RcElementWrapper::new(
-                widget::button::icon(widget::icon::from_name("open-menu-symbolic"))
+                button::icon(icon::from_name("open-menu-symbolic"))
                     .padding([4, 12])
                     .class(cosmic::theme::Button::MenuRoot)
                     .into(),
@@ -146,7 +169,6 @@ impl cosmic::Application for AppModel {
                 vec![menu::Item::Button(fl!("about", app = "Popsicle"), None, MenuAction::About)],
             ),
         )])
-        .item_height(ItemHeight::Dynamic(40))
         .item_width(ItemWidth::Uniform(200))
         .spacing(4.0);
 
@@ -195,9 +217,7 @@ impl cosmic::Application for AppModel {
             .width(600)
             .height(Length::Fill)
             .apply(widget::container)
-            .width(Length::Fill)
-            .align_x(Horizontal::Center)
-            .align_y(Vertical::Center)
+            .center_x(Length::Fill)
             .into()
     }
 
@@ -208,7 +228,11 @@ impl cosmic::Application for AppModel {
     /// stopped and started conditionally based on application state, or persist
     /// indefinitely.
     fn subscription(&self) -> Subscription<Self::Message> {
-        let mut subscriptions = vec![];
+        let mut subscriptions =
+            vec![event::listen_with(|event, _status, _window_id| match event {
+                Event::Window(window::Event::CloseRequested) => Some(Message::CloseRequested),
+                _ => None,
+            })];
 
         // Watch for USB drives only while the device picker is on screen.
         if self.view == ActiveView::Devices {
@@ -296,6 +320,20 @@ impl cosmic::Application for AppModel {
                 self.flashing.cancel();
                 self.devices.reset();
                 self.view = ActiveView::Images;
+            }
+            Message::CloseRequested => {
+                if self.view == ActiveView::Flashing {
+                    self.show_close_dialog = true;
+                } else {
+                    return cosmic::iced::exit();
+                }
+            }
+            Message::DialogCancel => {
+                self.show_close_dialog = false;
+            }
+            Message::DialogConfirm => {
+                self.flashing.cancel();
+                return cosmic::iced::exit();
             }
         }
         Task::none()

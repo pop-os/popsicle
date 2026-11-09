@@ -29,7 +29,8 @@ fn main() -> cosmic::iced::Result {
 
     // Settings for configuring the application window and iced runtime.
     let settings = cosmic::app::Settings::default()
-        .size_limits(cosmic::iced::Limits::NONE.min_width(470.0).min_height(310.0));
+        .size_limits(cosmic::iced::Limits::NONE.min_width(470.0).min_height(310.0))
+        .exit_on_close(false);
 
     let mut flags = Flags { iso_argument: None };
 

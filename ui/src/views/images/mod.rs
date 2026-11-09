@@ -176,8 +176,6 @@ impl ImagesView {
                 .spacing(spacing().space_xs);
 
         let mut drop_container = widget::container(image_content)
-            .width(Length::Fill)
-            .height(200)
             .center_x(Length::Fill)
             .center_y(200)
             .padding(spacing().space_m)
