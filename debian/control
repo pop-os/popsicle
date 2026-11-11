@@ -22,9 +22,17 @@ Description: USB Flasher
 
 Package: popsicle-ui
 Architecture: amd64 arm64
-Breaks: popsicle-gtk
-Replaces: popsicle-gtk
+Provides: popsicle-gtk
+Breaks: popsicle-gtk (<< ${binary:Version})
+Replaces: popsicle-gtk (<< ${binary:Version})
 Depends:
   ${misc:Depends},
   ${shlib:Depends}
 Description: COSMIC front end to the USB Flasher
+
+Package: popsicle-gtk
+Architecture: amd64 arm64
+Depends: popsicle-ui
+Multi-Arch: foreign
+Description: Transitional package for popsicle-ui
+ Popsicle's GTK frontend has been rewritten with libcosmic
