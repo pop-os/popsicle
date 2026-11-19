@@ -117,10 +117,11 @@ impl ImagesView {
     pub fn view<'a>(&'a self) -> Element<'a, Message> {
         let image_selected = self.image.is_loaded();
 
-        widget::column::with_capacity(3)
+        widget::column::with_capacity(4)
             .push(self.instructions())
             .push(self.image_drop_area(image_selected))
             .push_maybe(image_selected.then(|| self.hash_section()))
+            .push_maybe(self.error.as_deref().map(widget::text::caption))
             .align_x(Alignment::Center)
             .spacing(spacing().space_xs)
             .apply(widget::scrollable)
@@ -250,10 +251,9 @@ impl ImagesView {
             .spacing(spacing().space_xs)
             .align_y(Alignment::Center);
 
-        let hash_content = widget::column::with_capacity(3)
+        let hash_content = widget::column::with_capacity(2)
             .push_maybe(show_hash_input.then_some(hash_text_input))
             .push(hash_row)
-            .push_maybe(self.error.as_ref().map(widget::text::caption))
             .align_x(Alignment::Center)
             .spacing(spacing().space_xs);
 
@@ -397,9 +397,7 @@ impl ImagesView {
             return;
         };
 
-        let size = std::fs::metadata(&path).map(|metadata| metadata.len()).unwrap_or(0);
-
-        self.set_image(&path, size, None);
+        self.load_file(path);
     }
 
     fn load_file(&mut self, path: PathBuf) {
