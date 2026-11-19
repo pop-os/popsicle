@@ -13,6 +13,7 @@ use md5::Md5;
 use sha1::Sha1;
 use sha2::{Sha256, Sha512};
 use std::{
+    collections::HashMap,
     fs::File,
     path::{Path, PathBuf},
 };
@@ -66,6 +67,7 @@ pub struct ImagesView {
     hash_input: String,
     dragging: bool,
     hash_result: Option<HashResult>,
+    checksums: HashMap<usize, String>,
 }
 
 #[derive(Debug, Clone)]
@@ -74,9 +76,10 @@ pub enum Message {
     HashInput(String),
     CheckHash,
     ChooseImage,
-    HashCalculated { expected: String, result: Result<String, String> },
+    HashCalculated { path: PathBuf, algorithm: usize, result: Result<String, String> },
 
     FileDropped(PathBuf),
+    FileTransfer(String),
     DropFailed,
     DragEntered,
     DragLeft,
@@ -103,6 +106,7 @@ impl ImagesView {
             hash_input: String::new(),
             dragging: false,
             hash_result: None,
+            checksums: HashMap::new(),
         }
     }
 
@@ -117,10 +121,11 @@ impl ImagesView {
     pub fn view<'a>(&'a self) -> Element<'a, Message> {
         let image_selected = self.image.is_loaded();
 
-        widget::column::with_capacity(3)
+        widget::column::with_capacity(4)
             .push(self.instructions())
             .push(self.image_drop_area(image_selected))
             .push_maybe(image_selected.then(|| self.hash_section()))
+            .push_maybe(self.error.as_deref().map(widget::text::caption))
             .align_x(Alignment::Center)
             .spacing(spacing().space_xs)
             .apply(widget::scrollable)
@@ -196,6 +201,7 @@ impl ImagesView {
 
             Message::FileDropped(path)
         })
+        .on_file_transfer(Message::FileTransfer)
         .on_enter(|_, _, _| Message::DragEntered)
         .on_leave(|| Message::DragLeft)
         .into()
@@ -235,9 +241,8 @@ impl ImagesView {
             None => {}
         }
 
-        let hash_check_enabled = !self.hash_input.trim().is_empty()
-            && self.selected_hash > 0
-            && !matches!(self.hash_result, Some(HashResult::Checking));
+        let hash_check_enabled =
+            self.selected_hash > 0 && !matches!(self.hash_result, Some(HashResult::Checking));
 
         let hash_check_button = widget::button::standard(fl!("check-label"))
             .on_press_maybe(hash_check_enabled.then_some(Message::CheckHash));
@@ -250,10 +255,9 @@ impl ImagesView {
             .spacing(spacing().space_xs)
             .align_y(Alignment::Center);
 
-        let hash_content = widget::column::with_capacity(3)
+        let hash_content = widget::column::with_capacity(2)
             .push_maybe(show_hash_input.then_some(hash_text_input))
             .push(hash_row)
-            .push_maybe(self.error.as_ref().map(widget::text::caption))
             .align_x(Alignment::Center)
             .spacing(spacing().space_xs);
 
@@ -292,8 +296,8 @@ impl ImagesView {
 
             Message::CheckHash => return self.check_hash(),
 
-            Message::HashCalculated { expected, result } => {
-                self.hash_calculated(expected, result);
+            Message::HashCalculated { path, algorithm, result } => {
+                self.hash_calculated(path, algorithm, result);
             }
 
             Message::ChooseImage => return self.choose_image(),
@@ -305,6 +309,21 @@ impl ImagesView {
             Message::FileDropped(path) => {
                 self.dragging = false;
                 self.load_file(path);
+            }
+
+            Message::FileTransfer(key) => {
+                self.dragging = false;
+
+                return Some(cosmic::command::file_transfer_receive(key).map(|result| {
+                    cosmic::Action::App(match result.map(|paths| paths.into_iter().next()) {
+                        Ok(Some(path)) => Message::FileDropped(path.into()),
+                        Ok(None) => Message::DropFailed,
+                        Err(why) => {
+                            eprintln!("failed to receive the dropped file: {why}");
+                            Message::DropFailed
+                        }
+                    })
+                }));
             }
 
             Message::DropFailed => {
@@ -331,11 +350,14 @@ impl ImagesView {
     fn check_hash(&mut self) -> Option<Task<cosmic::Action<Message>>> {
         let path = self.image.path.clone()?;
 
-        let expected = self.hash_input.trim().to_ascii_lowercase();
-
         let algorithm = self.selected_hash;
 
-        if expected.is_empty() || algorithm == 0 {
+        if algorithm == 0 {
+            return None;
+        }
+
+        if let Some(checksum) = self.checksums.get(&algorithm).cloned() {
+            self.show_checksum(checksum);
             return None;
         }
 
@@ -344,21 +366,25 @@ impl ImagesView {
         let task = cosmic::task::future(async move {
             let result = calculate_hash(&path, algorithm).await.map_err(|error| error.to_string());
 
-            Message::HashCalculated { expected, result }
+            Message::HashCalculated { path, algorithm, result }
         })
         .map(cosmic::Action::App);
 
         Some(task)
     }
 
-    fn hash_calculated(&mut self, expected: String, result: Result<String, String>) {
+    fn hash_calculated(&mut self, path: PathBuf, algorithm: usize, result: Result<String, String>) {
+        if self.image.path.as_ref() != Some(&path) {
+            return;
+        }
+
         match result {
-            Ok(actual) => {
-                self.hash_result = Some(if actual.eq_ignore_ascii_case(&expected) {
-                    HashResult::Match
-                } else {
-                    HashResult::Mismatch
-                });
+            Ok(checksum) => {
+                self.checksums.insert(algorithm, checksum.clone());
+
+                if algorithm == self.selected_hash {
+                    self.show_checksum(checksum);
+                }
             }
 
             Err(error) => {
@@ -366,6 +392,21 @@ impl ImagesView {
                 self.error = Some(error);
                 self.hash_result = Some(HashResult::Error);
             }
+        }
+    }
+
+    fn show_checksum(&mut self, checksum: String) {
+        let expected = self.hash_input.trim();
+
+        if expected.is_empty() {
+            self.hash_input = checksum;
+            self.hash_result = None;
+        } else {
+            self.hash_result = Some(if checksum.eq_ignore_ascii_case(expected) {
+                HashResult::Match
+            } else {
+                HashResult::Mismatch
+            });
         }
     }
 
@@ -397,9 +438,7 @@ impl ImagesView {
             return;
         };
 
-        let size = std::fs::metadata(&path).map(|metadata| metadata.len()).unwrap_or(0);
-
-        self.set_image(&path, size, None);
+        self.load_file(path);
     }
 
     fn load_file(&mut self, path: PathBuf) {
@@ -445,6 +484,7 @@ impl ImagesView {
             }
         }
 
+        self.checksums.clear();
         self.image.size = size;
         self.image.path = Some(path.clone());
     }
