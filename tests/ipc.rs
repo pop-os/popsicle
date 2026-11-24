@@ -31,7 +31,7 @@ fn ipc() {
 
         let input = AllowStdIo::new(Cursor::new(SAMPLE));
 
-        let mut stream = FramedRead::new(input, PopsicleDecoder::default());
+        let mut stream = FramedRead::new(input, PopsicleDecoder);
 
         let mut expected_iter = expected.iter();
 

@@ -1,0 +1,36 @@
+name: Validate .desktop files
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:25.10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install desktop-file-utils
+        run: |
+          apt-get update
+          apt-get install -y desktop-file-utils findutils
+
+      - name: Validate .desktop files
+        run: |
+          set -e
+          echo "Checking for .desktop files..."
+          files=$(find . -type f -name "*.desktop")
+          if [ -z "$files" ]; then
+            echo "No .desktop files found."
+            exit 0
+          fi
+
+          echo "$files" | while read -r file; do
+            echo "Validating: $file"
+            desktop-file-validate "$file"
+          done
