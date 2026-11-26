@@ -5,7 +5,7 @@ fn main() {
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     let ctx =
         Context::new(manifest_dir.join("../i18n"), env::var("CARGO_PKG_NAME").unwrap()).unwrap();
-    let app = App::new(FluentString("app-title"))
+    let app = App::new(FluentString("app-name"))
         .comment(FluentString("app-comment"))
         .keywords(FluentString("app-keywords"));
 

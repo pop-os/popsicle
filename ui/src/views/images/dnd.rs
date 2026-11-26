@@ -11,7 +11,7 @@ pub(crate) struct DroppedFiles {
 
 impl AllowedMimeTypes for DroppedFiles {
     fn allowed() -> Cow<'static, [String]> {
-        Cow::Owned(vec!["x-special/gnome-copied-files".into(), "text/uri-list".into()])
+        Cow::Owned(vec!["text/uri-list".into(), "x-special/gnome-copied-files".into()])
     }
 }
 
